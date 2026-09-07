@@ -29,6 +29,7 @@ test("text transform health and capabilities are available", async () => {
   assert.equal(payload.tokenizerEnabled, true);
   assert.ok(payload.profiles.includes("legacy-kanji"));
   assert.ok(payload.tokenizerProfiles.includes("okurigana-abbreviation"));
+  assert.ok(payload.tokenizerProfiles.includes("lexical-replacements"));
   assert.equal(payload.maxBatchItems, 256);
 });
 
@@ -80,4 +81,18 @@ test("text transform batch endpoint reuses the shared profile contract", async (
 
   assert.equal(response.status, 200);
   assert.deepEqual((await response.json()).texts, ["學校と國", "龜と臺"]);
+});
+
+test("extension profile combination preserves the standard replacement set", async () => {
+  const response = await app.request("http://example.test/v1/transform/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      texts: ["それをやることにした。", "分かる"],
+      profile: ["lexical-replacements", "okurigana-abbreviation"],
+    }),
+  }, { ASSETS: assets });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).texts, ["其をやるヿにした。", "分る"]);
 });
