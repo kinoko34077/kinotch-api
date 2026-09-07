@@ -47,7 +47,8 @@
 - [x] 代表的な活用形・語彙・旧字体・長音・表層正規化のGolden回帰テスト
 - [x] ルビ解析のGolden回帰テスト
 - [x] 本番Gateway経由のbatch疎通とコールド／ウォーム遅延の確認
-- [x] 共通クライアントのタイムアウトとfallback切替を追加
+- [x] `kinotch-api` 共通クライアントのタイムアウトとfallback切替を追加
+- [ ] `standby-display`・`txt-auto-replace` の配布用クライアントへ同じタイムアウト設定を反映
 - [ ] 実クライアント利用時のエラー・fallback発生率を継続観測
 - [ ] API／rule versionの更新手順を運用化
 
