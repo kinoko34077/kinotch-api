@@ -43,6 +43,7 @@ kinotch-api main
 - rule sourceからSHA-256の`ruleSetHash`を生成し、capabilities／transformレスポンスへ追加。
 - ruleSetHash対応Text Transform Workerをデプロイ。Version ID: `e788d84c-a0e9-4e81-bb89-de8ee9ca9e95`。Gateway経由でcapabilitiesとbatchレスポンスのhash一致を確認。
 - Ruby parseレスポンスにもruleSetHashを付与し、共通clientでhash不一致時に`rule_set_mismatch`としてfallbackする契約を追加。
+- Text WorkerのRuby parse対応版を再デプロイ。Version ID: `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`。Gateway経由でRuby parseのruleSetHashを確認。
 
 ## 2026-09-06（移行開始・新Account構築）
 
