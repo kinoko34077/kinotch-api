@@ -199,7 +199,8 @@ Cloudflareが保持していた旧本体版のうち、移行作業に関係す�
 - `standby-display`の互換性テスト13件、`kinotch-api`の単体テスト4件が成功。
 - 旧Account側4 Workerは410、`detemuhann-redirect`は308、新Account側は200を確認済み。
 - `standby-display`のWorkers Builds自動デプロイは初回成功済み。
-- `kinotch-api`のWorkers Builds接続は設定済み。接続後の初回ビルド結果はCloudflare Build履歴で確認する。
+- `kinotch-api`のWorkers Builds接続は設定済み。`85385ab`を対象に初回ビルド成功を確認。
+- Build ID: `68776146-5b69-411c-b684-b616346dd82e`
 - 旧端末版の天気・フォント問題は本記録時点では未対応。
 - iPad第3世代など実機確認は未実施。
 
