@@ -75,5 +75,11 @@ export function createTextTransformClient({
         return fallback.transform(text, options, error);
       });
     },
+    transformBatch(texts, options = {}) {
+      return request("/v1/transform/batch", { texts, ...options }, (error) => {
+        if (typeof fallback.transformBatch !== "function") throw error;
+        return fallback.transformBatch(texts, options, error);
+      });
+    },
   });
 }

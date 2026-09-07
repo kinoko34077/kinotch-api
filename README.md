@@ -23,6 +23,7 @@ Service Binding経由で既存Workerへ中継します。
 GET  /v1/capabilities
 POST /v1/ruby/parse
 POST /v1/transform
+POST /v1/transform/batch
 ```
 
 送り仮名などKuromojiを必要とする変換も、Worker Assetsの辞書を使って実行します。

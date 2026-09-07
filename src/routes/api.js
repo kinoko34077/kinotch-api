@@ -61,3 +61,10 @@ apiRoutes.post("/v1/transform", (c) =>
     headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
   }),
 );
+
+apiRoutes.post("/v1/transform/batch", (c) =>
+  proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/transform/batch", {
+    method: "POST",
+    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+  }),
+);

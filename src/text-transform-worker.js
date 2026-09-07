@@ -9,6 +9,8 @@ const app = new Hono();
 const VERSION = "v1";
 const ENGINE_VERSION = "0.2.0-phase2";
 const MAX_TEXT_LENGTH = 100_000;
+const MAX_BATCH_ITEMS = 256;
+const MAX_BATCH_TOTAL_TEXT_LENGTH = 200_000;
 const kuromoji = Kuromoji.default ?? Kuromoji;
 let tokenizerPromise = null;
 
@@ -38,6 +40,24 @@ function errorResponse(c, status, code, message, details) {
 function validateText(value) {
   if (typeof value !== "string") return "text must be a string";
   if (value.length > MAX_TEXT_LENGTH) return `text exceeds ${MAX_TEXT_LENGTH} characters`;
+  return null;
+}
+
+function validateBatchTexts(value) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_BATCH_ITEMS) {
+    return `texts must be a non-empty array with at most ${MAX_BATCH_ITEMS} items`;
+  }
+
+  let totalLength = 0;
+  for (const text of value) {
+    const textError = validateText(text);
+    if (textError) return textError;
+    totalLength += text.length;
+    if (totalLength > MAX_BATCH_TOTAL_TEXT_LENGTH) {
+      return `texts exceed ${MAX_BATCH_TOTAL_TEXT_LENGTH} characters in total`;
+    }
+  }
+
   return null;
 }
 
@@ -112,6 +132,22 @@ function getTokenizer(env, baseUrl) {
   return tokenizerPromise;
 }
 
+async function transformText(c, text, selection) {
+  let tokenizer = null;
+  if (selection.requiresTokenizer) {
+    try {
+      tokenizer = await getTokenizer(c.env, c.req.url);
+    } catch (error) {
+      console.error(error);
+      return { error: "tokenizer_unavailable", status: 503 };
+    }
+  }
+
+  return {
+    text: TransformEngine.transformTextWithStages(text, selection.stages, tokenizer),
+  };
+}
+
 app.get("/health", (c) => c.json({
   status: "ok",
   service: "text-transform",
@@ -126,6 +162,8 @@ app.get("/v1/capabilities", (c) => c.json({
   tokenizerProfiles,
   tokenizerEnabled: true,
   maxTextLength: MAX_TEXT_LENGTH,
+  maxBatchItems: MAX_BATCH_ITEMS,
+  maxBatchTotalTextLength: MAX_BATCH_TOTAL_TEXT_LENGTH,
 }));
 
 app.post("/v1/ruby/parse", async (c) => {
@@ -166,19 +204,44 @@ app.post("/v1/transform", async (c) => {
     return errorResponse(c, selection.status ?? 400, "invalid_profile", selection.error, selection.details);
   }
 
-  let tokenizer = null;
-  if (selection.requiresTokenizer) {
-    try {
-      tokenizer = await getTokenizer(c.env, c.req.url);
-    } catch (error) {
-      console.error(error);
-      return errorResponse(c, 503, "tokenizer_unavailable", "Tokenizer assets could not be loaded");
-    }
+  const transformed = await transformText(c, body.text, selection);
+  if (transformed.error) {
+    return errorResponse(c, transformed.status, transformed.error, "Tokenizer assets could not be loaded");
+  }
+  return c.json({
+    text: transformed.text,
+    profile: selection.stages.map((stage) => stage.id),
+    engineVersion: ENGINE_VERSION,
+  });
+});
+
+app.post("/v1/transform/batch", async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return errorResponse(c, 400, "invalid_json", "Request body must be valid JSON");
   }
 
-  const text = TransformEngine.transformTextWithStages(body.text, selection.stages, tokenizer);
+  const textsError = validateBatchTexts(body?.texts);
+  if (textsError) return errorResponse(c, 400, "invalid_texts", textsError);
+
+  const selection = selectStages(body.profile);
+  if (selection.error) {
+    return errorResponse(c, selection.status ?? 400, "invalid_profile", selection.error, selection.details);
+  }
+
+  const transformed = [];
+  for (const text of body.texts) {
+    const result = await transformText(c, text, selection);
+    if (result.error) {
+      return errorResponse(c, result.status, result.error, "Tokenizer assets could not be loaded");
+    }
+    transformed.push(result.text);
+  }
+
   return c.json({
-    text,
+    texts: transformed,
     profile: selection.stages.map((stage) => stage.id),
     engineVersion: ENGINE_VERSION,
   });

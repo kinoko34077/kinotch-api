@@ -67,3 +67,23 @@ test("text transform client uses fallback only for server failures", async () =>
     fallbackStatus: 503,
   });
 });
+
+test("text transform client supports batched transformation", async () => {
+  const calls = [];
+  const client = createTextTransformClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ texts: ["學校", "國"] }), { status: 200 });
+    },
+  });
+
+  assert.deepEqual(await client.transformBatch(["学校", "国"], {
+    profile: ["legacy-kanji"],
+  }), { texts: ["學校", "國"] });
+  assert.equal(calls[0].url, "https://api.example.test/v1/transform/batch");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    texts: ["学校", "国"],
+    profile: ["legacy-kanji"],
+  });
+});

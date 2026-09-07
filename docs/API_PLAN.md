@@ -24,7 +24,7 @@
 ## Phase 2：Worker配信
 
 - [x] `text-transform-worker` を追加
-- [x] `POST /v1/ruby/parse`、`POST /v1/transform`、`GET /v1/capabilities` を実装
+- [x] `POST /v1/ruby/parse`、`POST /v1/transform`、`POST /v1/transform/batch`、`GET /v1/capabilities` を実装
 - [x] `kinotch-api` GatewayからService Binding経由で公開
 - [x] Kuromoji辞書をWorker Assets Bindingから遅延初期化
 - [x] Kuromojiを使う送り仮名変換をWorkerで実行
@@ -42,14 +42,15 @@
 - [x] 5xx・通信失敗時に注入できるローカルfallback境界を追加
 - [ ] 歌詞ReaderのルビparserをAPI契約へ移行
 - [ ] 歌詞Readerの旧字体変換をAPI利用へ移行
-- [ ] `standby-display` の重複旧字体マップを共通化
-- [ ] API障害時のローカルfallbackを確認
+- [x] `standby-display` の重複旧字体マップをAPI正本へ切り替え
+- [x] `standby-display` のAPI障害時ローカルfallbackを確認
+- [x] Chrome拡張のページ本文API送信を許可範囲内でbatch APIへ移行
 
 ## 移行順
 
-1. 歌詞Readerのルビparser・旧字体変換
-2. `standby-display` の旧字体マップ
-3. Chrome拡張のcore利用/API fallback
+1. 歌詞Readerのルビparser・旧字体変換（後回し）
+2. `standby-display` の旧字体マップ（完了）
+3. Chrome拡張のcore利用/API fallback（batch APIへ移行）
 4. historical-kanaの新規実装
 
 ## 受入条件

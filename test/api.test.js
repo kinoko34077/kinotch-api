@@ -86,3 +86,29 @@ test("text API routes proxy through the text transform binding", async () => {
   assert.deepEqual(await response.json(), { text: "學校" });
   assert.equal(requests[0].method, "POST");
 });
+
+test("text API batch route proxies the complete request body", async () => {
+  let receivedBody;
+  const response = await app.request("http://example.test/v1/transform/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texts: ["学校", "国"], profile: ["legacy-kanji"] }),
+  }, env({
+    TEXT_TRANSFORM: {
+      fetch(request) {
+        receivedBody = request.body;
+        return Promise.resolve(new Response(JSON.stringify({ texts: ["學校", "國"] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { texts: ["學校", "國"] });
+  assert.deepEqual(JSON.parse(await new Response(receivedBody).text()), {
+    texts: ["学校", "国"],
+    profile: ["legacy-kanji"],
+  });
+});

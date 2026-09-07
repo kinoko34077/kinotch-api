@@ -29,6 +29,7 @@ test("text transform health and capabilities are available", async () => {
   assert.equal(payload.tokenizerEnabled, true);
   assert.ok(payload.profiles.includes("legacy-kanji"));
   assert.ok(payload.tokenizerProfiles.includes("okurigana-abbreviation"));
+  assert.equal(payload.maxBatchItems, 256);
 });
 
 test("ruby parse and dictionary transform endpoints use the extracted core", async () => {
@@ -65,4 +66,18 @@ test("text transform endpoint validates input and runs tokenizer-dependent reque
   }, { ASSETS: assets });
   assert.equal(tokenizerRequest.status, 200);
   assert.equal((await tokenizerRequest.json()).text, "分る");
+});
+
+test("text transform batch endpoint reuses the shared profile contract", async () => {
+  const response = await app.request("http://example.test/v1/transform/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      texts: ["学校と国", "亀と台"],
+      profile: ["legacy-kanji", "general-character-replacements"],
+    }),
+  }, { ASSETS: assets });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).texts, ["學校と國", "龜と臺"]);
 });

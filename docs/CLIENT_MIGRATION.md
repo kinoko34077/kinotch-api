@@ -31,10 +31,16 @@ const textApi = createTextTransformClient({
 });
 ```
 
+## 移行状況
+
+- `standby-display`：起動時に `legacy-kanji` の正本マップをAPIから一度取得。初期表示と通信障害時は既存のローカルマップを使用する。
+- 歌詞Reader：後回し。
+- Chrome拡張：ページ本文を許可された外部APIへbatch送信。通信障害時は既存のkuromojiローカルルールへfallbackする。
+
 ## 移行順
 
 1. 歌詞Reader：`ruby-parser.js`と`transformer.js`をAPI adapter経由へ変更
-2. `standby-display`：`kanji-conversion.mjs`の重複マップを除去
-3. Chrome拡張：オフライン時はcore、通常時はAPIを利用
+2. `standby-display`：`kanji-conversion.mjs`の重複マップをAPI正本へ切り替え（完了）
+3. Chrome拡張：batch APIを利用し、オフライン時は既存ローカル実装へfallback（完了）
 
 表示、DOM、設定、本文保存の責務は各クライアントに残す。
