@@ -33,6 +33,21 @@ test("health route exposes service metadata", async () => {
   });
 });
 
+test("CORS preflight allows browser POST text API calls", async () => {
+  const response = await app.request("http://example.test/v1/transform", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://reader.example.test",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type",
+    },
+  }, env());
+
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+  assert.match(response.headers.get("Access-Control-Allow-Methods") ?? "", /POST/);
+});
+
 test("proxy routes preserve upstream payloads", async () => {
   const cases = [
     ["/v1/time", { serverTime: 123 }],

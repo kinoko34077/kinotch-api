@@ -35,6 +35,11 @@ kinotch-api main
 - Gateway CORS、Text Coreの正本・hash管理、generated ruleの検証、2 Workerの同期deploy、クライアント配布・プライバシー境界、batch最適化の順に実施する計画へ整理。
 - 歌詞Readerと`historical-kana`は基盤整備後の後段として継続保留。
 
+## 2026-09-08（Gateway契約・rule生成検証）
+
+- Gateway CORSをPOST API契約に合わせ、ブラウザのPOST preflight回帰テストを追加。
+- `check:text-rules`を追加し、`npm test`前にJSON5 sourceとgenerated ruleの一致を検証するよう変更。
+
 ## 2026-09-06（移行開始・新Account構築）
 
 ### 14:43:52 UTC（23:43:52 JST）

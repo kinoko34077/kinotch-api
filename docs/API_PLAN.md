@@ -65,8 +65,8 @@
 
 目的は、別originのReaderからPOST APIを安全に呼べる状態にすること。
 
-- [ ] Gateway CORSを`GET`・`POST`・`OPTIONS`へ統一
-- [ ] GatewayのPOST preflightと実POSTを回帰テスト化
+- [x] Gateway CORSを`GET`・`POST`・`OPTIONS`へ統一
+- [x] GatewayのPOST preflightと実POSTを回帰テスト化
 - [ ] CORS修正後にGateway単体をデプロイし、`/v1/capabilities`・`/v1/transform/batch`を実ブラウザ相当のOrigin付きで確認
 
 ### 2. P0：Text Coreの正本と互換性情報を一意化
@@ -81,8 +81,8 @@
 
 ### 3. P1：生成ruleとテストの一致を保証
 
-- [ ] JSON5 sourceからの生成内容を一時出力と比較する`check:text-rules`を追加
-- [ ] `npm test`の前段でcheckを必須化し、stale generated版でPASSできないようにする
+- [x] JSON5 sourceからの生成内容を一時出力と比較する`check:text-rules`を追加
+- [x] `npm test`の前段でcheckを必須化し、stale generated版でPASSできないようにする
 - [ ] CI／deployでも同じcheckを実行
 - [ ] rule変更時にGoldenとruleSetHashが同時に更新されることを確認
 
