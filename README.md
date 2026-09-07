@@ -14,5 +14,18 @@ npx wrangler deploy
 本番URLは`https://api.kinotch.workers.dev`です。時刻・天気・六曜・月情報を
 Service Binding経由で既存Workerへ中継します。
 
+共通日本語テキストAPIの抽出計画と現在のPhaseは
+[`docs/API_PLAN.md`](docs/API_PLAN.md) に記録しています。Phase 1では変換coreと
+ルールデータを配置し、Phase 2ではルビ解析・旧字体変換・能力一覧を
+`text-transform` WorkerからService Binding経由で公開しています。
+
+```text
+GET  /v1/capabilities
+POST /v1/ruby/parse
+POST /v1/transform
+```
+
+送り仮名などKuromojiを必要とする変換は、辞書のWorker適性を検証してから有効化します。
+
 このリポジトリは`standby-display`とは別責任で管理します。API変更はテストと
 dry-run、本番4ルートの疎通確認を行ったうえでデプロイしてください。

@@ -4,13 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "build:text-rules": "node scripts/build-text-rules.mjs",
+    "dev:text-transform": "npm run build:text-rules && wrangler dev --config wrangler.text-transform.jsonc",
     "test": "node --test test/*.test.js",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "deploy:text-transform": "npm run build:text-rules && wrangler deploy --config wrangler.text-transform.jsonc"
   },
   "dependencies": {
     "hono": "^4.9.7"
   },
   "devDependencies": {
+    "json5": "^2.2.3",
     "wrangler": "4.129.0"
   }
 }

@@ -8,7 +8,8 @@
   "services": [
     { "binding": "CLOCK_SERVER", "service": "clock-server" },
     { "binding": "WEATHER_PROXY", "service": "weather-proxy" },
-    { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" }
+    { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" },
+    { "binding": "TEXT_TRANSFORM", "service": "text-transform" }
   ],
   "compatibility_date": "2026-09-07",
   "observability": {

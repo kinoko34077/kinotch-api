@@ -43,3 +43,21 @@ apiRoutes.get("/v1/astronomy/moon", (c) => {
   target.searchParams.set("lon", lon);
   return proxyToWorker(c, c.env.ROKUYO_PROXY, target);
 });
+
+apiRoutes.get("/v1/capabilities", (c) =>
+  proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/capabilities"),
+);
+
+apiRoutes.post("/v1/ruby/parse", (c) =>
+  proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/ruby/parse", {
+    method: "POST",
+    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+  }),
+);
+
+apiRoutes.post("/v1/transform", (c) =>
+  proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/transform", {
+    method: "POST",
+    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+  }),
+);

@@ -18,6 +18,7 @@ function env(overrides = {}) {
     CLOCK_SERVER: service(JSON.stringify({ serverTime: 123 })),
     WEATHER_PROXY: service(JSON.stringify({ temp: 20, weather: "Clear" })),
     ROKUYO_PROXY: service(JSON.stringify([{ rokuyo: "友引" }])),
+    TEXT_TRANSFORM: service(JSON.stringify({ text: "學校", engineVersion: "0.2.0-phase2" })),
     ...overrides,
   };
 }
@@ -61,4 +62,27 @@ test("unknown routes return JSON 404", async () => {
   const response = await app.request("http://example.test/nope", {}, env());
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "Not found" });
+});
+
+test("text API routes proxy through the text transform binding", async () => {
+  const requests = [];
+  const response = await app.request("http://example.test/v1/transform", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "学校", profile: ["legacy-kanji"] }),
+  }, env({
+    TEXT_TRANSFORM: {
+      fetch(request) {
+        requests.push({ method: request.method, body: request.body });
+        return Promise.resolve(new Response(JSON.stringify({ text: "學校" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { text: "學校" });
+  assert.equal(requests[0].method, "POST");
 });
