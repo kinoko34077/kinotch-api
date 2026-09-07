@@ -79,6 +79,7 @@
 - [ ] transform／rubyレスポンスにも互換性確認に必要なversion情報を返す
 - [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
 - [x] 共通clientでAPIのruleSetHash不一致を検出し、fallbackへ切り替える契約を追加
+- [x] 共通clientの一時障害リトライとレスポンス形状検証を追加
 - [ ] snapshot生成物にsource revisionと生成日時を記録し、手編集を禁止
 
 ### 3. P1：生成ruleとテストの一致を保証

@@ -104,7 +104,7 @@ test("text transform client aborts stalled requests and uses fallback", async ()
 
   assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
     text: "学校:local",
-    fallbackCode: undefined,
+    fallbackCode: "request_failed",
   });
 });
 
@@ -131,5 +131,37 @@ test("text transform client falls back when the API rule set hash differs", asyn
     fallbackCode: "rule_set_mismatch",
     expected: expectedRuleSetHash,
     received: "b".repeat(64),
+  });
+});
+
+test("text transform client retries transient failures once", async () => {
+  let attempts = 0;
+  const client = createTextTransformClient({
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return new Response(JSON.stringify({ error: "temporary" }), { status: 503 });
+      }
+      return new Response(JSON.stringify({ text: "學校" }), { status: 200 });
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "學校",
+  });
+  assert.equal(attempts, 2);
+});
+
+test("text transform client rejects malformed successful responses and falls back", async () => {
+  const client = createTextTransformClient({
+    maxRetries: 0,
+    fetchImpl: async () => new Response(JSON.stringify({ texts: ["學校"] }), { status: 200 }),
+    fallback: {
+      transform: (_text, _options, error) => ({ fallbackCode: error.code }),
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    fallbackCode: "invalid_response",
   });
 });
