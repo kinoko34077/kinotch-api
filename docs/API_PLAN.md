@@ -19,14 +19,31 @@
 - [x] Node向けの安定入口と再利用テストを追加
 - [x] APIや既存4ルートの挙動を変更しない
 
-確認コマンド：`npm test`（7 tests passed）
+確認コマンド：`npm test`（Phase 1時点で7 tests passed）
 
 ## Phase 2：Worker配信
 
 - [x] `text-transform-worker` を追加
 - [x] `POST /v1/ruby/parse`、`POST /v1/transform`、`GET /v1/capabilities` を実装
 - [x] `kinotch-api` GatewayからService Binding経由で公開
-- [ ] Kuromoji辞書のサイズ・初期化・長文性能を計測
+- [x] Kuromoji辞書をWorker Assets Bindingから遅延初期化
+- [x] Kuromojiを使う送り仮名変換をWorkerで実行
+- [x] 辞書初期化・基本変換をテスト
+- [x] 代表的な長文・反復実行ベンチマークを追加
+- [ ] 本番デプロイ後の実運用レイテンシを計測
+
+ベンチマーク実行：`npm run benchmark:text-transform`
+
+ローカル実測（12,000文字、送り仮名profile）：初回3.73秒、同一Worker内の反復平均209ms。初回辞書初期化は本番デプロイ後に継続観測する。
+
+## 次段階：クライアント移行
+
+- [x] 共通API clientの呼び出し契約を追加
+- [x] 5xx・通信失敗時に注入できるローカルfallback境界を追加
+- [ ] 歌詞ReaderのルビparserをAPI契約へ移行
+- [ ] 歌詞Readerの旧字体変換をAPI利用へ移行
+- [ ] `standby-display` の重複旧字体マップを共通化
+- [ ] API障害時のローカルfallbackを確認
 
 ## 移行順
 

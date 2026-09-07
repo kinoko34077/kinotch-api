@@ -25,7 +25,10 @@ POST /v1/ruby/parse
 POST /v1/transform
 ```
 
-送り仮名などKuromojiを必要とする変換は、辞書のWorker適性を検証してから有効化します。
+送り仮名などKuromojiを必要とする変換も、Worker Assetsの辞書を使って実行します。
+クライアント共通の呼び出し入口は
+[`src/client/text-transform.js`](src/client/text-transform.js) です。
+移行手順は[`docs/CLIENT_MIGRATION.md`](docs/CLIENT_MIGRATION.md)に記録しています。
 
 このリポジトリは`standby-display`とは別責任で管理します。API変更はテストと
 dry-run、本番4ルートの疎通確認を行ったうえでデプロイしてください。

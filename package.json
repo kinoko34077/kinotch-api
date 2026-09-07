@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "build:text-rules": "node scripts/build-text-rules.mjs",
     "dev:text-transform": "npm run build:text-rules && wrangler dev --config wrangler.text-transform.jsonc",
+    "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "test": "node --test test/*.test.js",
     "deploy": "wrangler deploy",
     "deploy:text-transform": "npm run build:text-rules && wrangler deploy --config wrangler.text-transform.jsonc"

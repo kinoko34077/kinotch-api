@@ -5,6 +5,10 @@
   "main": "src/text-transform-worker.js",
   "workers_dev": true,
   "preview_urls": false,
+  "assets": {
+    "directory": "src/text-core/dict",
+    "binding": "ASSETS"
+  },
   "compatibility_date": "2026-09-07",
   "observability": {
     "enabled": true,

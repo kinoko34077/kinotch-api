@@ -1,6 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import app from "../src/text-transform-worker.js";
+
+const dictionaryDirectory = path.resolve("src/text-core/dict");
+const assets = {
+  async fetch(request) {
+    const fileName = path.basename(new URL(request.url).pathname);
+    const bytes = await readFile(path.join(dictionaryDirectory, fileName));
+    return new Response(bytes, { status: 200 });
+  },
+};
 
 test("text transform health and capabilities are available", async () => {
   const health = await app.request("http://example.test/health");
@@ -15,7 +26,7 @@ test("text transform health and capabilities are available", async () => {
   const capabilities = await app.request("http://example.test/v1/capabilities");
   const payload = await capabilities.json();
   assert.equal(capabilities.status, 200);
-  assert.equal(payload.tokenizerEnabled, false);
+  assert.equal(payload.tokenizerEnabled, true);
   assert.ok(payload.profiles.includes("legacy-kanji"));
   assert.ok(payload.tokenizerProfiles.includes("okurigana-abbreviation"));
 });
@@ -38,7 +49,7 @@ test("ruby parse and dictionary transform endpoints use the extracted core", asy
   assert.equal((await transformed.json()).text, "學校と國");
 });
 
-test("text transform endpoint rejects invalid and tokenizer-dependent requests", async () => {
+test("text transform endpoint validates input and runs tokenizer-dependent requests", async () => {
   const invalidJson = await app.request("http://example.test/v1/transform", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,7 +62,7 @@ test("text transform endpoint rejects invalid and tokenizer-dependent requests",
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: "分かる", profile: ["okurigana-abbreviation"] }),
-  });
-  assert.equal(tokenizerRequest.status, 501);
-  assert.equal((await tokenizerRequest.json()).error, "invalid_profile");
+  }, { ASSETS: assets });
+  assert.equal(tokenizerRequest.status, 200);
+  assert.equal((await tokenizerRequest.json()).text, "分る");
 });
