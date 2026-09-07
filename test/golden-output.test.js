@@ -106,3 +106,35 @@ test("golden: ruby parser preserves renderable segment structure", async () => {
     },
   ]);
 });
+
+test("golden: API matches the extension fallback fixture contract", async () => {
+  const cases = [
+    {
+      texts: ["悩みを書き出す。"],
+      profile: ["surface-normalization", "okurigana-abbreviation"],
+      expected: ["悩を書出す｡"],
+    },
+    {
+      texts: ["面倒ごとに当たる。"],
+      profile: ["surface-normalization", "lexical-replacements", "okurigana-abbreviation"],
+      expected: ["事に当る｡"],
+    },
+    {
+      texts: ["奇跡が起きた。"],
+      profile: ["surface-normalization", "official-homophone-restoration"],
+      expected: ["奇蹟が起きた｡"],
+    },
+    {
+      texts: ["コンピューター", "ユーザー", "バッター", "スタンダード"],
+      profile: ["katakana-long-vowel-abbreviation"],
+      expected: ["コンピュータ", "ユーザ", "バッター", "スタンダード"],
+    },
+  ];
+
+  for (const fixture of cases) {
+    assert.deepEqual(
+      await transformBatch(fixture.texts, fixture.profile),
+      fixture.expected,
+    );
+  }
+});

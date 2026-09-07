@@ -47,6 +47,7 @@ kinotch-api main
 - 共通clientに一時障害の最大1回再試行と、transform／batch／rubyレスポンス形状の検証を追加。
 - `docs/OPERATIONS.md`を追加し、本番疎通、遅延、Observability、本文非ログ、拡張機能再読み込みの確認手順を整理。
 - 3件batchの本番再計測で、初回約1.82秒、暖機後平均23.9ms、異常profileの400応答を確認。
+- `txt-auto-replace`のlocal runtime全fixture合格を確認し、API側に活用形・語彙・長音・旧字・句読点のfallback互換Goldenを追加。全27テスト合格。
 
 ## 2026-09-06（移行開始・新Account構築）
 

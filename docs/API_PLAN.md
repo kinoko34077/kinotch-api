@@ -46,6 +46,7 @@
 
 - [x] 代表的な活用形・語彙・旧字体・長音・表層正規化のGolden回帰テスト
 - [x] ルビ解析のGolden回帰テスト
+- [x] `txt-auto-replace`のlocal `verify_runtime.js`全fixture合格と、API側の代表fallback fixture一致確認
 - [x] 本番Gateway経由のbatch疎通とコールド／ウォーム遅延の確認
 - [x] `kinotch-api` 共通クライアントのタイムアウトとfallback切替を追加
 - [ ] `standby-display`・`txt-auto-replace` の配布用クライアントへ同じタイムアウト設定を反映
