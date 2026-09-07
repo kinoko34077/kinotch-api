@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "api",
+  "account_id": "fb59b3c4a3fb2cda44dad80638390309",
+  "main": "src/index.js",
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [
+    { "binding": "CLOCK_SERVER", "service": "clock-server" },
+    { "binding": "WEATHER_PROXY", "service": "weather-proxy" },
+    { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" }
+  ],
+  "compatibility_date": "2026-09-07",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

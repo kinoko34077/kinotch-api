@@ -1,0 +1,16 @@
+{
+  "name": "kinotch-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test test/*.test.js",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.9.7"
+  },
+  "devDependencies": {
+    "wrangler": "4.129.0"
+  }
+}
