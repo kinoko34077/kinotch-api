@@ -120,7 +120,9 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 
 ### 各段階の完了条件
 
-各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。現時点の次アクションは**1. Gateway CORS修正**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
+各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。CORS修正とAPI側rule hash公開まで完了したため、現時点の次アクションは**各クライアントのsnapshot hash照合**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
+
+進捗更新（2026-09-08 JST）：Gateway CORS修正版はVersion ID `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`、ruleSetHash対応Text WorkerはVersion ID `e788d84c-a0e9-4e81-bb89-de8ee9ca9e95`で本番確認済み。公開hashは`31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef`。次の実装対象は各クライアントのsnapshot hash照合である。
 
 ## 次段階：クライアント移行
 
