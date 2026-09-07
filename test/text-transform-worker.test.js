@@ -27,6 +27,7 @@ test("text transform health and capabilities are available", async () => {
   const payload = await capabilities.json();
   assert.equal(capabilities.status, 200);
   assert.equal(payload.tokenizerEnabled, true);
+  assert.match(payload.ruleSetHash, /^[a-f0-9]{64}$/);
   assert.ok(payload.profiles.includes("legacy-kanji"));
   assert.ok(payload.tokenizerProfiles.includes("okurigana-abbreviation"));
   assert.ok(payload.tokenizerProfiles.includes("lexical-replacements"));
@@ -48,7 +49,9 @@ test("ruby parse and dictionary transform endpoints use the extracted core", asy
     body: JSON.stringify({ text: "学校と国", profile: ["legacy-kanji"] }),
   });
   assert.equal(transformed.status, 200);
-  assert.equal((await transformed.json()).text, "學校と國");
+  const transformedPayload = await transformed.json();
+  assert.equal(transformedPayload.text, "學校と國");
+  assert.match(transformedPayload.ruleSetHash, /^[a-f0-9]{64}$/);
 });
 
 test("text transform endpoint validates input and runs tokenizer-dependent requests", async () => {

@@ -67,14 +67,15 @@
 
 - [x] Gateway CORSを`GET`・`POST`・`OPTIONS`へ統一
 - [x] GatewayのPOST preflightと実POSTを回帰テスト化
-- [ ] CORS修正後にGateway単体をデプロイし、`/v1/capabilities`・`/v1/transform/batch`を実ブラウザ相当のOrigin付きで確認
+- [x] CORS修正後にGateway単体をデプロイし、`/v1/capabilities`・`/v1/transform/batch`を実ブラウザ相当のOrigin付きで確認
 
 ### 2. P0：Text Coreの正本と互換性情報を一意化
 
 `kinotch-api/src/text-core`を正本とし、`txt-auto-replace`側のcore／ruleは正本から生成するfallback snapshotへ移行する。いきなり別npm packageには分けない。
 
 - [ ] core・rule・dictionaryを含むsnapshot生成コマンドを設計
-- [ ] `engineVersion`、`ruleSetVersion`、`ruleSetHash`、`sourceRevision`を生成物とAPI capabilitiesへ追加
+- [x] rule sourceから決定論的な`ruleSetHash`を生成し、API capabilities／transformレスポンスへ追加
+- [ ] `engineVersion`、`ruleSetVersion`、`sourceRevision`を生成物とAPI capabilitiesへ追加
 - [ ] transform／rubyレスポンスにも互換性確認に必要なversion情報を返す
 - [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
 - [ ] snapshot生成物にsource revisionと生成日時を記録し、手編集を禁止

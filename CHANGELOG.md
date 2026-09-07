@@ -39,6 +39,8 @@ kinotch-api main
 
 - Gateway CORSをPOST API契約に合わせ、ブラウザのPOST preflight回帰テストを追加。
 - `check:text-rules`を追加し、`npm test`前にJSON5 sourceとgenerated ruleの一致を検証するよう変更。
+- Gateway CORS修正版をデプロイ。Version ID: `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`。Origin付きPOST preflightとbatch POSTを本番で確認。
+- rule sourceからSHA-256の`ruleSetHash`を生成し、capabilities／transformレスポンスへ追加。
 
 ## 2026-09-06（移行開始・新Account構築）
 

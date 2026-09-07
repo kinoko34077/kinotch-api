@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import Kuromoji from "./text-core/vendor/kuromoji.js";
 import TransformEngine from "./text-core/vendor/transform-engine.js";
 import TransformShared from "./text-core/vendor/transform-shared.js";
-import { RULE_FILES, RULE_MANIFEST } from "./text-core/rules.generated.mjs";
+import { RULE_FILES, RULE_MANIFEST, RULE_SET_HASH } from "./text-core/rules.generated.mjs";
 
 const app = new Hono();
 const VERSION = "v1";
@@ -158,6 +158,7 @@ app.get("/health", (c) => c.json({
 app.get("/v1/capabilities", (c) => c.json({
   version: VERSION,
   engineVersion: ENGINE_VERSION,
+  ruleSetHash: RULE_SET_HASH,
   profiles: supportedProfiles,
   tokenizerProfiles,
   tokenizerEnabled: true,
@@ -212,6 +213,7 @@ app.post("/v1/transform", async (c) => {
     text: transformed.text,
     profile: selection.stages.map((stage) => stage.id),
     engineVersion: ENGINE_VERSION,
+    ruleSetHash: RULE_SET_HASH,
   });
 });
 
@@ -244,6 +246,7 @@ app.post("/v1/transform/batch", async (c) => {
     texts: transformed,
     profile: selection.stages.map((stage) => stage.id),
     engineVersion: ENGINE_VERSION,
+    ruleSetHash: RULE_SET_HASH,
   });
 });
 
