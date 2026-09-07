@@ -30,6 +30,11 @@ kinotch-api main
 - 本番Gateway経由のbatchを5回再確認し、全てHTTP 200。初回コールド約3.28秒、暖機後平均約40msを記録。
 - 共通APIクライアントに既定8秒のAbortControllerタイムアウトを追加し、停滞時のfallback切替をテストで固定。
 
+## 2026-09-08（ロードマップ改訂）
+
+- Gateway CORS、Text Coreの正本・hash管理、generated ruleの検証、2 Workerの同期deploy、クライアント配布・プライバシー境界、batch最適化の順に実施する計画へ整理。
+- 歌詞Readerと`historical-kana`は基盤整備後の後段として継続保留。
+
 ## 2026-09-06（移行開始・新Account構築）
 
 ### 14:43:52 UTC（23:43:52 JST）

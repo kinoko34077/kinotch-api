@@ -52,6 +52,75 @@
 - [ ] 実クライアント利用時のエラー・fallback発生率を継続観測
 - [ ] API／rule versionの更新手順を運用化
 
+## 2026-09-08 改訂ロードマップ：正本・互換性・配布整合性を先に固める
+
+### 0. 着手前の固定（完了済み）
+
+- [x] 本番Workerのコールド／ウォーム遅延を計測
+- [x] 代表変換・ルビ解析のGolden回帰を追加
+- [x] `kinotch-api` 共通clientのtimeout／fallbackを追加
+- [x] 歌詞Readerは編集完了まで対象外として明示
+
+### 1. P0：ブラウザ公開契約を修正
+
+目的は、別originのReaderからPOST APIを安全に呼べる状態にすること。
+
+- [ ] Gateway CORSを`GET`・`POST`・`OPTIONS`へ統一
+- [ ] GatewayのPOST preflightと実POSTを回帰テスト化
+- [ ] CORS修正後にGateway単体をデプロイし、`/v1/capabilities`・`/v1/transform/batch`を実ブラウザ相当のOrigin付きで確認
+
+### 2. P0：Text Coreの正本と互換性情報を一意化
+
+`kinotch-api/src/text-core`を正本とし、`txt-auto-replace`側のcore／ruleは正本から生成するfallback snapshotへ移行する。いきなり別npm packageには分けない。
+
+- [ ] core・rule・dictionaryを含むsnapshot生成コマンドを設計
+- [ ] `engineVersion`、`ruleSetVersion`、`ruleSetHash`、`sourceRevision`を生成物とAPI capabilitiesへ追加
+- [ ] transform／rubyレスポンスにも互換性確認に必要なversion情報を返す
+- [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
+- [ ] snapshot生成物にsource revisionと生成日時を記録し、手編集を禁止
+
+### 3. P1：生成ruleとテストの一致を保証
+
+- [ ] JSON5 sourceからの生成内容を一時出力と比較する`check:text-rules`を追加
+- [ ] `npm test`の前段でcheckを必須化し、stale generated版でPASSできないようにする
+- [ ] CI／deployでも同じcheckを実行
+- [ ] rule変更時にGoldenとruleSetHashが同時に更新されることを確認
+
+### 4. P1：2 Workerのリリースを同期
+
+deploy順を「build／metadata生成 → text-transform → smoke test → Gateway → smoke test」に固定する。
+
+- [ ] `deploy:production`または同等の単一手順を追加
+- [ ] GatewayとText WorkerのVersion ID、engine／rule metadataをリリース記録へ保存
+- [ ] 片方だけ更新された状態を検出するsmoke checkを追加
+- [ ] 手動実行とCloudflare側の自動デプロイで同じ手順を参照する
+
+### 5. P1：クライアント配布とプライバシー境界を整備
+
+- [ ] `standby-display`・`txt-auto-replace`へtimeoutとversion/hash判定を反映
+- [ ] API clientをESM／browser IIFEの生成物として一本化し、各repoの手書きコピーを廃止
+- [ ] 拡張機能にAPI変換ON/OFFとローカルのみモードを追加
+- [ ] 送信許可domain／除外domainを設定可能にする
+- [ ] `<all_urls>`環境で本文が外部送信されること、送信しない条件、ログに本文を残さないことを利用者向けに明記
+
+### 6. P2：batch処理を最適化
+
+- [ ] profile選択後のruntime planをbatch単位で1回だけcompile
+- [ ] 全textを同一planで処理し、現行との出力一致をGolden／回帰で確認
+- [ ] 代表的な256件・長文batchでcompile回数とレイテンシを比較
+- [ ] 改善が確認できた場合のみ本番Workerへデプロイ
+
+### 7. 後段：歌詞Readerとhistorical-kana
+
+- [ ] 歌詞Readerの編集完了後、ルビparserを`/v1/ruby/parse`へ移行
+- [ ] 歌詞Readerの旧字体変換をtransform／batch APIへ移行
+- [ ] Readerの既存UI・DOM・storage責務とlocal fallbackを維持
+- [ ] 既存基盤の互換性確認後に`historical-kana` stageを別途設計・実装
+
+### 各段階の完了条件
+
+各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。現時点の次アクションは**1. Gateway CORS修正**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
+
 ## 次段階：クライアント移行
 
 - [x] 共通API clientの呼び出し契約を追加
