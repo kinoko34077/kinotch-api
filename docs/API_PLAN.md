@@ -30,11 +30,13 @@
 - [x] Kuromojiを使う送り仮名変換をWorkerで実行
 - [x] 辞書初期化・基本変換をテスト
 - [x] 代表的な長文・反復実行ベンチマークを追加
-- [ ] 本番デプロイ後の実運用レイテンシを計測
+- [x] 本番デプロイ後の実運用レイテンシを計測
 
 ベンチマーク実行：`npm run benchmark:text-transform`
 
 ローカル実測（12,000文字、送り仮名profile）：初回3.73秒、同一Worker内の反復平均209ms。初回辞書初期化は本番デプロイ後に継続観測する。
+
+本番デプロイ（2026-09-07 JST）：`text-transform` Version ID `a7a0c1d3-413a-47fa-b7ec-60606bb21f9c`、Gateway Version ID `60152732-fbd3-4969-9412-28e4d06334ac`。Gateway経由のbatch（2 text run、`legacy-kanji` + `general-character-replacements`）は3回で487ms / 313ms / 221ms。Tokenizerを必要とするextension profile（2 text run）は疎通確認済み。
 
 ## 次段階：クライアント移行
 
