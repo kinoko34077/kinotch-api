@@ -38,6 +38,18 @@
 
 本番デプロイ（2026-09-07 JST）：`text-transform` Version ID `a7a0c1d3-413a-47fa-b7ec-60606bb21f9c`、Gateway Version ID `60152732-fbd3-4969-9412-28e4d06334ac`。Gateway経由のbatch（2 text run、`legacy-kanji` + `general-character-replacements`）は3回で487ms / 313ms / 221ms。Tokenizerを必要とするextension profile（2 text run）は疎通確認済み。
 
+追加確認（2026-09-07 JST）：12,000文字のローカルベンチマークは初回3.45秒、同一Worker内の暖機後5回平均273ms。代表的な活用形・語彙・長音・ルビ解析をGolden回帰テストとして固定した。本文をログへ残す計測は行わない。
+
+本番再確認（2026-09-07 JST）：Gateway経由のbatch 5回は全てHTTP 200、初回コールド約3.28秒、2回目以降約26.6〜65ms（暖機後平均約40ms）。レスポンスの`engineVersion`と件数も全て検証済み。
+
+## Phase 3：本番後安定化
+
+- [x] 代表的な活用形・語彙・旧字体・長音・表層正規化のGolden回帰テスト
+- [x] ルビ解析のGolden回帰テスト
+- [x] 本番Gateway経由のbatch疎通とコールド／ウォーム遅延の確認
+- [ ] 実クライアント利用時のエラー・fallback発生率を継続観測
+- [ ] API／rule versionの更新手順を運用化
+
 ## 次段階：クライアント移行
 
 - [x] 共通API clientの呼び出し契約を追加
@@ -57,4 +69,4 @@
 
 ## 受入条件
 
-golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/engine versionの追跡、本文をログへ残さないこと、API障害時のクライアントfallbackを確認してから公開する。
+golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/engine versionの追跡、本文をログへ残さないこと、API障害時のクライアントfallbackを確認してから公開する。Golden回帰、API回帰、version追跡、fallback確認は完了。残る作業は実クライアントでの継続的な遅延・エラー・fallback観測と、歌詞Readerの編集完了後の移行である。

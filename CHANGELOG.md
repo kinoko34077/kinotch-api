@@ -21,6 +21,14 @@ kinotch-api main
   └─ detemuhann-redirect: 変更せず稼働継続
 ```
 
+## 2026-09-07（本番後検証・Golden回帰）
+
+- `text-transform` Workerの本番後ベンチマークを再実行。
+  12,000文字で初回3.45秒、暖機後5回平均273msを確認。
+- 送り仮名の活用形、語彙置換、旧字体、長音省略、表層正規化、ルビ解析の代表結果をGolden回帰テストへ追加。
+- APIレスポンスの`engineVersion`とprofileの追跡をテストで固定。
+- 本番Gateway経由のbatchを5回再確認し、全てHTTP 200。初回コールド約3.28秒、暖機後平均約40msを記録。
+
 ## 2026-09-06（移行開始・新Account構築）
 
 ### 14:43:52 UTC（23:43:52 JST）
