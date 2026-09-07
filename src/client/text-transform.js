@@ -16,12 +16,16 @@ export function createTextTransformClient({
   fetchImpl = globalThis.fetch,
   fallback = {},
   timeoutMs = DEFAULT_TEXT_API_TIMEOUT_MS,
+  expectedRuleSetHash,
 } = {}) {
   if (typeof fetchImpl !== "function") {
     throw new TypeError("fetchImpl must be a function");
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
     throw new TypeError("timeoutMs must be a non-negative finite number");
+  }
+  if (expectedRuleSetHash !== undefined && !/^[a-f0-9]{64}$/.test(expectedRuleSetHash)) {
+    throw new TypeError("expectedRuleSetHash must be a 64-character lowercase SHA-256 hash");
   }
 
   const normalizedBaseUrl = String(baseUrl).replace(/\/+$/, "");
@@ -71,6 +75,19 @@ export function createTextTransformClient({
       if (typeof fallbackHandler === "function" && response.status >= 500) {
         return fallbackHandler(error);
       }
+      throw error;
+    }
+
+    if (expectedRuleSetHash !== undefined && payload?.ruleSetHash !== expectedRuleSetHash) {
+      const error = new TextTransformApiError("Text transform API rule set is incompatible", {
+        status: 409,
+        code: "rule_set_mismatch",
+        details: {
+          expected: expectedRuleSetHash,
+          received: payload?.ruleSetHash,
+        },
+      });
+      if (typeof fallbackHandler === "function") return fallbackHandler(error);
       throw error;
     }
 

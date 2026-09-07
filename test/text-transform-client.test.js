@@ -107,3 +107,29 @@ test("text transform client aborts stalled requests and uses fallback", async ()
     fallbackCode: undefined,
   });
 });
+
+test("text transform client falls back when the API rule set hash differs", async () => {
+  const expectedRuleSetHash = "a".repeat(64);
+  const client = createTextTransformClient({
+    expectedRuleSetHash,
+    fetchImpl: async () => new Response(JSON.stringify({
+      texts: ["學校"],
+      ruleSetHash: "b".repeat(64),
+    }), { status: 200 }),
+    fallback: {
+      transformBatch: (_texts, _options, error) => ({
+        texts: ["学校"],
+        fallbackCode: error.code,
+        expected: error.details.expected,
+        received: error.details.received,
+      }),
+    },
+  });
+
+  assert.deepEqual(await client.transformBatch(["学校"], { profile: ["legacy-kanji"] }), {
+    texts: ["学校"],
+    fallbackCode: "rule_set_mismatch",
+    expected: expectedRuleSetHash,
+    received: "b".repeat(64),
+  });
+});

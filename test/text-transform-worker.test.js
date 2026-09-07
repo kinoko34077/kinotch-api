@@ -41,7 +41,9 @@ test("ruby parse and dictionary transform endpoints use the extracted core", asy
     body: JSON.stringify({ text: "｜山田太郎《やまだたろう》" }),
   });
   assert.equal(ruby.status, 200);
-  assert.equal((await ruby.json()).segments[0].base, "山田太郎");
+  const rubyPayload = await ruby.json();
+  assert.equal(rubyPayload.segments[0].base, "山田太郎");
+  assert.match(rubyPayload.ruleSetHash, /^[a-f0-9]{64}$/);
 
   const transformed = await app.request("http://example.test/v1/transform", {
     method: "POST",

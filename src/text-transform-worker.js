@@ -183,7 +183,7 @@ app.post("/v1/ruby/parse", async (c) => {
       ? undefined
       : TransformShared.normalizeRubyMarkers(body.markers);
     const segments = TransformShared.parseRenderableRubySegments(body.text, markers);
-    return c.json({ segments, engineVersion: ENGINE_VERSION });
+    return c.json({ segments, engineVersion: ENGINE_VERSION, ruleSetHash: RULE_SET_HASH });
   } catch {
     return errorResponse(c, 400, "invalid_markers", "markers must contain valid open and close strings");
   }
