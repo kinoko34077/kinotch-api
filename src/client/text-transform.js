@@ -1,4 +1,5 @@
 export const DEFAULT_TEXT_API_BASE_URL = "https://api.kinotch.workers.dev";
+export const DEFAULT_TEXT_API_TIMEOUT_MS = 8_000;
 
 export class TextTransformApiError extends Error {
   constructor(message, { status, code, details } = {}) {
@@ -14,26 +15,40 @@ export function createTextTransformClient({
   baseUrl = DEFAULT_TEXT_API_BASE_URL,
   fetchImpl = globalThis.fetch,
   fallback = {},
+  timeoutMs = DEFAULT_TEXT_API_TIMEOUT_MS,
 } = {}) {
   if (typeof fetchImpl !== "function") {
     throw new TypeError("fetchImpl must be a function");
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
+    throw new TypeError("timeoutMs must be a non-negative finite number");
   }
 
   const normalizedBaseUrl = String(baseUrl).replace(/\/+$/, "");
 
   async function request(path, body, fallbackHandler) {
     let response;
+    const controller = typeof AbortController === "function"
+      ? new AbortController()
+      : null;
+    const timeout = controller && timeoutMs > 0
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
     try {
-      response = await fetchImpl(`${normalizedBaseUrl}${path}`, {
+      const requestInit = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      });
+      };
+      if (controller) requestInit.signal = controller.signal;
+      response = await fetchImpl(`${normalizedBaseUrl}${path}`, requestInit);
     } catch (error) {
       if (typeof fallbackHandler === "function") return fallbackHandler(error);
       throw new TextTransformApiError("Text transform API request failed", {
         details: error,
       });
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
 
     let payload;

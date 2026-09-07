@@ -28,6 +28,7 @@ kinotch-api main
 - 送り仮名の活用形、語彙置換、旧字体、長音省略、表層正規化、ルビ解析の代表結果をGolden回帰テストへ追加。
 - APIレスポンスの`engineVersion`とprofileの追跡をテストで固定。
 - 本番Gateway経由のbatchを5回再確認し、全てHTTP 200。初回コールド約3.28秒、暖機後平均約40msを記録。
+- 共通APIクライアントに既定8秒のAbortControllerタイムアウトを追加し、停滞時のfallback切替をテストで固定。
 
 ## 2026-09-06（移行開始・新Account構築）
 

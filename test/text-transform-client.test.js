@@ -87,3 +87,23 @@ test("text transform client supports batched transformation", async () => {
     profile: ["legacy-kanji"],
   });
 });
+
+test("text transform client aborts stalled requests and uses fallback", async () => {
+  const client = createTextTransformClient({
+    timeoutMs: 10,
+    fetchImpl: (_url, init) => new Promise((resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    }),
+    fallback: {
+      transform: (_text, _options, error) => ({
+        text: "学校:local",
+        fallbackCode: error?.code,
+      }),
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "学校:local",
+    fallbackCode: undefined,
+  });
+});
