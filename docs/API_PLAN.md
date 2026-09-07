@@ -80,6 +80,7 @@
 - [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
 - [x] 共通clientでAPIのruleSetHash不一致を検出し、fallbackへ切り替える契約を追加
 - [x] 共通clientの一時障害リトライとレスポンス形状検証を追加
+- [x] WorkerのObservability設定と、本文を記録しない運用確認手順を文書化
 - [ ] snapshot生成物にsource revisionと生成日時を記録し、手編集を禁止
 
 ### 3. P1：生成ruleとテストの一致を保証
@@ -125,6 +126,8 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。CORS修正とAPI側rule hash公開まで完了したため、現時点の次アクションは**各クライアントのsnapshot hash照合**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
 
 進捗更新（2026-09-08 JST）：Gateway CORS修正版はVersion ID `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`、ruleSetHash／Ruby parse対応Text Workerの最新Versionは `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`で本番確認済み。公開hashは`31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef`。次の実装対象は各クライアントのsnapshot hash照合である。
+
+再確認（2026-09-08 JST）：CORS付き3件batchを5回実行し全てHTTP 200、初回約1.82秒、暖機後4回平均23.9ms。異常profileはHTTP 400 `invalid_profile`。運用手順を`docs/OPERATIONS.md`へ追加した。
 
 ## 次段階：クライアント移行
 

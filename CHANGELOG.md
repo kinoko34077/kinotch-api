@@ -45,6 +45,8 @@ kinotch-api main
 - Ruby parseレスポンスにもruleSetHashを付与し、共通clientでhash不一致時に`rule_set_mismatch`としてfallbackする契約を追加。
 - Text WorkerのRuby parse対応版を再デプロイ。Version ID: `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`。Gateway経由でRuby parseのruleSetHashを確認。
 - 共通clientに一時障害の最大1回再試行と、transform／batch／rubyレスポンス形状の検証を追加。
+- `docs/OPERATIONS.md`を追加し、本番疎通、遅延、Observability、本文非ログ、拡張機能再読み込みの確認手順を整理。
+- 3件batchの本番再計測で、初回約1.82秒、暖機後平均23.9ms、異常profileの400応答を確認。
 
 ## 2026-09-06（移行開始・新Account構築）
 
