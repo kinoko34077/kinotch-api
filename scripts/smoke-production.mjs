@@ -86,7 +86,7 @@ export async function runProductionSmoke({
     ? validateCapabilitiesPayload(capabilities.payload, expectedSourceRevision)
     : "capabilities request failed";
   if (capabilitiesError) {
-    throw new Error(`capabilities smoke failed with status ${capabilities.status}`);
+    throw new Error(`capabilities smoke failed with status ${capabilities.status}: ${capabilitiesError}`);
   }
 
   const preflight = await request("/v1/transform", {

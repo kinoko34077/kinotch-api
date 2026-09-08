@@ -163,12 +163,17 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage D補強: cross-origin clientがrequest ID／Retry-After／RateLimit／ETagを参照できるCORS response契約を追加
 - [x] Stage E: Text Core全体のsnapshot hash、dictionary hash、rule／source metadata生成を追加
 - [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
+- [x] Stage G補強: Text Workerのprivate設定をdeploy前に検査し、Text smoke失敗時は直前100% Versionへ自動rollbackして失敗記録を残す
 - [x] Stage H: query redaction、request/error構造化ログ、本文非ログ方針を追加
 - [x] Stage A補強: Text Workerのprivate設定をdeploy前に検査し、release SHAをruntimeへ注入してsmokeで一致確認
 - [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
 - [x] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測
 - [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
 - [ ] 歌詞Readerと`historical-kana`は編集完了後に着手
+
+関門基盤の凍結条件（2026-09-08改訂）：Gateway CORS response header公開、release SHAと
+Text Worker `sourceRevision`の一致、private deploy assert、Text smoke失敗時rollback、
+client overall deadlineを実装・テスト・本番smokeで確認してから、外部client移行を次段階とする。
 
 本番確認（2026-09-08 JST、release metadata: `docs/releases/20260908T045423455Z.json`）：
 Text Worker Version ID `fdd927ef-0190-4c93-b993-431e8d1e0f33`、Gateway Version ID

@@ -4,6 +4,11 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import JSON5 from "json5";
 import { assertPrivateTextWorkerConfig } from "./deploy-guards.mjs";
+import {
+  createRollbackArgs,
+  parseActiveVersionId,
+  rollbackAfterSmokeFailure,
+} from "./release-recovery.mjs";
 import { runProductionSmoke } from "./smoke-production.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -39,6 +44,20 @@ function getVersionId(output, workerName) {
   return versionId;
 }
 
+async function getActiveTextVersionId() {
+  const output = await run(npxCommand, [
+    "wrangler",
+    "deployments",
+    "status",
+    "--name",
+    "text-transform",
+    "--json",
+    "--config",
+    "wrangler.text-transform.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output);
+}
+
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -71,77 +90,175 @@ async function gitRevision() {
   });
 }
 
-const sourceRevision = await gitRevision();
-if (!/^[a-f0-9]{40}$/.test(sourceRevision)) {
-  throw new Error("Could not determine a 40-character Git source revision for production release");
+function releaseTimestamp() {
+  const recordedAt = new Date();
+  return {
+    recordedAt,
+    recordedAtUtc: recordedAt.toISOString(),
+    recordedAtJst: new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+      dateStyle: "short",
+      timeStyle: "medium",
+    }).format(recordedAt),
+  };
 }
 
-const textWorkerConfig = JSON5.parse(await readFile(
-  path.join(projectRoot, "wrangler.text-transform.jsonc"),
-  "utf8",
-));
-assertPrivateTextWorkerConfig(textWorkerConfig);
+async function writeReleaseRecord(record) {
+  const releasesDirectory = path.join(projectRoot, "docs", "releases");
+  await mkdir(releasesDirectory, { recursive: true });
+  const timestamp = releaseTimestamp();
+  const releasePath = path.join(
+    releasesDirectory,
+    `${timestamp.recordedAt.toISOString().replaceAll(/[-:.]/g, "").replace(/Z$/, "Z")}.json`,
+  );
+  const { recordedAt: _recordedAt, ...recordedTimestamp } = timestamp;
+  await writeFile(
+    releasePath,
+    `${JSON.stringify({ ...recordedTimestamp, ...record }, null, 2)}\n`,
+    "utf8",
+  );
+  return releasePath;
+}
 
-await run(npmCommand, ["run", "build:text-snapshot"]);
-await run(npmCommand, ["run", "check:text-snapshot"]);
-await run(npmCommand, ["test"]);
-await run(npxCommand, [
-  "wrangler",
-  "deploy",
-  "--config",
-  "wrangler.text-transform.jsonc",
-  "--dry-run",
-  "--var",
-  `TEXT_CORE_SOURCE_REVISION:${sourceRevision}`,
-]);
-await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
+async function main() {
+  const state = {
+    stage: "source revision",
+    gitRevision: "unknown",
+    previousTextVersionId: null,
+    textVersionId: null,
+    gatewayVersionId: null,
+    textSmoke: null,
+    gatewaySmoke: null,
+    textRecovery: null,
+    textDeployed: false,
+    textSmokeCompleted: false,
+  };
 
-const textDeployOutput = await run(
-  npxCommand,
-  [
-    "wrangler",
-    "deploy",
-    "--config",
-    "wrangler.text-transform.jsonc",
-    "--var",
-    `TEXT_CORE_SOURCE_REVISION:${sourceRevision}`,
-  ],
-  { capture: true },
-);
-const textVersionId = getVersionId(textDeployOutput, "text-transform");
-const textSmoke = await runSmokeWithRetry({
-  checkDirect: true,
-  checkGuards: false,
-  expectedSourceRevision: sourceRevision,
-});
+  try {
+    state.gitRevision = await gitRevision();
+    if (!/^[a-f0-9]{40}$/.test(state.gitRevision)) {
+      throw new Error("Could not determine a 40-character Git source revision for production release");
+    }
 
-const gatewayDeployOutput = await run(
-  npxCommand,
-  ["wrangler", "deploy", "--config", "wrangler.jsonc"],
-  { capture: true },
-);
-const gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
-const gatewaySmoke = await runSmokeWithRetry({ checkDirect: true, expectedSourceRevision: sourceRevision });
+    state.stage = "private Worker config assertion";
+    const textWorkerConfig = JSON5.parse(await readFile(
+      path.join(projectRoot, "wrangler.text-transform.jsonc"),
+      "utf8",
+    ));
+    assertPrivateTextWorkerConfig(textWorkerConfig);
 
-const recordedAt = new Date();
-const releaseRecord = {
-  recordedAtUtc: recordedAt.toISOString(),
-  recordedAtJst: new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(recordedAt),
-  gitRevision: sourceRevision,
-  textVersionId,
-  gatewayVersionId,
-  textSmoke,
-  gatewaySmoke,
-};
-const releasesDirectory = path.join(projectRoot, "docs", "releases");
-await mkdir(releasesDirectory, { recursive: true });
-const releasePath = path.join(
-  releasesDirectory,
-  `${recordedAt.toISOString().replaceAll(/[-:.]/g, "").replace(/Z$/, "Z")}.json`,
-);
-await writeFile(releasePath, `${JSON.stringify(releaseRecord, null, 2)}\n`, "utf8");
-console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
+    state.stage = "build snapshot";
+    await run(npmCommand, ["run", "build:text-snapshot"]);
+    state.stage = "snapshot checks";
+    await run(npmCommand, ["run", "check:text-snapshot"]);
+    state.stage = "test suite";
+    await run(npmCommand, ["test"]);
+    state.stage = "Text Worker dry-run";
+    await run(npxCommand, [
+      "wrangler",
+      "deploy",
+      "--config",
+      "wrangler.text-transform.jsonc",
+      "--dry-run",
+      "--var",
+      `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
+    ]);
+    state.stage = "Gateway dry-run";
+    await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
+
+    state.stage = "capture previous Text Worker version";
+    state.previousTextVersionId = await getActiveTextVersionId();
+
+    state.stage = "Text Worker deploy";
+    const textDeployOutput = await run(
+      npxCommand,
+      [
+        "wrangler",
+        "deploy",
+        "--config",
+        "wrangler.text-transform.jsonc",
+        "--var",
+        `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
+      ],
+      { capture: true },
+    );
+    state.textDeployed = true;
+    state.textVersionId = getVersionId(textDeployOutput, "text-transform");
+
+    state.stage = "Text Worker smoke";
+    state.textSmoke = await runSmokeWithRetry({
+      checkDirect: true,
+      checkGuards: false,
+      expectedSourceRevision: state.gitRevision,
+    });
+    state.textSmokeCompleted = true;
+
+    state.stage = "Gateway deploy";
+    const gatewayDeployOutput = await run(
+      npxCommand,
+      ["wrangler", "deploy", "--config", "wrangler.jsonc"],
+      { capture: true },
+    );
+    state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
+
+    state.stage = "Gateway smoke";
+    state.gatewaySmoke = await runSmokeWithRetry({
+      checkDirect: true,
+      expectedSourceRevision: state.gitRevision,
+    });
+
+    state.stage = "write successful release metadata";
+    const releasePath = await writeReleaseRecord({
+      status: "succeeded",
+      gitRevision: state.gitRevision,
+      sourceRevision: state.gitRevision,
+      textVersionId: state.textVersionId,
+      gatewayVersionId: state.gatewayVersionId,
+      textSmoke: state.textSmoke,
+      gatewaySmoke: state.gatewaySmoke,
+    });
+    console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
+  } catch (error) {
+    if (state.textDeployed && !state.textSmokeCompleted && state.previousTextVersionId && !state.textRecovery) {
+      try {
+        state.textRecovery = await rollbackAfterSmokeFailure({
+          previousVersionId: state.previousTextVersionId,
+          rollback: async (versionId) => run(npxCommand, createRollbackArgs(
+            versionId,
+            `automatic rollback after ${state.stage} failure`,
+          )),
+        });
+      } catch (rollbackError) {
+        state.textRecovery = {
+          status: "rollback_failed",
+          targetVersionId: state.previousTextVersionId,
+          error: rollbackError.message,
+        };
+      }
+    }
+
+    try {
+      const releasePath = await writeReleaseRecord({
+        status: "failed",
+        gitRevision: state.gitRevision,
+        sourceRevision: state.gitRevision,
+        previousTextVersionId: state.previousTextVersionId,
+        textVersionId: state.textVersionId,
+        gatewayVersionId: state.gatewayVersionId,
+        textSmoke: state.textSmoke,
+        gatewaySmoke: state.gatewaySmoke,
+        textRecovery: state.textRecovery,
+        failure: {
+          stage: state.stage,
+          message: error.message,
+        },
+      });
+      console.error(`Failed release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
+    } catch (recordError) {
+      console.error(`Could not record failed release metadata: ${recordError.message}`);
+    }
+    throw error;
+  }
+}
+
+await main();

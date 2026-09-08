@@ -1,0 +1,74 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  createRollbackArgs,
+  parseActiveVersionId,
+  rollbackAfterSmokeFailure,
+} from "../scripts/release-recovery.mjs";
+
+const activeVersionId = "12345678-1234-4234-8234-123456789abc";
+
+test("active version parser selects the 100 percent deployment", () => {
+  const status = JSON.stringify({
+    strategy: "percentage",
+    versions: [
+      { version_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", percentage: 0 },
+      { version_id: activeVersionId, percentage: 100 },
+    ],
+  });
+  assert.equal(parseActiveVersionId(status), activeVersionId);
+});
+
+test("active version parser rejects split deployments without a 100 percent version", () => {
+  assert.throws(
+    () => parseActiveVersionId(JSON.stringify({ versions: [
+      { version_id: activeVersionId, percentage: 50 },
+      { version_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", percentage: 50 },
+    ] })),
+    /100%.*active|active.*100%/i,
+  );
+});
+
+test("active version parser rejects malformed version IDs", () => {
+  assert.throws(
+    () => parseActiveVersionId(JSON.stringify({ versions: [{ version_id: "bad", percentage: 100 }] })),
+    /version.*id/i,
+  );
+});
+
+test("rollback args target the saved Text Worker version", () => {
+  assert.deepEqual(
+    createRollbackArgs(activeVersionId, "rollback after text smoke failure"),
+    [
+      "wrangler",
+      "rollback",
+      activeVersionId,
+      "--name",
+      "text-transform",
+      "--message",
+      "rollback after text smoke failure",
+      "--config",
+      "wrangler.text-transform.jsonc",
+    ],
+  );
+});
+
+test("rollback dry scenario reports a successful recovery", async () => {
+  const calls = [];
+  const result = await rollbackAfterSmokeFailure({
+    previousVersionId: activeVersionId,
+    rollback: async (versionId) => calls.push(versionId),
+  });
+  assert.deepEqual(result, { status: "rolled_back", targetVersionId: activeVersionId });
+  assert.deepEqual(calls, [activeVersionId]);
+});
+
+test("rollback dry scenario propagates a recovery failure", async () => {
+  await assert.rejects(
+    rollbackAfterSmokeFailure({
+      previousVersionId: activeVersionId,
+      rollback: async () => { throw new Error("rollback unavailable"); },
+    }),
+    /rollback unavailable/,
+  );
+});

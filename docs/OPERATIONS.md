@@ -75,6 +75,16 @@ productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadat
 一致しなければならない。release gateは同じ40文字SHAをWranglerのruntime variableとしてText
 Workerへ渡し、smokeで不一致を検出した場合はGatewayをdeployしない。
 
+Text Workerはdeploy前に`wrangler deployments status --name text-transform --json`で100% active
+Versionを保存する。Text smokeが最後まで通らない場合、release gateはGateway deployへ進まず、保存した
+Versionへ自動rollbackし、`status: "failed"`、失敗stage、対象Version、rollback結果を
+`docs/releases/`へ記録する。rollback自体も失敗した場合は`textRecovery.status`が
+`rollback_failed`になるため、Cloudflare dashboardのDeploymentsから保存済みVersionを手動で
+再度activeにする。
+
+rollbackのdry scenarioは`test/release-recovery.test.js`で、100% active Versionの抽出、引数生成、
+成功・失敗をCloudflareへ変更を加えず検証する。productionで意図的にsmokeを壊す試験は行わない。
+
 境界smokeでは、Text Workerの直URLがHTTP 200にならないことと、Gateway経由のcapabilitiesが
 正常であることを確認する。直URLが200なら、Gateway唯一入口の条件を満たしていないため公開
 完了と扱わない。
