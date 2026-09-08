@@ -161,6 +161,7 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage C: 全公開routeを`src/policies/routes.js`のPolicy付き登録へ統一
 - [x] Stage D: response header allowlist、429のRetry-After制御、5xxのbackoff／jitter、エラー分類を追加
 - [x] Stage D補強: cross-origin clientがrequest ID／Retry-After／RateLimit／ETagを参照できるCORS response契約を追加
+- [x] Stage D補強: 共通clientにattemptを横断するoverall deadlineを追加し、期限超過のRetry-After待機を抑止
 - [x] Stage E: Text Core全体のsnapshot hash、dictionary hash、rule／source metadata生成を追加
 - [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
 - [x] Stage G補強: Text Workerのprivate設定をdeploy前に検査し、Text smoke失敗時は直前100% Versionへ自動rollbackして失敗記録を残す

@@ -47,6 +47,7 @@ function createTextTransformClient({
   fetchImpl = globalThis.fetch,
   fallback = {},
   timeoutMs = DEFAULT_TEXT_API_TIMEOUT_MS,
+  totalDeadlineMs = timeoutMs > 0 ? timeoutMs : 0,
   expectedRuleSetHash,
   expectedSnapshotHash,
   maxRetries = 1,
@@ -61,6 +62,9 @@ function createTextTransformClient({
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
     throw new TypeError("timeoutMs must be a non-negative finite number");
+  }
+  if (!Number.isFinite(totalDeadlineMs) || totalDeadlineMs < 0) {
+    throw new TypeError("totalDeadlineMs must be a non-negative finite number");
   }
   if (expectedRuleSetHash !== undefined && !/^[a-f0-9]{64}$/.test(expectedRuleSetHash)) {
     throw new TypeError("expectedRuleSetHash must be a 64-character lowercase SHA-256 hash");
@@ -89,7 +93,19 @@ function createTextTransformClient({
 
   const normalizedBaseUrl = String(baseUrl).replace(/\/+$/, "");
 
-  async function waitBeforeRetry(response, attempt) {
+  function createDeadlineError(response) {
+    return new TextTransformApiError("Text transform API overall deadline exceeded", {
+      status: response?.status,
+      code: "deadline_exceeded",
+      ...responseMetadata(response),
+    });
+  }
+
+  function remainingDeadlineMs(deadlineAt) {
+    return deadlineAt === null ? null : Math.max(0, deadlineAt - Date.now());
+  }
+
+  async function waitBeforeRetry(response, attempt, deadlineAt) {
     const retryAfterMs = parseRetryAfter(response?.headers?.get("Retry-After"));
     const delayMs = retryAfterMs === null
       ? Math.min(
@@ -97,17 +113,32 @@ function createTextTransformClient({
         retryBaseDelayMs * (2 ** attempt) + Math.floor(Math.max(0, Math.min(1, randomImpl())) * retryBaseDelayMs),
       )
       : Math.min(retryMaxAfterMs, retryAfterMs);
+    const remainingMs = remainingDeadlineMs(deadlineAt);
+    if (remainingMs !== null && (remainingMs <= 0 || delayMs >= remainingMs)) return false;
     if (delayMs > 0) await sleepImpl(delayMs);
+    return remainingDeadlineMs(deadlineAt) === null || remainingDeadlineMs(deadlineAt) > 0;
   }
 
   async function request(path, body, fallbackHandler, validatePayload) {
+    const deadlineAt = totalDeadlineMs > 0 ? Date.now() + totalDeadlineMs : null;
+    const complete = (error) => {
+      if (typeof fallbackHandler === "function") return fallbackHandler(error);
+      throw error;
+    };
+
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      const remainingMs = remainingDeadlineMs(deadlineAt);
+      if (remainingMs !== null && remainingMs <= 0) return complete(createDeadlineError());
+
       let response;
       const controller = typeof AbortController === "function"
         ? new AbortController()
         : null;
-      const timeout = controller && timeoutMs > 0
-        ? setTimeout(() => controller.abort(), timeoutMs)
+      const attemptTimeoutMs = remainingMs !== null
+        ? (timeoutMs > 0 ? Math.min(timeoutMs, remainingMs) : remainingMs)
+        : timeoutMs;
+      const timeout = controller && attemptTimeoutMs > 0
+        ? setTimeout(() => controller.abort(), attemptTimeoutMs)
         : null;
       try {
         const requestInit = {
@@ -118,15 +149,14 @@ function createTextTransformClient({
         if (controller) requestInit.signal = controller.signal;
         response = await fetchImpl(`${normalizedBaseUrl}${path}`, requestInit);
       } catch (error) {
-        const requestError = new TextTransformApiError("Text transform API request failed", {
-          details: error,
-        });
+        const requestError = remainingDeadlineMs(deadlineAt) === 0
+          ? createDeadlineError()
+          : new TextTransformApiError("Text transform API request failed", { details: error });
         if (attempt < maxRetries) {
-          await waitBeforeRetry(null, attempt);
-          continue;
+          if (await waitBeforeRetry(null, attempt, deadlineAt)) continue;
+          return complete(createDeadlineError());
         }
-        if (typeof fallbackHandler === "function") return fallbackHandler(requestError);
-        throw requestError;
+        return complete(requestError);
       } finally {
         if (timeout) clearTimeout(timeout);
       }
@@ -141,11 +171,10 @@ function createTextTransformClient({
           details: error,
         });
         if (attempt < maxRetries && isRetryableStatus(response.status, response)) {
-          await waitBeforeRetry(response, attempt);
-          continue;
+          if (await waitBeforeRetry(response, attempt, deadlineAt)) continue;
+          return complete(createDeadlineError(response));
         }
-        if (typeof fallbackHandler === "function") return fallbackHandler(invalidJsonError);
-        throw invalidJsonError;
+        return complete(invalidJsonError);
       }
 
       if (!response.ok) {
@@ -157,8 +186,8 @@ function createTextTransformClient({
           ...responseMetadata(response),
         });
         if (isRetryableStatus(response.status, response) && attempt < maxRetries) {
-          await waitBeforeRetry(response, attempt);
-          continue;
+          if (await waitBeforeRetry(response, attempt, deadlineAt)) continue;
+          return complete(createDeadlineError(response));
         }
         if (typeof fallbackHandler === "function" && response.status >= 500) {
           return fallbackHandler(error);
@@ -176,11 +205,10 @@ function createTextTransformClient({
           ...responseMetadata(response),
         });
         if (attempt < maxRetries) {
-          await waitBeforeRetry(response, attempt);
-          continue;
+          if (await waitBeforeRetry(response, attempt, deadlineAt)) continue;
+          return complete(createDeadlineError(response));
         }
-        if (typeof fallbackHandler === "function") return fallbackHandler(error);
-        throw error;
+        return complete(error);
       }
 
       if (expectedRuleSetHash !== undefined && payload?.ruleSetHash !== expectedRuleSetHash) {

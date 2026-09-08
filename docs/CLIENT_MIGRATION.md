@@ -20,6 +20,18 @@ const legacy = await textApi.transform(sourceText, {
 });
 ```
 
+既定の`timeoutMs`とoverall deadlineはともに8秒で、attempt・Retry-After待機を含む一回の
+interactive request全体を制限する。429の`Retry-After`が残り時間を超える場合は待機せず、
+`deadline_exceeded`としてfallbackまたはエラーにする。同期的な表示処理より長い処理を許可する
+background clientだけは、用途に合わせて明示的に`totalDeadlineMs`を大きくする。
+
+```js
+const backgroundTextApi = createTextTransformClient({
+  timeoutMs: 8_000,
+  totalDeadlineMs: 30_000,
+});
+```
+
 ## fallback
 
 通信障害時だけ既存のローカル実装へ戻す場合は、fallbackを注入する。
@@ -39,6 +51,7 @@ const textApi = createTextTransformClient({
 - `standby-display`：起動時に `legacy-kanji` の正本マップをAPIから一度取得。初期表示と通信障害時は既存のローカルマップを使用する。
 - 歌詞Reader：後回し。
 - Chrome拡張：ページ本文を許可された外部APIへbatch送信。通信障害時は既存のkuromojiローカルルールへfallbackする。
+- `totalDeadlineMs`を指定しない通常のclientは8秒で打ち切り、期限を超えるRetry-Afterを待たない。
 
 ## 移行順
 

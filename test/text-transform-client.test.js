@@ -114,7 +114,7 @@ test("text transform client aborts stalled requests and uses fallback", async ()
 
   assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
     text: "学校:local",
-    fallbackCode: "request_failed",
+    fallbackCode: "deadline_exceeded",
   });
 });
 
@@ -233,6 +233,57 @@ test("text transform client obeys Retry-After before retrying a rate limit", asy
   let attempts = 0;
   const delays = [];
   const client = createTextTransformClient({
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: { "Retry-After": "0.05" },
+        });
+      }
+      return new Response(JSON.stringify({ text: "學校" }), { status: 200 });
+    },
+    sleepImpl: async (milliseconds) => delays.push(milliseconds),
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "學校",
+  });
+  assert.deepEqual(delays, [50]);
+  assert.equal(attempts, 2);
+});
+
+test("text transform client does not wait past the overall deadline", async () => {
+  let attempts = 0;
+  const delays = [];
+  const client = createTextTransformClient({
+    totalDeadlineMs: 100,
+    retryMaxAfterMs: 60_000,
+    fetchImpl: async () => {
+      attempts += 1;
+      return new Response(JSON.stringify({ error: "rate_limited" }), {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      });
+    },
+    sleepImpl: async (milliseconds) => delays.push(milliseconds),
+    fallback: {
+      transform: (_text, _options, error) => ({ fallbackCode: error.code }),
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    fallbackCode: "deadline_exceeded",
+  });
+  assert.equal(attempts, 1);
+  assert.deepEqual(delays, []);
+});
+
+test("text transform client retries Retry-After when it fits the overall deadline", async () => {
+  let attempts = 0;
+  const delays = [];
+  const client = createTextTransformClient({
+    totalDeadlineMs: 1_000,
     fetchImpl: async () => {
       attempts += 1;
       if (attempts === 1) {
