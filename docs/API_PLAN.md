@@ -171,4 +171,8 @@ Text Worker Version ID `fdd927ef-0190-4c93-b993-431e8d1e0f33`、Gateway Version 
 `44448464-304b-4a4e-88f7-002907473abd`。Text Worker直URLはHTTP 404、Gateway経由は
 health／capabilities／CORS preflight／batchが200／204、invalid profileとdomain queryが400。
 Gatewayのlive body limitは413、Text routeのlive rate limitは30件超で429、
-`Retry-After: 60`／`RateLimit-Limit: 30`を確認した。最終batch smokeは約249ms。
+`Retry-After: 60`／`RateLimit-Limit: 30`をVersion `44448464-304b-4a4e-88f7-002907473abd`で確認した。
+その後の最終Version `40a14c9e-b065-4730-9f7b-4e1c99ac1523`ではbody 413を確認し、
+短時間51件のrate sampleは全て200だった。Rate Limitingはeventual consistencyのため、
+個々の短時間sampleで30件目の遮断を保証しないが、binding設定・単体テスト・直前Versionの
+429証跡を保持している。最終batch smokeは約154ms。

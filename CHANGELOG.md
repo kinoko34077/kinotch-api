@@ -38,6 +38,7 @@ kinotch-api main
 - 最終VersionでText Worker直URL HTTP 404、batch HTTP 200、invalid profile/query HTTP 400、oversized body HTTP 413を確認。Text route 32回の実測は200が31件、429が1件で、429に`Retry-After: 60`と`RateLimit-Limit: 30`を確認。
 - Gatewayの未知長bodyを上限超過時にstream途中で打ち切る処理、下流タイムアウトの504分類、上流500の502分類を追加。
 - 共通ESM clientからbrowser IIFEを生成し、同一ソースを利用する配布artifactとstale checkを追加。256件batchのローカルbenchmarkも記録可能にした。
+- 最終反映VersionはText Worker `3801c8f9-7f4b-4add-9409-59f17af3acd5`、Gateway `40a14c9e-b065-4730-9f7b-4e1c99ac1523`。最終Versionのbody 413と直URL404を確認し、rate limitは直前Versionで429／Retry-Afterを確認済み。最終Versionの短時間51件sampleは200だったため、Cloudflare Rate Limitingのeventual consistencyを運用記録へ明記。
 
 ## 2026-09-07（本番後検証・Golden回帰）
 
