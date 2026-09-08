@@ -19,6 +19,12 @@ async function request(path, init = {}, fetchImpl = globalThis.fetch) {
       status: response.status,
       payload,
       requestId: response.headers.get("X-Request-ID"),
+      allowHeaders: response.headers.get("Access-Control-Allow-Headers"),
+      exposeHeaders: response.headers.get("Access-Control-Expose-Headers"),
+      retryAfter: response.headers.get("Retry-After"),
+      rateLimitLimit: response.headers.get("RateLimit-Limit"),
+      rateLimitPolicy: response.headers.get("RateLimit-Policy"),
+      etag: response.headers.get("ETag"),
       durationMs: Number((performance.now() - startedAt).toFixed(2)),
     };
   } finally {
@@ -97,7 +103,11 @@ export async function runProductionSmoke({
       "Access-Control-Request-Headers": "content-type, x-request-id",
     },
   }, fetchImpl);
-  if (preflight.status !== 204) {
+  if (
+    preflight.status !== 204 ||
+    !/content-type/i.test(preflight.allowHeaders ?? "") ||
+    !/x-request-id/i.test(preflight.allowHeaders ?? "")
+  ) {
     throw new Error(`CORS preflight smoke failed with status ${preflight.status}`);
   }
 
@@ -106,6 +116,7 @@ export async function runProductionSmoke({
     headers: {
       "Content-Type": "application/json",
       "X-Request-ID": "smoke-batch",
+      Origin: "https://smoke.invalid",
     },
     body: JSON.stringify({
       texts: ["学校と国", "分かる"],
@@ -114,6 +125,12 @@ export async function runProductionSmoke({
   }, fetchImpl);
   if (batch.status !== 200 || !Array.isArray(batch.payload?.texts) || batch.payload.texts.length !== 2) {
     throw new Error(`batch smoke failed with status ${batch.status}`);
+  }
+  const exposedHeaders = batch.exposeHeaders ?? "";
+  for (const header of ["X-Request-ID", "Retry-After", "RateLimit-Limit", "RateLimit-Policy", "ETag"]) {
+    if (!new RegExp(header, "i").test(exposedHeaders)) {
+      throw new Error(`CORS expose-header smoke failed for ${header}`);
+    }
   }
 
   const invalidProfile = checkGuards
@@ -170,8 +187,9 @@ export async function runProductionSmoke({
       dictionaryHash: capabilities.payload.dictionaryHash,
       sourceRevision: capabilities.payload.sourceRevision,
     },
-    preflight: { status: preflight.status },
+    preflight: { status: preflight.status, allowHeaders: preflight.allowHeaders },
     batch: { status: batch.status, durationMs: batch.durationMs, itemCount: batch.payload.texts.length },
+    cors: { exposedHeaders: batch.exposeHeaders },
     invalidProfile: invalidProfile ? { status: invalidProfile.status } : null,
     invalidQuery: invalidQuery ? { status: invalidQuery.status } : null,
     oversizedBody: oversizedBody ? { status: oversizedBody.status } : null,

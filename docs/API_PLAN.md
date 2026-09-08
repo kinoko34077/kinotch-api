@@ -165,6 +165,7 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage E: Text Core全体のsnapshot hash、dictionary hash、rule／source metadata生成を追加
 - [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
 - [x] Stage G補強: Text Workerのprivate設定をdeploy前に検査し、Text smoke失敗時は直前100% Versionへ自動rollbackして失敗記録を残す
+- [x] Stage G補強: production smokeでCORS preflightの許可headerとcross-origin responseの公開headerを確認
 - [x] Stage H: query redaction、request/error構造化ログ、本文非ログ方針を追加
 - [x] Stage A補強: Text Workerのprivate設定をdeploy前に検査し、release SHAをruntimeへ注入してsmokeで一致確認
 - [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
