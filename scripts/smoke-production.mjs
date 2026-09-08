@@ -27,14 +27,25 @@ async function request(path, init = {}) {
 }
 
 export async function checkDirectTextWorker() {
-  try {
-    const response = await fetch(`${TEXT_DIRECT_URL}/health`, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    return { status: response.status, reachable: response.status === 200 };
-  } catch {
-    return { status: null, reachable: false };
+  const statuses = [];
+  const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let status = null;
+    try {
+      const response = await fetch(`${TEXT_DIRECT_URL}/health`, {
+        signal: AbortSignal.timeout(10_000),
+      });
+      status = response.status;
+    } catch {
+      status = null;
+    }
+    statuses.push(status);
+    if (status !== 200) return { status, reachable: false, statuses };
+    if (attempt < 2) await wait(2_000);
   }
+
+  return { status: statuses.at(-1), reachable: true, statuses };
 }
 
 export async function runProductionSmoke({ checkDirect = false, checkGuards = true } = {}) {
