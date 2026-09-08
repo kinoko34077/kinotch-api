@@ -50,7 +50,8 @@ Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認�
 - `metadataVersion`／`snapshotHash`: engine、shared parser、dictionary、Kuromoji、rulesを
   含むfallback runtime全体の契約
 - `dictionaryVersion`／`dictionaryHash`: Worker Assets辞書の契約
-- `sourceRevision`: release metadataで追跡するsource revision（ローカル生成時は`unknown`）
+- `sourceRevision`: release metadataで追跡するsource revision。productionではdeploy対象Git SHAと一致し、
+  ローカル生成時は`unknown`。
 
 `rules.generated.mjs`と`metadata.generated.mjs`は手編集せず、`npm run build:text-snapshot`
 で再生成する。`npm test`は両方のcheckを先に実行する。
@@ -66,9 +67,13 @@ npx wrangler tail text-transform --format json
 
 ## リリース後の確認
 
-`npm run deploy:production`を使い、build／check／test／dry-run → Text Worker → 境界smoke →
+`npm run deploy:production`を使い、private設定検査 → build／check／test／dry-run → Text Worker → 境界smoke →
 Gateway → 全smokeの順で実行する。成功時は両WorkerのVersion ID、commit、engine／rule／snapshot
 metadata、JST時刻を`docs/releases/`へ記録する。手動で個別deployする場合もこの順序を守る。
+
+productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
+一致しなければならない。release gateは同じ40文字SHAをWranglerのruntime variableとしてText
+Workerへ渡し、smokeで不一致を検出した場合はGatewayをdeployしない。
 
 境界smokeでは、Text Workerの直URLがHTTP 200にならないことと、Gateway経由のcapabilitiesが
 正常であることを確認する。直URLが200なら、Gateway唯一入口の条件を満たしていないため公開

@@ -1,7 +1,9 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import JSON5 from "json5";
+import { assertPrivateTextWorkerConfig } from "./deploy-guards.mjs";
 import { runProductionSmoke } from "./smoke-production.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,19 +71,49 @@ async function gitRevision() {
   });
 }
 
+const sourceRevision = await gitRevision();
+if (!/^[a-f0-9]{40}$/.test(sourceRevision)) {
+  throw new Error("Could not determine a 40-character Git source revision for production release");
+}
+
+const textWorkerConfig = JSON5.parse(await readFile(
+  path.join(projectRoot, "wrangler.text-transform.jsonc"),
+  "utf8",
+));
+assertPrivateTextWorkerConfig(textWorkerConfig);
+
 await run(npmCommand, ["run", "build:text-snapshot"]);
 await run(npmCommand, ["run", "check:text-snapshot"]);
 await run(npmCommand, ["test"]);
-await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.text-transform.jsonc", "--dry-run"]);
+await run(npxCommand, [
+  "wrangler",
+  "deploy",
+  "--config",
+  "wrangler.text-transform.jsonc",
+  "--dry-run",
+  "--var",
+  `TEXT_CORE_SOURCE_REVISION:${sourceRevision}`,
+]);
 await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
 
 const textDeployOutput = await run(
   npxCommand,
-  ["wrangler", "deploy", "--config", "wrangler.text-transform.jsonc"],
+  [
+    "wrangler",
+    "deploy",
+    "--config",
+    "wrangler.text-transform.jsonc",
+    "--var",
+    `TEXT_CORE_SOURCE_REVISION:${sourceRevision}`,
+  ],
   { capture: true },
 );
 const textVersionId = getVersionId(textDeployOutput, "text-transform");
-const textSmoke = await runSmokeWithRetry({ checkDirect: true, checkGuards: false });
+const textSmoke = await runSmokeWithRetry({
+  checkDirect: true,
+  checkGuards: false,
+  expectedSourceRevision: sourceRevision,
+});
 
 const gatewayDeployOutput = await run(
   npxCommand,
@@ -89,7 +121,7 @@ const gatewayDeployOutput = await run(
   { capture: true },
 );
 const gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
-const gatewaySmoke = await runSmokeWithRetry({ checkDirect: true });
+const gatewaySmoke = await runSmokeWithRetry({ checkDirect: true, expectedSourceRevision: sourceRevision });
 
 const recordedAt = new Date();
 const releaseRecord = {
@@ -99,7 +131,7 @@ const releaseRecord = {
     dateStyle: "short",
     timeStyle: "medium",
   }).format(recordedAt),
-  gitRevision: await gitRevision(),
+  gitRevision: sourceRevision,
   textVersionId,
   gatewayVersionId,
   textSmoke,

@@ -68,6 +68,7 @@
 
 - [x] Gateway CORSを`GET`・`POST`・`OPTIONS`へ統一
 - [x] GatewayのPOST preflightと実POSTを回帰テスト化
+- [x] `Content-Type`／`X-Request-ID`をPOST preflightで許可し、`X-Request-ID`／`Retry-After`／`RateLimit-*`／`ETag`をcross-origin responseへ公開
 - [x] CORS修正後にGateway単体をデプロイし、`/v1/capabilities`・`/v1/transform/batch`を実ブラウザ相当のOrigin付きで確認
 
 ### 2. P0：Text Coreの正本と互換性情報を一意化
@@ -84,6 +85,7 @@
 - [x] WorkerのObservability設定と、本文を記録しない運用確認手順を文書化
 - [x] snapshot生成物を手編集禁止のgenerated moduleとして管理
 - [x] releaseごとのsource revisionと生成日時を`docs/releases/`へ記録
+- [x] production deploy時のGit SHAをText Workerへ注入し、capabilities smokeでrelease SHAとの一致を検証
 
 ### 3. P1：生成ruleとテストの一致を保証
 
@@ -158,9 +160,11 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage B: request ID、body byte limit、Cloudflare Rate Limit、method guard、query／JSON validationを追加
 - [x] Stage C: 全公開routeを`src/policies/routes.js`のPolicy付き登録へ統一
 - [x] Stage D: response header allowlist、429のRetry-After制御、5xxのbackoff／jitter、エラー分類を追加
+- [x] Stage D補強: cross-origin clientがrequest ID／Retry-After／RateLimit／ETagを参照できるCORS response契約を追加
 - [x] Stage E: Text Core全体のsnapshot hash、dictionary hash、rule／source metadata生成を追加
 - [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
 - [x] Stage H: query redaction、request/error構造化ログ、本文非ログ方針を追加
+- [x] Stage A補強: Text Workerのprivate設定をdeploy前に検査し、release SHAをruntimeへ注入してsmokeで一致確認
 - [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
 - [x] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測
 - [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
