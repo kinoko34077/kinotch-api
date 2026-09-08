@@ -6,7 +6,8 @@
 
 1. `GET /health` がHTTP 200であること。
 2. `GET /v1/capabilities` の`engineVersion`、`ruleSetHash`、profile一覧、制限値を確認する。
-3. Origin付き`OPTIONS /v1/transform` がHTTP 204で、`Access-Control-Allow-Methods`にPOSTを含むこと。
+3. Origin付き`OPTIONS /v1/transform` がHTTP 204で、`Access-Control-Allow-Methods`にPOSTを含み、
+   `Content-Type`と`X-Request-ID`が許可されること。
 4. Origin付き`POST /v1/transform/batch` がHTTP 200で、入力件数と出力件数が一致すること。
 5. 存在しないprofileがHTTP 400 `invalid_profile`になること。
 6. `X-Request-ID`がレスポンスにあり、指定したIDは下流にも引き継がれること。
@@ -34,6 +35,8 @@ validationを定義する。新しい公開routeは`registerRoute()`経由でPol
 - 本文の文字数・profileの意味検証は下流Text Workerにも残し、Gatewayのbyte制限と二重化する。
 - `text-transform`のworkers.dev URLは無効化し、GatewayのService Bindingだけを公開経路とする。
 - 下流Service Bindingの例外は502、下流503は503、上流応答の500は502、タイムアウトは504へ分類する。
+- ブラウザからは`X-Request-ID`、`Retry-After`、`RateLimit-Limit`、`RateLimit-Policy`、
+  `ETag`をレスポンスヘッダーとして参照できる。429時の`Retry-After`とレート制限値も同様に確認する。
 
 Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認証APIの過剰利用を抑える
 境界として扱う。認証や利用量課金を導入する場合は、IP単位のkeyを利用者ID／API key単位へ

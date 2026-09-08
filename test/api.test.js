@@ -49,13 +49,15 @@ test("CORS preflight allows browser POST text API calls", async () => {
     headers: {
       Origin: "https://reader.example.test",
       "Access-Control-Request-Method": "POST",
-      "Access-Control-Request-Headers": "content-type",
+      "Access-Control-Request-Headers": "content-type, x-request-id",
     },
   }, env());
 
   assert.equal(response.status, 204);
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
   assert.match(response.headers.get("Access-Control-Allow-Methods") ?? "", /POST/);
+  assert.match(response.headers.get("Access-Control-Allow-Headers") ?? "", /content-type/i);
+  assert.match(response.headers.get("Access-Control-Allow-Headers") ?? "", /x-request-id/i);
 });
 
 test("proxy routes preserve upstream payloads", async () => {
@@ -238,6 +240,27 @@ test("gateway enforces route rate limits and returns Retry-After", async () => {
   assert.equal(response.headers.get("Retry-After"), "60");
   assert.equal(response.headers.get("RateLimit-Limit"), "60");
   assert.equal(upstreamCalls, 0);
+});
+
+test("gateway exposes rate-limit and request headers to cross-origin clients", async () => {
+  const response = await app.request("http://example.test/v1/time", {
+    headers: {
+      Origin: "https://reader.example.test",
+    },
+  }, env({
+    GENERAL_RATE_LIMITER: {
+      limit() {
+        return Promise.resolve({ success: false });
+      },
+    },
+  }));
+
+  assert.equal(response.status, 429);
+  const exposedHeaders = response.headers.get("Access-Control-Expose-Headers") ?? "";
+  assert.match(exposedHeaders, /X-Request-ID/i);
+  assert.match(exposedHeaders, /Retry-After/i);
+  assert.match(exposedHeaders, /RateLimit-Limit/i);
+  assert.equal(response.headers.get("Retry-After"), "60");
 });
 
 test("gateway fails closed when a configured rate limiter is unavailable", async () => {
