@@ -1,9 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import vm from "node:vm";
 import {
   createTextTransformClient,
   TextTransformApiError,
 } from "../src/client/text-transform.js";
+
+test("browser client artifact is a generated shared-client IIFE", async () => {
+  const source = await readFile("src/client/text-transform.iife.js", "utf8");
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  assert.equal(typeof context.KinotchTextTransform?.createTextTransformClient, "function");
+  assert.equal(typeof context.KinotchTextTransform?.TextTransformApiError, "function");
+});
 
 test("text transform client sends the shared request contract", async () => {
   const calls = [];

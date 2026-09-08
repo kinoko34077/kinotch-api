@@ -227,3 +227,30 @@ test("gateway classifies a missing upstream binding as 503", async () => {
   assert.equal((await response.json()).error, "upstream_unavailable");
   assert.match(response.headers.get("X-Request-ID") ?? "", /^[A-Za-z0-9-]+$/);
 });
+
+test("gateway maps an upstream 500 response to 502", async () => {
+  const response = await app.request("http://example.test/v1/time", {}, env({
+    CLOCK_SERVER: service(JSON.stringify({ error: "worker_error" }), 500),
+  }));
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: "worker_error" });
+});
+
+test("gateway maps an upstream timeout to 504", async () => {
+  const response = await app.request("http://example.test/v1/time", {}, env({
+    UPSTREAM_TIMEOUT_MS: 5,
+    CLOCK_SERVER: {
+      fetch(request) {
+        return new Promise((resolve, reject) => {
+          request.signal.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          }, { once: true });
+        });
+      },
+    },
+  }));
+  assert.equal(response.status, 504);
+  assert.equal((await response.json()).error, "upstream_timeout");
+});

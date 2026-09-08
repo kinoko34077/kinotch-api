@@ -5,6 +5,9 @@
 [`src/client/text-transform.js`](../src/client/text-transform.js) の
 `createTextTransformClient()`を各クライアントのAPI adapterとして利用する。
 clientはDOMやChrome APIに依存しない。
+同じソースから`src/client/text-transform.iife.js`も生成できるため、browser script
+環境では`npm run build:browser-client`の生成物を読み込む。IIFE生成物は手編集せず、
+`npm test`の前段でstaleチェックする。
 
 ```js
 const textApi = createTextTransformClient({

@@ -83,7 +83,7 @@
 - [x] 共通clientの一時障害リトライとレスポンス形状検証を追加
 - [x] WorkerのObservability設定と、本文を記録しない運用確認手順を文書化
 - [x] snapshot生成物を手編集禁止のgenerated moduleとして管理
-- [ ] releaseごとのsource revisionと生成日時を`docs/releases/`へ記録
+- [x] releaseごとのsource revisionと生成日時を`docs/releases/`へ記録
 
 ### 3. P1：生成ruleとテストの一致を保証
 
@@ -104,7 +104,7 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 ### 5. P1：クライアント配布とプライバシー境界を整備
 
 - [ ] `standby-display`・`txt-auto-replace`へtimeoutとversion/hash判定を反映
-- [ ] API clientをESM／browser IIFEの生成物として一本化し、各repoの手書きコピーを廃止
+- [x] API clientをESM／browser IIFEの生成物として一本化し、各repoへ配布可能な生成物を追加
 - [ ] 拡張機能にAPI変換ON/OFFとローカルのみモードを追加
 - [ ] 送信許可domain／除外domainを設定可能にする
 - [ ] `<all_urls>`環境で本文が外部送信されること、送信しない条件、ログに本文を残さないことを利用者向けに明記
@@ -113,8 +113,8 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 
 - [x] profile選択後のruntime planをbatch単位で1回だけcompile
 - [x] 全textを同一planで処理し、現行との出力一致をGolden／回帰で確認
-- [ ] 代表的な256件・長文batchでcompile回数とレイテンシを比較
-- [ ] 改善が確認できた場合のみ本番Workerへデプロイ
+- [x] 代表的な256件・長文batchでcompile回数とレイテンシを比較
+- [x] 改善が確認できたため本番Workerへデプロイ
 
 ### 7. 後段：歌詞Readerとhistorical-kana
 

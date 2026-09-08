@@ -59,7 +59,13 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
   const capabilities = await request("/v1/capabilities", {
     headers: { "X-Request-ID": "smoke-capabilities" },
   });
-  if (capabilities.status !== 200 || !/^[a-f0-9]{64}$/.test(capabilities.payload?.ruleSetHash ?? "")) {
+  if (
+    capabilities.status !== 200 ||
+    !/^[a-f0-9]{64}$/.test(capabilities.payload?.ruleSetHash ?? "") ||
+    !/^[a-f0-9]{64}$/.test(capabilities.payload?.snapshotHash ?? "") ||
+    capabilities.payload?.metadataVersion !== "snapshot-v1" ||
+    capabilities.payload?.ruleSetVersion !== "rules-v1"
+  ) {
     throw new Error(`capabilities smoke failed with status ${capabilities.status}`);
   }
 
@@ -104,6 +110,14 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
   const invalidQuery = checkGuards ? await request("/v1/weather?lat=91&lon=139.7") : null;
   if (invalidQuery && (invalidQuery.status !== 400 || invalidQuery.payload?.error !== "invalid_query")) {
     throw new Error(`query validation smoke failed with status ${invalidQuery.status}`);
+  }
+
+  if (
+    health.requestId !== "smoke-health" ||
+    capabilities.requestId !== "smoke-capabilities" ||
+    batch.requestId !== "smoke-batch"
+  ) {
+    throw new Error("request ID propagation smoke failed");
   }
 
   const directTextWorker = checkDirect ? await checkDirectTextWorker() : null;

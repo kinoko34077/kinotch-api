@@ -31,6 +31,7 @@ validationを定義する。新しい公開routeは`registerRoute()`経由でPol
 - 制限超過はGatewayでHTTP 429、`Retry-After`、`RateLimit-*`を返す。
 - 本文の文字数・profileの意味検証は下流Text Workerにも残し、Gatewayのbyte制限と二重化する。
 - `text-transform`のworkers.dev URLは無効化し、GatewayのService Bindingだけを公開経路とする。
+- 下流Service Bindingの例外は502、下流503は503、上流応答の500は502、タイムアウトは504へ分類する。
 
 Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認証APIの過剰利用を抑える
 境界として扱う。認証や利用量課金を導入する場合は、IP単位のkeyを利用者ID／API key単位へ
