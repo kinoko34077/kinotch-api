@@ -29,6 +29,7 @@ validationを定義する。新しい公開routeは`registerRoute()`経由でPol
 - `transform/batch`: 1 MiB、30 requests/60 seconds/IP
 - その他の公開route: 60 requests/60 seconds/IP
 - 制限超過はGatewayでHTTP 429、`Retry-After`、`RateLimit-*`を返す。
+- Rate Limit bindingが欠落・障害の場合はfail-closedでHTTP 503とし、下流へ転送しない。
 - `Content-Length`がない、または過少申告された場合もstream実測で上限超過をHTTP 413にする。
 - 本文の文字数・profileの意味検証は下流Text Workerにも残し、Gatewayのbyte制限と二重化する。
 - `text-transform`のworkers.dev URLは無効化し、GatewayのService Bindingだけを公開経路とする。

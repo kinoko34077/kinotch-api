@@ -13,12 +13,22 @@ function service(body, status = 200) {
   };
 }
 
+function allowRateLimiter() {
+  return {
+    limit() {
+      return Promise.resolve({ success: true });
+    },
+  };
+}
+
 function env(overrides = {}) {
   return {
     CLOCK_SERVER: service(JSON.stringify({ serverTime: 123 })),
     WEATHER_PROXY: service(JSON.stringify({ temp: 20, weather: "Clear" })),
     ROKUYO_PROXY: service(JSON.stringify([{ rokuyo: "友引" }])),
     TEXT_TRANSFORM: service(JSON.stringify({ text: "學校", engineVersion: "0.2.0-phase2" })),
+    GENERAL_RATE_LIMITER: allowRateLimiter(),
+    TEXT_RATE_LIMITER: allowRateLimiter(),
     ...overrides,
   };
 }
@@ -227,6 +237,23 @@ test("gateway enforces route rate limits and returns Retry-After", async () => {
   assert.equal((await response.json()).error, "rate_limited");
   assert.equal(response.headers.get("Retry-After"), "60");
   assert.equal(response.headers.get("RateLimit-Limit"), "60");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("gateway fails closed when a configured rate limiter is unavailable", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request("http://example.test/v1/time", {}, env({
+    GENERAL_RATE_LIMITER: undefined,
+    CLOCK_SERVER: {
+      fetch() {
+        upstreamCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ serverTime: 123 }), { status: 200 }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "rate_limiter_unavailable");
   assert.equal(upstreamCalls, 0);
 });
 

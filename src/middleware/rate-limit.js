@@ -21,7 +21,7 @@ export async function enforceRateLimit(c, policy) {
   const limiter = c.env?.[config.binding];
   if (!limiter || typeof limiter.limit !== "function") {
     c.set("rateLimitResult", "unconfigured");
-    return null;
+    return errorResponse(c, 503, "rate_limiter_unavailable", "Rate limiting is temporarily unavailable");
   }
 
   const key = `${policy.id}:${getClientKey(c)}`;
@@ -42,4 +42,3 @@ export async function enforceRateLimit(c, policy) {
 
   return null;
 }
-
