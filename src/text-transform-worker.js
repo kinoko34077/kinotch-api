@@ -4,6 +4,14 @@ import Kuromoji from "./text-core/vendor/kuromoji.js";
 import TransformEngine from "./text-core/vendor/transform-engine.js";
 import TransformShared from "./text-core/vendor/transform-shared.js";
 import { RULE_FILES, RULE_MANIFEST, RULE_SET_HASH } from "./text-core/rules.generated.mjs";
+import { requestIdMiddleware } from "./middleware/request-id.js";
+import {
+  TEXT_CORE_DICTIONARY_HASH,
+  TEXT_CORE_METADATA_VERSION,
+  TEXT_CORE_RULE_SET_VERSION,
+  TEXT_CORE_SNAPSHOT_HASH,
+  TEXT_CORE_SOURCE_REVISION,
+} from "./text-core/metadata.generated.mjs";
 
 const app = new Hono();
 const VERSION = "v1";
@@ -14,6 +22,7 @@ const MAX_BATCH_TOTAL_TEXT_LENGTH = 200_000;
 const kuromoji = Kuromoji.default ?? Kuromoji;
 let tokenizerPromise = null;
 
+app.use("*", requestIdMiddleware());
 app.use("*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
 
 const loaded = TransformEngine.loadStagesFromDefinitions(RULE_MANIFEST, RULE_FILES);
@@ -132,7 +141,7 @@ function getTokenizer(env, baseUrl) {
   return tokenizerPromise;
 }
 
-async function transformText(c, text, selection) {
+async function transformText(c, text, selection, runtimePlan) {
   let tokenizer = null;
   if (selection.requiresTokenizer) {
     try {
@@ -144,7 +153,7 @@ async function transformText(c, text, selection) {
   }
 
   return {
-    text: TransformEngine.transformTextWithStages(text, selection.stages, tokenizer),
+    text: TransformEngine.transformTextWithPlan(text, runtimePlan, tokenizer),
   };
 }
 
@@ -153,12 +162,18 @@ app.get("/health", (c) => c.json({
   service: "text-transform",
   version: VERSION,
   engineVersion: ENGINE_VERSION,
+  snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
 }));
 
 app.get("/v1/capabilities", (c) => c.json({
   version: VERSION,
   engineVersion: ENGINE_VERSION,
   ruleSetHash: RULE_SET_HASH,
+  metadataVersion: TEXT_CORE_METADATA_VERSION,
+  ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
+  snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+  dictionaryHash: TEXT_CORE_DICTIONARY_HASH,
+  sourceRevision: c.env?.TEXT_CORE_SOURCE_REVISION ?? TEXT_CORE_SOURCE_REVISION,
   profiles: supportedProfiles,
   tokenizerProfiles,
   tokenizerEnabled: true,
@@ -183,7 +198,13 @@ app.post("/v1/ruby/parse", async (c) => {
       ? undefined
       : TransformShared.normalizeRubyMarkers(body.markers);
     const segments = TransformShared.parseRenderableRubySegments(body.text, markers);
-    return c.json({ segments, engineVersion: ENGINE_VERSION, ruleSetHash: RULE_SET_HASH });
+    return c.json({
+      segments,
+      engineVersion: ENGINE_VERSION,
+      ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
+      ruleSetHash: RULE_SET_HASH,
+      snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+    });
   } catch {
     return errorResponse(c, 400, "invalid_markers", "markers must contain valid open and close strings");
   }
@@ -205,7 +226,8 @@ app.post("/v1/transform", async (c) => {
     return errorResponse(c, selection.status ?? 400, "invalid_profile", selection.error, selection.details);
   }
 
-  const transformed = await transformText(c, body.text, selection);
+  const runtimePlan = TransformEngine.compileRuntimePlan(selection.stages);
+  const transformed = await transformText(c, body.text, selection, runtimePlan);
   if (transformed.error) {
     return errorResponse(c, transformed.status, transformed.error, "Tokenizer assets could not be loaded");
   }
@@ -213,7 +235,9 @@ app.post("/v1/transform", async (c) => {
     text: transformed.text,
     profile: selection.stages.map((stage) => stage.id),
     engineVersion: ENGINE_VERSION,
+    ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
     ruleSetHash: RULE_SET_HASH,
+    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
   });
 });
 
@@ -233,9 +257,10 @@ app.post("/v1/transform/batch", async (c) => {
     return errorResponse(c, selection.status ?? 400, "invalid_profile", selection.error, selection.details);
   }
 
+  const runtimePlan = TransformEngine.compileRuntimePlan(selection.stages);
   const transformed = [];
   for (const text of body.texts) {
-    const result = await transformText(c, text, selection);
+    const result = await transformText(c, text, selection, runtimePlan);
     if (result.error) {
       return errorResponse(c, result.status, result.error, "Tokenizer assets could not be loaded");
     }
@@ -246,7 +271,9 @@ app.post("/v1/transform/batch", async (c) => {
     texts: transformed,
     profile: selection.stages.map((stage) => stage.id),
     engineVersion: ENGINE_VERSION,
+    ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
     ruleSetHash: RULE_SET_HASH,
+    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
   });
 });
 

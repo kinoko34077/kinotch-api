@@ -21,6 +21,18 @@ kinotch-api main
   └─ detemuhann-redirect: 変更せず稼働継続
 ```
 
+## 2026-09-08（Gateway関門・snapshot互換性・release gate）
+
+- Gatewayの全公開routeをroute Policy経由へ統一し、method guard、lat/lon/dateのdomain validation、JSON schema validation、POST body byte limitを追加。
+- GatewayにCloudflare Rate Limit bindingを追加。一般routeは60 requests/60 seconds、Text routeは30 requests/60 secondsをIP単位で制限し、超過時は429／Retry-Afterを返す。
+- request IDを生成・検証してGatewayからService Bindingへ伝播し、`Content-Type`、cache、ETag、Retry-After、RateLimit、request IDだけを下流レスポンスから転送。
+- Gatewayのquery redactionと構造化request/error logを有効化し、本文・query stringをログへ残さない運用へ統一。
+- `text-transform`を`workers_dev:false`へ変更し、Gateway Service Bindingを唯一の公開経路とする構成へ移行。
+- Text Coreのengine／shared／dictionary／Kuromoji／rulesからsnapshot hashとdictionary hashを生成し、Workerのcapabilities／transform／rubyレスポンスへmetadataを追加。
+- common clientの429即時retryを廃止し、Retry-Afterがある場合だけ待機、5xx／通信失敗はbackoff+jitterで再試行する契約へ変更。snapshot hash不一致もlocal fallback対象に追加。
+- batch transformでruntime planをbatch単位に再利用。
+- `deploy:production`とproduction smokeを追加し、生成物check、全テスト、dry-run、Text Worker、境界確認、Gateway、最終smoke、release metadata記録を単一手順化。
+
 ## 2026-09-07（本番後検証・Golden回帰）
 
 - `text-transform` Workerの本番後ベンチマークを再実行。

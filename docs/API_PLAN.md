@@ -74,30 +74,31 @@
 
 `kinotch-api/src/text-core`を正本とし、`txt-auto-replace`側のcore／ruleは正本から生成するfallback snapshotへ移行する。いきなり別npm packageには分けない。
 
-- [ ] core・rule・dictionaryを含むsnapshot生成コマンドを設計
+- [x] core・rule・dictionary・Kuromojiを含むsnapshot生成コマンドを追加
 - [x] rule sourceから決定論的な`ruleSetHash`を生成し、API capabilities／transformレスポンスへ追加
-- [ ] `engineVersion`、`ruleSetVersion`、`sourceRevision`を生成物とAPI capabilitiesへ追加
-- [ ] transform／rubyレスポンスにも互換性確認に必要なversion情報を返す
+- [x] `engineVersion`、`ruleSetVersion`、`sourceRevision`をAPI capabilitiesへ追加
+- [x] transform／rubyレスポンスにもsnapshot／rule version情報を返す
 - [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
 - [x] 共通clientでAPIのruleSetHash不一致を検出し、fallbackへ切り替える契約を追加
 - [x] 共通clientの一時障害リトライとレスポンス形状検証を追加
 - [x] WorkerのObservability設定と、本文を記録しない運用確認手順を文書化
-- [ ] snapshot生成物にsource revisionと生成日時を記録し、手編集を禁止
+- [x] snapshot生成物を手編集禁止のgenerated moduleとして管理
+- [ ] releaseごとのsource revisionと生成日時を`docs/releases/`へ記録
 
 ### 3. P1：生成ruleとテストの一致を保証
 
 - [x] JSON5 sourceからの生成内容を一時出力と比較する`check:text-rules`を追加
 - [x] `npm test`の前段でcheckを必須化し、stale generated版でPASSできないようにする
-- [ ] CI／deployでも同じcheckを実行
+- [x] `npm test`と`deploy:production`で同じsnapshot checkを実行
 - [ ] rule変更時にGoldenとruleSetHashが同時に更新されることを確認
 
 ### 4. P1：2 Workerのリリースを同期
 
 deploy順を「build／metadata生成 → text-transform → smoke test → Gateway → smoke test」に固定する。
 
-- [ ] `deploy:production`または同等の単一手順を追加
-- [ ] GatewayとText WorkerのVersion ID、engine／rule metadataをリリース記録へ保存
-- [ ] 片方だけ更新された状態を検出するsmoke checkを追加
+- [x] `deploy:production`の単一手順を追加
+- [x] GatewayとText WorkerのVersion ID、engine／rule／snapshot metadataをリリース記録へ保存する処理を追加
+- [x] Text Worker直URLとGateway経由を確認するsmoke checkを追加
 - [ ] 手動実行とCloudflare側の自動デプロイで同じ手順を参照する
 
 ### 5. P1：クライアント配布とプライバシー境界を整備
@@ -110,8 +111,8 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 
 ### 6. P2：batch処理を最適化
 
-- [ ] profile選択後のruntime planをbatch単位で1回だけcompile
-- [ ] 全textを同一planで処理し、現行との出力一致をGolden／回帰で確認
+- [x] profile選択後のruntime planをbatch単位で1回だけcompile
+- [x] 全textを同一planで処理し、現行との出力一致をGolden／回帰で確認
 - [ ] 代表的な256件・長文batchでcompile回数とレイテンシを比較
 - [ ] 改善が確認できた場合のみ本番Workerへデプロイ
 
@@ -150,3 +151,17 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 ## 受入条件
 
 golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/engine versionの追跡、本文をログへ残さないこと、API障害時のクライアントfallbackを確認してから公開する。Golden回帰、API回帰、version追跡、fallback確認は完了。残る作業は実クライアントでの継続的な遅延・エラー・fallback観測と、歌詞Readerの編集完了後の移行である。
+
+## 2026-09-08 関門化実装の進捗
+
+- [x] Stage A: `text-transform`の`workers_dev`を無効化し、Service Binding経路へ限定する設定を追加
+- [x] Stage B: request ID、body byte limit、Cloudflare Rate Limit、method guard、query／JSON validationを追加
+- [x] Stage C: 全公開routeを`src/policies/routes.js`のPolicy付き登録へ統一
+- [x] Stage D: response header allowlist、429のRetry-After制御、5xxのbackoff／jitter、エラー分類を追加
+- [x] Stage E: Text Core全体のsnapshot hash、dictionary hash、rule／source metadata生成を追加
+- [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
+- [x] Stage H: query redaction、request/error構造化ログ、本文非ログ方針を追加
+- [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
+- [ ] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測して完了確定
+- [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
+- [ ] 歌詞Readerと`historical-kana`は編集完了後に着手

@@ -2,13 +2,41 @@ export const DEFAULT_TEXT_API_BASE_URL = "https://api.kinotch.workers.dev";
 export const DEFAULT_TEXT_API_TIMEOUT_MS = 8_000;
 
 export class TextTransformApiError extends Error {
-  constructor(message, { status, code, details } = {}) {
+  constructor(message, { status, code, details, requestId, retryAfter } = {}) {
     super(message);
     this.name = "TextTransformApiError";
     this.status = status ?? 0;
     this.code = code ?? "request_failed";
     this.details = details;
+    this.requestId = requestId;
+    this.retryAfter = retryAfter;
   }
+}
+
+function parseRetryAfter(value, now = Date.now()) {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const trimmed = value.trim();
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    return Math.max(0, Math.ceil(Number(trimmed) * 1_000));
+  }
+
+  const timestamp = Date.parse(trimmed);
+  if (!Number.isFinite(timestamp)) return null;
+  return Math.max(0, timestamp - now);
+}
+
+function isRetryableStatus(status, response) {
+  if (status === 429) {
+    return parseRetryAfter(response?.headers?.get("Retry-After")) !== null;
+  }
+  return new Set([408, 425, 500, 502, 503, 504]).has(status);
+}
+
+function responseMetadata(response) {
+  return {
+    requestId: response?.headers?.get("X-Request-ID") ?? undefined,
+    retryAfter: response?.headers?.get("Retry-After") ?? undefined,
+  };
 }
 
 export function createTextTransformClient({
@@ -17,7 +45,13 @@ export function createTextTransformClient({
   fallback = {},
   timeoutMs = DEFAULT_TEXT_API_TIMEOUT_MS,
   expectedRuleSetHash,
+  expectedSnapshotHash,
   maxRetries = 1,
+  retryBaseDelayMs = 100,
+  retryMaxDelayMs = 2_000,
+  retryMaxAfterMs = 60_000,
+  sleepImpl = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  randomImpl = Math.random,
 } = {}) {
   if (typeof fetchImpl !== "function") {
     throw new TypeError("fetchImpl must be a function");
@@ -28,15 +62,42 @@ export function createTextTransformClient({
   if (expectedRuleSetHash !== undefined && !/^[a-f0-9]{64}$/.test(expectedRuleSetHash)) {
     throw new TypeError("expectedRuleSetHash must be a 64-character lowercase SHA-256 hash");
   }
+  if (expectedSnapshotHash !== undefined && !/^[a-f0-9]{64}$/.test(expectedSnapshotHash)) {
+    throw new TypeError("expectedSnapshotHash must be a 64-character lowercase SHA-256 hash");
+  }
   if (!Number.isInteger(maxRetries) || maxRetries < 0 || maxRetries > 3) {
     throw new TypeError("maxRetries must be an integer from 0 to 3");
+  }
+  if (!Number.isFinite(retryBaseDelayMs) || retryBaseDelayMs < 0) {
+    throw new TypeError("retryBaseDelayMs must be a non-negative finite number");
+  }
+  if (!Number.isFinite(retryMaxDelayMs) || retryMaxDelayMs < 0) {
+    throw new TypeError("retryMaxDelayMs must be a non-negative finite number");
+  }
+  if (!Number.isFinite(retryMaxAfterMs) || retryMaxAfterMs < 0) {
+    throw new TypeError("retryMaxAfterMs must be a non-negative finite number");
+  }
+  if (typeof sleepImpl !== "function") {
+    throw new TypeError("sleepImpl must be a function");
+  }
+  if (typeof randomImpl !== "function") {
+    throw new TypeError("randomImpl must be a function");
   }
 
   const normalizedBaseUrl = String(baseUrl).replace(/\/+$/, "");
 
-  async function request(path, body, fallbackHandler, validatePayload) {
-    const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
+  async function waitBeforeRetry(response, attempt) {
+    const retryAfterMs = parseRetryAfter(response?.headers?.get("Retry-After"));
+    const delayMs = retryAfterMs === null
+      ? Math.min(
+        retryMaxDelayMs,
+        retryBaseDelayMs * (2 ** attempt) + Math.floor(Math.max(0, Math.min(1, randomImpl())) * retryBaseDelayMs),
+      )
+      : Math.min(retryMaxAfterMs, retryAfterMs);
+    if (delayMs > 0) await sleepImpl(delayMs);
+  }
 
+  async function request(path, body, fallbackHandler, validatePayload) {
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       let response;
       const controller = typeof AbortController === "function"
@@ -57,7 +118,10 @@ export function createTextTransformClient({
         const requestError = new TextTransformApiError("Text transform API request failed", {
           details: error,
         });
-        if (attempt < maxRetries) continue;
+        if (attempt < maxRetries) {
+          await waitBeforeRetry(null, attempt);
+          continue;
+        }
         if (typeof fallbackHandler === "function") return fallbackHandler(requestError);
         throw requestError;
       } finally {
@@ -70,9 +134,13 @@ export function createTextTransformClient({
       } catch (error) {
         const invalidJsonError = new TextTransformApiError("Text transform API returned invalid JSON", {
           status: response.status,
+          ...responseMetadata(response),
           details: error,
         });
-        if (attempt < maxRetries) continue;
+        if (attempt < maxRetries && isRetryableStatus(response.status, response)) {
+          await waitBeforeRetry(response, attempt);
+          continue;
+        }
         if (typeof fallbackHandler === "function") return fallbackHandler(invalidJsonError);
         throw invalidJsonError;
       }
@@ -83,8 +151,12 @@ export function createTextTransformClient({
           status: response.status,
           code: errorPayload.error,
           details: errorPayload.details,
+          ...responseMetadata(response),
         });
-        if (retryableStatuses.has(response.status) && attempt < maxRetries) continue;
+        if (isRetryableStatus(response.status, response) && attempt < maxRetries) {
+          await waitBeforeRetry(response, attempt);
+          continue;
+        }
         if (typeof fallbackHandler === "function" && response.status >= 500) {
           return fallbackHandler(error);
         }
@@ -98,8 +170,12 @@ export function createTextTransformClient({
         const error = new TextTransformApiError(responseError, {
           status: response.status,
           code: "invalid_response",
+          ...responseMetadata(response),
         });
-        if (attempt < maxRetries) continue;
+        if (attempt < maxRetries) {
+          await waitBeforeRetry(response, attempt);
+          continue;
+        }
         if (typeof fallbackHandler === "function") return fallbackHandler(error);
         throw error;
       }
@@ -112,6 +188,21 @@ export function createTextTransformClient({
             expected: expectedRuleSetHash,
             received: payload?.ruleSetHash,
           },
+          ...responseMetadata(response),
+        });
+        if (typeof fallbackHandler === "function") return fallbackHandler(error);
+        throw error;
+      }
+
+      if (expectedSnapshotHash !== undefined && payload?.snapshotHash !== expectedSnapshotHash) {
+        const error = new TextTransformApiError("Text transform API snapshot is incompatible", {
+          status: 409,
+          code: "snapshot_mismatch",
+          details: {
+            expected: expectedSnapshotHash,
+            received: payload?.snapshotHash,
+          },
+          ...responseMetadata(response),
         });
         if (typeof fallbackHandler === "function") return fallbackHandler(error);
         throw error;

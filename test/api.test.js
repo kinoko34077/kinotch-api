@@ -127,3 +127,103 @@ test("text API batch route proxies the complete request body", async () => {
     profile: ["legacy-kanji"],
   });
 });
+
+test("gateway validates coordinate and calendar query domains", async () => {
+  for (const path of [
+    "/v1/weather?lat=91&lon=139.7",
+    "/v1/astronomy/moon?lat=35.6&lon=181",
+    "/v1/calendar/rokuyo?date=2026-02-30",
+  ]) {
+    const response = await app.request(`http://example.test${path}`, {}, env());
+    assert.equal(response.status, 400, path);
+    assert.equal((await response.json()).error, "invalid_query", path);
+  }
+});
+
+test("gateway rejects oversized text bodies before the upstream service", async () => {
+  let upstreamCalls = 0;
+  const body = JSON.stringify({ text: "x".repeat(600_000) });
+  const response = await app.request("http://example.test/v1/transform", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": String(new TextEncoder().encode(body).byteLength),
+    },
+    body,
+  }, env({
+    TEXT_TRANSFORM: {
+      fetch() {
+        upstreamCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ text: "unexpected" }), { status: 200 }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "payload_too_large");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("gateway enforces route rate limits and returns Retry-After", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request("http://example.test/v1/time", {}, env({
+    GENERAL_RATE_LIMITER: {
+      limit() {
+        return Promise.resolve({ success: false });
+      },
+    },
+    CLOCK_SERVER: {
+      fetch() {
+        upstreamCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ serverTime: 123 }), { status: 200 }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).error, "rate_limited");
+  assert.equal(response.headers.get("Retry-After"), "60");
+  assert.equal(response.headers.get("RateLimit-Limit"), "60");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("gateway propagates a safe request ID and only approved response headers", async () => {
+  let upstreamRequestId;
+  const response = await app.request("http://example.test/v1/time", {
+    headers: { "X-Request-ID": "client-trace-123" },
+  }, env({
+    CLOCK_SERVER: {
+      fetch(request) {
+        upstreamRequestId = request.headers.get("X-Request-ID");
+        return Promise.resolve(new Response(JSON.stringify({ serverTime: 123 }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            "X-Upstream-Internal": "do-not-forward",
+          },
+        }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-Request-ID"), "client-trace-123");
+  assert.equal(upstreamRequestId, "client-trace-123");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.equal(response.headers.get("X-Upstream-Internal"), null);
+});
+
+test("gateway returns 405 for a registered route with the wrong method", async () => {
+  const response = await app.request("http://example.test/v1/time", { method: "POST" }, env());
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("Allow"), "GET");
+  assert.equal((await response.json()).error, "method_not_allowed");
+});
+
+test("gateway classifies a missing upstream binding as 503", async () => {
+  const response = await app.request("http://example.test/v1/time", {}, env({ CLOCK_SERVER: undefined }));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "upstream_unavailable");
+  assert.match(response.headers.get("X-Request-ID") ?? "", /^[A-Za-z0-9-]+$/);
+});

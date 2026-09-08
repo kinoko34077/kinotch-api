@@ -11,11 +11,26 @@
     { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" },
     { "binding": "TEXT_TRANSFORM", "service": "text-transform" }
   ],
+  "ratelimits": [
+    {
+      "name": "GENERAL_RATE_LIMITER",
+      "namespace_id": "26090801",
+      "simple": { "limit": 60, "period": 60 }
+    },
+    {
+      "name": "TEXT_RATE_LIMITER",
+      "namespace_id": "26090802",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ],
+  "vars": {
+    "ENABLE_REQUEST_LOGS": "true"
+  },
   "compatibility_date": "2026-09-07",
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
-    "redact_query_string": false,
+    "redact_query_string": true,
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,

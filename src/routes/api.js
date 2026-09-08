@@ -1,20 +1,21 @@
 import { Hono } from "hono";
+import { registerRoute } from "../middleware/guard.js";
+import { routePolicies } from "../policies/routes.js";
 import { proxyToWorker } from "../services/proxy.js";
 
 export const apiRoutes = new Hono();
 
-apiRoutes.get("/health", (c) =>
+registerRoute(apiRoutes, "GET", "/health", routePolicies.health, (c) =>
   c.json({ status: "ok", service: "kinotch-api", version: "v1" }),
 );
 
-apiRoutes.get("/v1/time", (c) =>
+registerRoute(apiRoutes, "GET", "/v1/time", routePolicies.time, (c) =>
   proxyToWorker(c, c.env.CLOCK_SERVER, "/"),
 );
 
-apiRoutes.get("/v1/weather", (c) => {
+registerRoute(apiRoutes, "GET", "/v1/weather", routePolicies.weather, (c) => {
   const lat = c.req.query("lat");
   const lon = c.req.query("lon");
-  if (!lat || !lon) return c.json({ error: "Missing 'lat' or 'lon'" }, 400);
 
   const target = new URL("https://internal.invalid/");
   target.searchParams.set("lat", lat);
@@ -22,9 +23,8 @@ apiRoutes.get("/v1/weather", (c) => {
   return proxyToWorker(c, c.env.WEATHER_PROXY, target);
 });
 
-apiRoutes.get("/v1/calendar/rokuyo", (c) => {
+registerRoute(apiRoutes, "GET", "/v1/calendar/rokuyo", routePolicies.rokuyo, (c) => {
   const date = c.req.query("date");
-  if (!date) return c.json({ error: "Missing 'date'" }, 400);
 
   const target = new URL("https://internal.invalid/");
   target.searchParams.set("rokuyo", "");
@@ -32,10 +32,9 @@ apiRoutes.get("/v1/calendar/rokuyo", (c) => {
   return proxyToWorker(c, c.env.ROKUYO_PROXY, target);
 });
 
-apiRoutes.get("/v1/astronomy/moon", (c) => {
+registerRoute(apiRoutes, "GET", "/v1/astronomy/moon", routePolicies.moon, (c) => {
   const lat = c.req.query("lat");
   const lon = c.req.query("lon");
-  if (!lat || !lon) return c.json({ error: "Missing 'lat' or 'lon'" }, 400);
 
   const target = new URL("https://internal.invalid/");
   target.searchParams.set("moon", "");
@@ -44,25 +43,25 @@ apiRoutes.get("/v1/astronomy/moon", (c) => {
   return proxyToWorker(c, c.env.ROKUYO_PROXY, target);
 });
 
-apiRoutes.get("/v1/capabilities", (c) =>
+registerRoute(apiRoutes, "GET", "/v1/capabilities", routePolicies.capabilities, (c) =>
   proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/capabilities"),
 );
 
-apiRoutes.post("/v1/ruby/parse", (c) =>
+registerRoute(apiRoutes, "POST", "/v1/ruby/parse", routePolicies.rubyParse, (c) =>
   proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/ruby/parse", {
     method: "POST",
     headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
   }),
 );
 
-apiRoutes.post("/v1/transform", (c) =>
+registerRoute(apiRoutes, "POST", "/v1/transform", routePolicies.transform, (c) =>
   proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/transform", {
     method: "POST",
     headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
   }),
 );
 
-apiRoutes.post("/v1/transform/batch", (c) =>
+registerRoute(apiRoutes, "POST", "/v1/transform/batch", routePolicies.transformBatch, (c) =>
   proxyToWorker(c, c.env.TEXT_TRANSFORM, "/v1/transform/batch", {
     method: "POST",
     headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },

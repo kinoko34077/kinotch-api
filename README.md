@@ -8,7 +8,7 @@
 npm ci
 npm test
 npx wrangler deploy --dry-run
-npx wrangler deploy
+npm run deploy:production
 ```
 
 本番URLは`https://api.kinotch.workers.dev`です。時刻・天気・六曜・月情報を
@@ -32,4 +32,10 @@ POST /v1/transform/batch
 移行手順は[`docs/CLIENT_MIGRATION.md`](docs/CLIENT_MIGRATION.md)に記録しています。
 
 このリポジトリは`standby-display`とは別責任で管理します。API変更はテストと
-dry-run、本番4ルートの疎通確認を行ったうえでデプロイしてください。
+dry-run、`npm run deploy:production`の本番疎通確認を行ったうえでデプロイしてください。
+`text-transform`はworkers.devの直接公開を無効化し、GatewayのService Bindingからだけ
+到達させます。Gatewayにはroute policy、JSON schema、byte body limit、Cloudflare
+Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用しています。
+
+Text Coreのrules・engine・dictionary・Kuromojiを含むsnapshot metadataは
+`npm run build:text-snapshot`で生成し、`npm test`の前段でstaleチェックします。

@@ -134,9 +134,36 @@ test("text transform client falls back when the API rule set hash differs", asyn
   });
 });
 
+test("text transform client falls back when the API snapshot hash differs", async () => {
+  const expectedSnapshotHash = "a".repeat(64);
+  const client = createTextTransformClient({
+    expectedSnapshotHash,
+    fetchImpl: async () => new Response(JSON.stringify({
+      text: "學校",
+      snapshotHash: "b".repeat(64),
+    }), { status: 200 }),
+    fallback: {
+      transform: (_text, _options, error) => ({
+        text: "学校",
+        fallbackCode: error.code,
+        expected: error.details.expected,
+        received: error.details.received,
+      }),
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "学校",
+    fallbackCode: "snapshot_mismatch",
+    expected: expectedSnapshotHash,
+    received: "b".repeat(64),
+  });
+});
+
 test("text transform client retries transient failures once", async () => {
   let attempts = 0;
   const client = createTextTransformClient({
+    retryBaseDelayMs: 0,
     fetchImpl: async () => {
       attempts += 1;
       if (attempts === 1) {
@@ -149,6 +176,50 @@ test("text transform client retries transient failures once", async () => {
   assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
     text: "學校",
   });
+  assert.equal(attempts, 2);
+});
+
+test("text transform client does not retry a rate limit without Retry-After", async () => {
+  let attempts = 0;
+  const client = createTextTransformClient({
+    fetchImpl: async () => {
+      attempts += 1;
+      return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+    },
+  });
+
+  await assert.rejects(
+    client.transform("学校", { profile: ["legacy-kanji"] }),
+    (error) => {
+      assert.equal(error.status, 429);
+      assert.equal(error.code, "rate_limited");
+      return true;
+    },
+  );
+  assert.equal(attempts, 1);
+});
+
+test("text transform client obeys Retry-After before retrying a rate limit", async () => {
+  let attempts = 0;
+  const delays = [];
+  const client = createTextTransformClient({
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: { "Retry-After": "0.05" },
+        });
+      }
+      return new Response(JSON.stringify({ text: "學校" }), { status: 200 });
+    },
+    sleepImpl: async (milliseconds) => delays.push(milliseconds),
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "學校",
+  });
+  assert.deepEqual(delays, [50]);
   assert.equal(attempts, 2);
 });
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import app from "../src/text-transform-worker.js";
+import { TEXT_CORE_SNAPSHOT_HASH } from "../src/text-core/metadata.generated.mjs";
 
 const dictionaryDirectory = path.resolve("src/text-core/dict");
 const assets = {
@@ -21,6 +22,7 @@ test("text transform health and capabilities are available", async () => {
     service: "text-transform",
     version: "v1",
     engineVersion: "0.2.0-phase2",
+    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
   });
 
   const capabilities = await app.request("http://example.test/v1/capabilities");
@@ -28,6 +30,11 @@ test("text transform health and capabilities are available", async () => {
   assert.equal(capabilities.status, 200);
   assert.equal(payload.tokenizerEnabled, true);
   assert.match(payload.ruleSetHash, /^[a-f0-9]{64}$/);
+  assert.equal(payload.metadataVersion, "snapshot-v1");
+  assert.equal(payload.ruleSetVersion, "rules-v1");
+  assert.match(payload.snapshotHash, /^[a-f0-9]{64}$/);
+  assert.match(payload.dictionaryHash, /^[a-f0-9]{64}$/);
+  assert.equal(payload.sourceRevision, "unknown");
   assert.ok(payload.profiles.includes("legacy-kanji"));
   assert.ok(payload.tokenizerProfiles.includes("okurigana-abbreviation"));
   assert.ok(payload.tokenizerProfiles.includes("lexical-replacements"));
