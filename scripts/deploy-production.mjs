@@ -37,6 +37,23 @@ function getVersionId(output, workerName) {
   return versionId;
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function runSmokeWithRetry(options, attempts = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await runProductionSmoke(options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await wait(2_000);
+    }
+  }
+  throw lastError;
+}
+
 async function gitRevision() {
   return new Promise((resolve) => {
     const child = spawn("git", [
@@ -64,7 +81,7 @@ const textDeployOutput = await run(
   { capture: true },
 );
 const textVersionId = getVersionId(textDeployOutput, "text-transform");
-const textSmoke = await runProductionSmoke({ checkDirect: true, checkGuards: false });
+const textSmoke = await runSmokeWithRetry({ checkDirect: true, checkGuards: false });
 
 const gatewayDeployOutput = await run(
   npxCommand,
@@ -72,7 +89,7 @@ const gatewayDeployOutput = await run(
   { capture: true },
 );
 const gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
-const gatewaySmoke = await runProductionSmoke({ checkDirect: true });
+const gatewaySmoke = await runSmokeWithRetry({ checkDirect: true });
 
 const recordedAt = new Date();
 const releaseRecord = {

@@ -149,6 +149,7 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
       metadataVersion: capabilities.payload.metadataVersion,
       ruleSetHash: capabilities.payload.ruleSetHash,
       snapshotHash: capabilities.payload.snapshotHash,
+      dictionaryVersion: capabilities.payload.dictionaryVersion,
       dictionaryHash: capabilities.payload.dictionaryHash,
       sourceRevision: capabilities.payload.sourceRevision,
     },
