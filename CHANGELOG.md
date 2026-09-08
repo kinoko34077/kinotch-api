@@ -42,6 +42,7 @@ kinotch-api main
 - metadataへ`dictionaryVersion`を追加し、capabilities／transform／batch／rubyの各成功レスポンスで同一snapshot契約を返すよう統一。過少申告された`Content-Length`もstream実測で413になる回帰テストを追加。
 - Rate Limit binding欠落時をfail-openにせず、HTTP 503で下流転送を止めるfail-closed契約と回帰テストを追加。
 - release gateのsmokeにdictionary metadata・過大body 413を組み込み、Service Binding反映遅延時は最大3回再確認するよう補強。最新反映はText Worker `c894aa8b-191f-497e-b967-ca25470c1517`、Gateway `74f7a77d-feab-4343-b6f4-dbf2ae87a494`、JST `2026-09-08 14:22:53`、release metadata `docs/releases/20260908T052253147Z.json`。全42テスト、直URL404、Gateway batch 200、invalid profile/query 400、body 413を確認。
+- fail-closedを含む最終反映はText Worker `a7b5f15f-c520-4515-8537-aae6772ae9fb`、Gateway `5653f519-d3e9-4715-aaf3-c864cdf6e9f6`、JST `2026-09-08 14:27:29`、release metadata `docs/releases/20260908T052729261Z.json`。全43テスト、metadata／直URL404／batch 200／invalid profile・query 400／body 413／request IDを自動smokeで確認。
 
 ## 2026-09-07（本番後検証・Golden回帰）
 

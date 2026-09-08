@@ -183,3 +183,9 @@ Text Worker Version ID `c894aa8b-191f-497e-b967-ca25470c1517`、Gateway Version 
 生成物check・全42テスト・両Worker dry-run・Text先行deploy・Service Binding反映待ちsmoke・
 Gateway deploy・最終smokeを通過した。最終smokeでdictionary metadata、直URL HTTP 404、
 Gateway batch HTTP 200、invalid profile/query HTTP 400、過大body HTTP 413、request IDを確認した。
+
+最終release gate（2026-09-08 JST、release metadata: `docs/releases/20260908T052729261Z.json`）：
+Text Worker Version ID `a7b5f15f-c520-4515-8537-aae6772ae9fb`、Gateway Version ID
+`5653f519-d3e9-4715-aaf3-c864cdf6e9f6`、commit `55aacf717a9556b6ddc6f5907dc3f4c79395a185`。
+fail-closed rate-limit、Service Binding反映待ちretry、dictionary metadata、過大body 413を含む
+生成物check・全43テスト・両Worker dry-run・Text先行deploy・Gateway deploy・最終smokeを通過した。

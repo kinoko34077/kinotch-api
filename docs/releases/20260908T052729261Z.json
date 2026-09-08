@@ -1,0 +1,95 @@
+{
+  "recordedAtUtc": "2026-09-08T05:27:29.261Z",
+  "recordedAtJst": "2026-09-08 14:27:29",
+  "gitRevision": "55aacf717a9556b6ddc6f5907dc3f4c79395a185",
+  "textVersionId": "a7b5f15f-c520-4515-8537-aae6772ae9fb",
+  "gatewayVersionId": "5653f519-d3e9-4715-aaf3-c864cdf6e9f6",
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 343.81
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 30.05,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "unknown"
+    },
+    "preflight": {
+      "status": 204
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 195.38,
+      "itemCount": 2
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "oversizedBody": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "gatewaySmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 83.44
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 81.61,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "unknown"
+    },
+    "preflight": {
+      "status": 204
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 226.06,
+      "itemCount": 2
+    },
+    "invalidProfile": {
+      "status": 400
+    },
+    "invalidQuery": {
+      "status": 400
+    },
+    "oversizedBody": {
+      "status": 413
+    },
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  }
+}
