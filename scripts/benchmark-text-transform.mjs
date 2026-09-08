@@ -36,6 +36,20 @@ for (let index = 0; index < 5; index += 1) {
 }
 
 const averageWarmMs = warmTimes.reduce((sum, value) => sum + value, 0) / warmTimes.length;
+
+const batchTexts = Array.from({ length: 256 }, (_, index) => `${index}: 分かることが奇跡だった。`);
+const batchStartedAt = performance.now();
+const batchResponse = await app.request("http://example.test/v1/transform/batch", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ texts: batchTexts, profile: ["okurigana-abbreviation"] }),
+}, { ASSETS: assets });
+const batchPayload = await batchResponse.json();
+const batchMs = performance.now() - batchStartedAt;
+if (batchResponse.status !== 200 || !Array.isArray(batchPayload.texts) || batchPayload.texts.length !== batchTexts.length) {
+  throw new Error("batch benchmark response validation failed");
+}
+
 console.log(JSON.stringify({
   characters: source.length,
   coldStatus: coldResponse.status,
@@ -43,4 +57,6 @@ console.log(JSON.stringify({
   coldMs: Number(coldMs.toFixed(2)),
   warmMs: warmTimes.map((value) => Number(value.toFixed(2))),
   averageWarmMs: Number(averageWarmMs.toFixed(2)),
+  batchItems: batchTexts.length,
+  batchMs: Number(batchMs.toFixed(2)),
 }, null, 2));

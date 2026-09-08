@@ -8,20 +8,33 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
-function run(command, args) {
+function run(command, args, { capture = false } = {}) {
   return new Promise((resolve, reject) => {
+    let output = "";
     const child = spawn(command, args, {
       cwd: projectRoot,
       env: process.env,
-      stdio: "inherit",
+      stdio: capture ? ["inherit", "pipe", "inherit"] : "inherit",
       shell: process.platform === "win32",
     });
+    if (capture) {
+      child.stdout.on("data", (chunk) => {
+        output += chunk;
+        process.stdout.write(chunk);
+      });
+    }
     child.once("error", reject);
     child.once("exit", (code, signal) => {
-      if (code === 0) resolve();
+      if (code === 0) resolve(capture ? output : undefined);
       else reject(new Error(`${command} ${args.join(" ")} exited with ${signal ?? code}`));
     });
   });
+}
+
+function getVersionId(output, workerName) {
+  const versionId = output.match(/Current Version ID:\s*([0-9a-f-]{36})/i)?.[1];
+  if (!versionId) throw new Error(`Could not read the ${workerName} Version ID from Wrangler output`);
+  return versionId;
 }
 
 async function gitRevision() {
@@ -45,10 +58,20 @@ await run(npmCommand, ["test"]);
 await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.text-transform.jsonc", "--dry-run"]);
 await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
 
-await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.text-transform.jsonc"]);
+const textDeployOutput = await run(
+  npxCommand,
+  ["wrangler", "deploy", "--config", "wrangler.text-transform.jsonc"],
+  { capture: true },
+);
+const textVersionId = getVersionId(textDeployOutput, "text-transform");
 const textSmoke = await runProductionSmoke({ checkDirect: true, checkGuards: false });
 
-await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc"]);
+const gatewayDeployOutput = await run(
+  npxCommand,
+  ["wrangler", "deploy", "--config", "wrangler.jsonc"],
+  { capture: true },
+);
+const gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
 const gatewaySmoke = await runProductionSmoke({ checkDirect: true });
 
 const recordedAt = new Date();
@@ -60,6 +83,8 @@ const releaseRecord = {
     timeStyle: "medium",
   }).format(recordedAt),
   gitRevision: await gitRevision(),
+  textVersionId,
+  gatewayVersionId,
   textSmoke,
   gatewaySmoke,
 };

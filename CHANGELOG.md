@@ -32,6 +32,8 @@ kinotch-api main
 - common clientの429即時retryを廃止し、Retry-Afterがある場合だけ待機、5xx／通信失敗はbackoff+jitterで再試行する契約へ変更。snapshot hash不一致もlocal fallback対象に追加。
 - batch transformでruntime planをbatch単位に再利用。
 - `deploy:production`とproduction smokeを追加し、生成物check、全テスト、dry-run、Text Worker、境界確認、Gateway、最終smoke、release metadata記録を単一手順化。
+- 本番反映: Text Worker Version ID `831340ee-5bc4-410d-9186-296f5d0e0e7a`、Gateway Version ID `e8d44730-b826-45b0-ad78-e8fdfc32836f`。JST `2026-09-08 13:46:36`のrelease metadataを`docs/releases/20260908T044636284Z.json`へ保存。
+- 本番境界検証でText Worker直URL HTTP 404、Gateway経由batch HTTP 200、invalid profile/query HTTP 400、oversized body HTTP 413を確認。Text route 40回の実測は200が29件、429が11件で、429に`Retry-After: 60`と`RateLimit-Limit: 30`を確認。
 
 ## 2026-09-07（本番後検証・Golden回帰）
 

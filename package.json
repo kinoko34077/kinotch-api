@@ -16,8 +16,8 @@
     "check:text-snapshot": "npm run check:text-rules && npm run check:text-metadata",
     "pretest": "npm run check:text-snapshot",
     "test": "node --test test/*.test.js",
-    "deploy": "wrangler deploy",
-    "deploy:text-transform": "npm run build:text-snapshot && wrangler deploy --config wrangler.text-transform.jsonc"
+    "deploy": "npm run deploy:production",
+    "deploy:text-transform": "npm run build:text-snapshot && npm run check:text-snapshot && npm test && wrangler deploy --config wrangler.text-transform.jsonc"
   },
   "dependencies": {
     "hono": "^4.9.7"

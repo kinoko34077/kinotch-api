@@ -24,7 +24,7 @@ export async function proxyToWorker(c, service, target, init = {}) {
   if (requestId) requestHeaders.set("X-Request-ID", requestId);
   const requestInit = { ...init, method, headers: requestHeaders };
   if (method !== "GET" && method !== "HEAD" && requestInit.body === undefined) {
-    requestInit.body = await c.req.raw.clone().arrayBuffer();
+    requestInit.body = c.get("requestBodyBytes") ?? await c.req.raw.clone().arrayBuffer();
   }
 
   if (!service || typeof service.fetch !== "function") {

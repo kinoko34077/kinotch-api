@@ -119,7 +119,7 @@ export async function validateRequest(c, policy) {
 
   let body;
   try {
-    const bytes = await c.req.raw.clone().arrayBuffer();
+    const bytes = c.get("requestBodyBytes") ?? await c.req.raw.clone().arrayBuffer();
     body = JSON.parse(new TextDecoder().decode(bytes));
   } catch {
     return errorResponse(c, 400, "invalid_json", "Request body must be valid JSON");
@@ -133,4 +133,3 @@ export async function validateRequest(c, policy) {
   if (Array.isArray(body?.texts)) c.set("batchCount", body.texts.length);
   return null;
 }
-

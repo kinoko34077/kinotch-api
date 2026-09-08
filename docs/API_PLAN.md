@@ -162,6 +162,13 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage G: `deploy:production`で生成→check→test→dry-run→Text→smoke→Gateway→smoke→記録を固定
 - [x] Stage H: query redaction、request/error構造化ログ、本文非ログ方針を追加
 - [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
-- [ ] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測して完了確定
+- [x] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測
 - [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
 - [ ] 歌詞Readerと`historical-kana`は編集完了後に着手
+
+本番確認（2026-09-08 JST、release metadata: `docs/releases/20260908T044636284Z.json`）：
+Text Worker Version ID `831340ee-5bc4-410d-9186-296f5d0e0e7a`、Gateway Version ID
+`e8d44730-b826-45b0-ad78-e8fdfc32836f`。Text Worker直URLはHTTP 404、Gateway経由は
+health／capabilities／CORS preflight／batchが200／204、invalid profileとdomain queryが400。
+Gatewayのlive body limitは413、Text routeのlive rate limitは30件目以降429、
+`Retry-After: 60`／`RateLimit-Limit: 30`を確認した。暖機後batch smokeは約101ms。
