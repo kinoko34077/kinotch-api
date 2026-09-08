@@ -14,6 +14,7 @@ function run(command, args) {
       cwd: projectRoot,
       env: process.env,
       stdio: "inherit",
+      shell: process.platform === "win32",
     });
     child.once("error", reject);
     child.once("exit", (code, signal) => {
