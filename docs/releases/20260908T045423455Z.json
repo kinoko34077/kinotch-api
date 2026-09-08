@@ -1,0 +1,108 @@
+{
+  "recordedAtUtc": "2026-09-08T04:54:23.455Z",
+  "recordedAtJst": "2026-09-08 13:54:23",
+  "gitRevision": "f4a4907de2ae006bef04e5cd8a38e9f61be19e39",
+  "textVersionId": "fdd927ef-0190-4c93-b993-431e8d1e0f33",
+  "gatewayVersionId": "44448464-304b-4a4e-88f7-002907473abd",
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 533.79
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 94.82,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "unknown"
+    },
+    "preflight": {
+      "status": 204
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 123.67,
+      "itemCount": 2
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "gatewaySmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 103.22
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 151.99,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "unknown"
+    },
+    "preflight": {
+      "status": 204
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 248.74,
+      "itemCount": 2
+    },
+    "invalidProfile": {
+      "status": 400
+    },
+    "invalidQuery": {
+      "status": 400
+    },
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "liveGuard": {
+    "oversized": {
+      "status": 413,
+      "requestId": "final-413"
+    },
+    "rateLimit": {
+      "counts": {
+        "200": 31,
+        "429": 1
+      },
+      "first429": {
+        "index": 31,
+        "requestId": "final-rate-31",
+        "retryAfter": "60",
+        "limit": "30",
+        "policy": "30;w=60"
+      }
+    }
+  }
+}

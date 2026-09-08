@@ -166,9 +166,9 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
 - [ ] 歌詞Readerと`historical-kana`は編集完了後に着手
 
-本番確認（2026-09-08 JST、release metadata: `docs/releases/20260908T044636284Z.json`）：
-Text Worker Version ID `831340ee-5bc4-410d-9186-296f5d0e0e7a`、Gateway Version ID
-`e8d44730-b826-45b0-ad78-e8fdfc32836f`。Text Worker直URLはHTTP 404、Gateway経由は
+本番確認（2026-09-08 JST、release metadata: `docs/releases/20260908T045423455Z.json`）：
+Text Worker Version ID `fdd927ef-0190-4c93-b993-431e8d1e0f33`、Gateway Version ID
+`44448464-304b-4a4e-88f7-002907473abd`。Text Worker直URLはHTTP 404、Gateway経由は
 health／capabilities／CORS preflight／batchが200／204、invalid profileとdomain queryが400。
-Gatewayのlive body limitは413、Text routeのlive rate limitは30件目以降429、
-`Retry-After: 60`／`RateLimit-Limit: 30`を確認した。暖機後batch smokeは約101ms。
+Gatewayのlive body limitは413、Text routeのlive rate limitは30件超で429、
+`Retry-After: 60`／`RateLimit-Limit: 30`を確認した。最終batch smokeは約249ms。

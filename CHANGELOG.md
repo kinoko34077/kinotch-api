@@ -34,6 +34,8 @@ kinotch-api main
 - `deploy:production`とproduction smokeを追加し、生成物check、全テスト、dry-run、Text Worker、境界確認、Gateway、最終smoke、release metadata記録を単一手順化。
 - 本番反映: Text Worker Version ID `831340ee-5bc4-410d-9186-296f5d0e0e7a`、Gateway Version ID `e8d44730-b826-45b0-ad78-e8fdfc32836f`。JST `2026-09-08 13:46:36`のrelease metadataを`docs/releases/20260908T044636284Z.json`へ保存。
 - 本番境界検証でText Worker直URL HTTP 404、Gateway経由batch HTTP 200、invalid profile/query HTTP 400、oversized body HTTP 413を確認。Text route 40回の実測は200が29件、429が11件で、429に`Retry-After: 60`と`RateLimit-Limit: 30`を確認。
+- body guard／release metadata補強版を再デプロイ。Text Worker Version ID `fdd927ef-0190-4c93-b993-431e8d1e0f33`、Gateway Version ID `44448464-304b-4a4e-88f7-002907473abd`。JST `2026-09-08 13:54:23`のrelease metadataを`docs/releases/20260908T045423455Z.json`へ保存。
+- 最終VersionでText Worker直URL HTTP 404、batch HTTP 200、invalid profile/query HTTP 400、oversized body HTTP 413を確認。Text route 32回の実測は200が31件、429が1件で、429に`Retry-After: 60`と`RateLimit-Limit: 30`を確認。
 
 ## 2026-09-07（本番後検証・Golden回帰）
 
