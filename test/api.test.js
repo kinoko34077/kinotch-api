@@ -164,6 +164,49 @@ test("gateway rejects oversized text bodies before the upstream service", async 
   assert.equal(upstreamCalls, 0);
 });
 
+test("gateway checks streamed bytes when Content-Length understates the payload", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request("http://example.test/v1/transform", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": "1",
+    },
+    body: JSON.stringify({ text: "x".repeat(600_000) }),
+  }, env({
+    TEXT_TRANSFORM: {
+      fetch() {
+        upstreamCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ text: "unexpected" }), { status: 200 }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "payload_too_large");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("gateway enforces the body limit for requests without Content-Length", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request("http://example.test/v1/transform", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "x".repeat(600_000) }),
+  }, env({
+    TEXT_TRANSFORM: {
+      fetch() {
+        upstreamCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ text: "unexpected" }), { status: 200 }));
+      },
+    },
+  }));
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "payload_too_large");
+  assert.equal(upstreamCalls, 0);
+});
+
 test("gateway enforces route rate limits and returns Retry-After", async () => {
   let upstreamCalls = 0;
   const response = await app.request("http://example.test/v1/time", {}, env({

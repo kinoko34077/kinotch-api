@@ -189,6 +189,26 @@ test("text transform client retries transient failures once", async () => {
   assert.equal(attempts, 2);
 });
 
+test("text transform client uses exponential backoff with jitter for transient failures", async () => {
+  let attempts = 0;
+  const delays = [];
+  const client = createTextTransformClient({
+    retryBaseDelayMs: 100,
+    randomImpl: () => 0.25,
+    sleepImpl: async (milliseconds) => delays.push(milliseconds),
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response(JSON.stringify({ error: "temporary" }), { status: 503 });
+      return new Response(JSON.stringify({ text: "學校" }), { status: 200 });
+    },
+  });
+
+  assert.deepEqual(await client.transform("学校", { profile: ["legacy-kanji"] }), {
+    text: "學校",
+  });
+  assert.deepEqual(delays, [125]);
+});
+
 test("text transform client does not retry a rate limit without Retry-After", async () => {
   let attempts = 0;
   const client = createTextTransformClient({

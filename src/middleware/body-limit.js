@@ -26,8 +26,6 @@ export async function enforceBodyLimit(c, policy) {
         `Request body exceeds the ${policy.bodyLimitBytes}-byte limit`,
       );
     }
-    c.set("payloadBytes", contentLength);
-    return null;
   }
 
   try {
@@ -47,7 +45,7 @@ export async function enforceBodyLimit(c, policy) {
       const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
       totalBytes += chunk.byteLength;
       if (totalBytes > policy.bodyLimitBytes) {
-        await reader.cancel();
+        reader.cancel().catch(() => {});
         c.set("payloadBytes", totalBytes);
         return errorResponse(
           c,
