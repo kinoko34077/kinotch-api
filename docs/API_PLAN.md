@@ -176,3 +176,10 @@ Gatewayのlive body limitは413、Text routeのlive rate limitは30件超で429�
 短時間51件のrate sampleは全て200だった。Rate Limitingはeventual consistencyのため、
 個々の短時間sampleで30件目の遮断を保証しないが、binding設定・単体テスト・直前Versionの
 429証跡を保持している。最終batch smokeは約154ms。
+
+最新release gate（2026-09-08 JST、release metadata: `docs/releases/20260908T052253147Z.json`）：
+Text Worker Version ID `c894aa8b-191f-497e-b967-ca25470c1517`、Gateway Version ID
+`74f7a77d-feab-4343-b6f4-dbf2ae87a494`、commit `8379b559e9ba9df62e70a9bd8c8d16c4207f8e73`。
+生成物check・全42テスト・両Worker dry-run・Text先行deploy・Service Binding反映待ちsmoke・
+Gateway deploy・最終smokeを通過した。最終smokeでdictionary metadata、直URL HTTP 404、
+Gateway batch HTTP 200、invalid profile/query HTTP 400、過大body HTTP 413、request IDを確認した。
