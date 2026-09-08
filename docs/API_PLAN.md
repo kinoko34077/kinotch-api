@@ -127,7 +127,7 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 
 ### 各段階の完了条件
 
-各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。CORS修正とAPI側rule hash公開まで完了したため、現時点の次アクションは**各クライアントのsnapshot hash照合**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
+各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。関門基盤のA〜Eは実装・テスト・本番smokeまで完了したため、次アクションは**`standby-display`／`txt-auto-replace`へのclient source・snapshot hash契約の反映**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
 
 進捗更新（2026-09-08 JST）：Gateway CORS修正版はVersion ID `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`、ruleSetHash／Ruby parse対応Text Workerの最新Versionは `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`で本番確認済み。公開hashは`31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef`。次の実装対象は各クライアントのsnapshot hash照合である。
 
@@ -200,3 +200,11 @@ Text Worker Version ID `a7b5f15f-c520-4515-8537-aae6772ae9fb`、Gateway Version 
 `5653f519-d3e9-4715-aaf3-c864cdf6e9f6`、commit `55aacf717a9556b6ddc6f5907dc3f4c79395a185`。
 fail-closed rate-limit、Service Binding反映待ちretry、dictionary metadata、過大body 413を含む
 生成物check・全43テスト・両Worker dry-run・Text先行deploy・Gateway deploy・最終smokeを通過した。
+
+責務境界ハードニング最終release（2026-09-08 JST、release metadata: `docs/releases/20260908T114058242Z.json`）：
+Text Worker Version ID `6c08d383-bc09-4175-adc3-4a83efec7e5f`、Gateway Version ID
+`d9c2a9a9-0497-44ed-bc13-4fbd13dac5c8`、commit／sourceRevision
+`b60a4c0cdd341ad733d24e37b3e714e4e0567044`。全60テスト、snapshot／browser生成物check、両Worker
+dry-run、Text先行deploy、source revision反映待ちsmoke、Gateway deploy、最終smokeを通過した。
+最終smokeはText直URL 404、CORS preflight 204、公開header、batch 200、invalid profile/query 400、
+body 413、request IDを確認した。

@@ -21,6 +21,16 @@ kinotch-api main
   └─ detemuhann-redirect: 変更せず稼働継続
 ```
 
+## 2026-09-08（責務境界ハードニング最終）
+
+- GatewayのCORS契約を補強し、POST preflightで`Content-Type`／`X-Request-ID`を許可。cross-origin responseでは`X-Request-ID`、`Retry-After`、`RateLimit-Limit`、`RateLimit-Policy`、`ETag`を参照可能にした。
+- Text Workerの`workers_dev`／`preview_urls`／route設定をdeploy前に検査し、production releaseのGit SHAを`TEXT_CORE_SOURCE_REVISION`として注入。Text／Gateway smokeでcapabilitiesの`sourceRevision`とrelease metadataの`gitRevision`を一致検証するようにした。
+- Text Worker deploy前に100% active Versionを保存し、Text smoke失敗時はGateway deployを行わず直前Versionへrollbackするrelease recoveryを追加。rollbackの成功・失敗を`docs/releases/`へ記録し、dry scenarioをテスト化した。
+- Service Bindingの反映遅延を考慮し、production smokeを最大12回・5秒間隔で再確認するようにした。初回ゲートの失敗記録は`docs/releases/20260908T113518296Z.json`に保存し、反映待ち不足とWindows rollback message分割を修正した。
+- 共通Text clientにattemptとRetry-After待機を含むoverall deadlineを追加。既定8秒、期限を超えるRetry-Afterは待機せず`deadline_exceeded`でfallback／エラーへ切り替える。browser IIFEも再生成した。
+- 最終release: Text Worker Version `6c08d383-bc09-4175-adc3-4a83efec7e5f`、Gateway Version `d9c2a9a9-0497-44ed-bc13-4fbd13dac5c8`、Git/source revision `b60a4c0cdd341ad733d24e37b3e714e4e0567044`、JST `2026-09-08 20:40:58`。metadataは`docs/releases/20260908T114058242Z.json`。
+- 最終smokeでsource revision一致、Text直URL HTTP 404、CORS preflight HTTP 204（許可header確認）、cross-origin公開header、Gateway batch HTTP 200、invalid profile/query HTTP 400、過大body HTTP 413、request IDを確認。全60テスト、snapshot／browser生成物check、両Worker dry-runを通過。
+
 ## 2026-09-08（Gateway関門・snapshot互換性・release gate）
 
 - Gatewayの全公開routeをroute Policy経由へ統一し、method guard、lat/lon/dateのdomain validation、JSON schema validation、POST body byte limitを追加。

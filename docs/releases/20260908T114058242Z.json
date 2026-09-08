@@ -1,0 +1,105 @@
+{
+  "recordedAtUtc": "2026-09-08T11:40:58.242Z",
+  "recordedAtJst": "2026-09-08 20:40:58",
+  "status": "succeeded",
+  "gitRevision": "b60a4c0cdd341ad733d24e37b3e714e4e0567044",
+  "sourceRevision": "b60a4c0cdd341ad733d24e37b3e714e4e0567044",
+  "textVersionId": "6c08d383-bc09-4175-adc3-4a83efec7e5f",
+  "gatewayVersionId": "d9c2a9a9-0497-44ed-bc13-4fbd13dac5c8",
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 121.42
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 161.7,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "b60a4c0cdd341ad733d24e37b3e714e4e0567044"
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 204.51,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "oversizedBody": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "gatewaySmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 83.36
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 33.2,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "b60a4c0cdd341ad733d24e37b3e714e4e0567044"
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 253.37,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": {
+      "status": 400
+    },
+    "invalidQuery": {
+      "status": 400
+    },
+    "oversizedBody": {
+      "status": 413
+    },
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  }
+}
