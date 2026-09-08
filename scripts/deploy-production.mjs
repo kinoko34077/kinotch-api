@@ -62,14 +62,17 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function runSmokeWithRetry(options, attempts = 3) {
+async function runSmokeWithRetry(options, attempts = 12) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       return await runProductionSmoke(options);
     } catch (error) {
       lastError = error;
-      if (attempt < attempts) await wait(2_000);
+      if (attempt < attempts) {
+        console.warn(`Production smoke attempt ${attempt}/${attempts} failed; retrying after propagation wait`);
+        await wait(5_000);
+      }
     }
   }
   throw lastError;
@@ -225,7 +228,7 @@ async function main() {
           previousVersionId: state.previousTextVersionId,
           rollback: async (versionId) => run(npxCommand, createRollbackArgs(
             versionId,
-            `automatic rollback after ${state.stage} failure`,
+            "automatic-text-smoke-failure-rollback",
           )),
         });
       } catch (rollbackError) {

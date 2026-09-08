@@ -74,6 +74,8 @@ metadata、JST時刻を`docs/releases/`へ記録する。手動で個別deploy�
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
 一致しなければならない。release gateは同じ40文字SHAをWranglerのruntime variableとしてText
 Workerへ渡し、smokeで不一致を検出した場合はGatewayをdeployしない。
+Service Bindingの反映には時間差があるため、release gateはText／Gateway smokeを最大12回、
+5秒間隔で再確認する。source revision不一致が解消しない場合は失敗として扱う。
 
 Text Workerはdeploy前に`wrangler deployments status --name text-transform --json`で100% active
 Versionを保存する。Text smokeが最後まで通らない場合、release gateはGateway deployへ進まず、保存した

@@ -1,0 +1,21 @@
+{
+  "recordedAtUtc": "2026-09-08T11:35:18.296Z",
+  "recordedAtJst": "2026-09-08 20:35:18",
+  "status": "failed",
+  "gitRevision": "6c82e17f252bc75260f14b37574cff62741bb25c",
+  "sourceRevision": "6c82e17f252bc75260f14b37574cff62741bb25c",
+  "previousTextVersionId": "a7b5f15f-c520-4515-8537-aae6772ae9fb",
+  "textVersionId": "30190cad-5eeb-4ace-90f8-4a22cd97c403",
+  "gatewayVersionId": null,
+  "textSmoke": null,
+  "gatewaySmoke": null,
+  "textRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "a7b5f15f-c520-4515-8537-aae6772ae9fb",
+    "error": "npx.cmd wrangler rollback a7b5f15f-c520-4515-8537-aae6772ae9fb --name text-transform --message automatic rollback after Text Worker smoke failure --config wrangler.text-transform.jsonc exited with 1"
+  },
+  "failure": {
+    "stage": "Text Worker smoke",
+    "message": "capabilities smoke failed with status 200: sourceRevision mismatch: expected 6c82e17f252bc75260f14b37574cff62741bb25c, received unknown"
+  }
+}
