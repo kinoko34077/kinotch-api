@@ -7,6 +7,7 @@ import { RULE_FILES, RULE_MANIFEST, RULE_SET_HASH } from "./text-core/rules.gene
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import {
   TEXT_CORE_DICTIONARY_HASH,
+  TEXT_CORE_DICTIONARY_VERSION,
   TEXT_CORE_METADATA_VERSION,
   TEXT_CORE_RULE_SET_VERSION,
   TEXT_CORE_SNAPSHOT_HASH,
@@ -44,6 +45,19 @@ const tokenizerProfiles = loaded.stages
 
 function errorResponse(c, status, code, message, details) {
   return c.json({ error: code, message, ...(details ? { details } : {}) }, status);
+}
+
+function responseMetadata(c) {
+  return {
+    engineVersion: ENGINE_VERSION,
+    metadataVersion: TEXT_CORE_METADATA_VERSION,
+    ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
+    ruleSetHash: RULE_SET_HASH,
+    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+    dictionaryVersion: TEXT_CORE_DICTIONARY_VERSION,
+    dictionaryHash: TEXT_CORE_DICTIONARY_HASH,
+    sourceRevision: c.env?.TEXT_CORE_SOURCE_REVISION ?? TEXT_CORE_SOURCE_REVISION,
+  };
 }
 
 function validateText(value) {
@@ -167,13 +181,7 @@ app.get("/health", (c) => c.json({
 
 app.get("/v1/capabilities", (c) => c.json({
   version: VERSION,
-  engineVersion: ENGINE_VERSION,
-  ruleSetHash: RULE_SET_HASH,
-  metadataVersion: TEXT_CORE_METADATA_VERSION,
-  ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
-  snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
-  dictionaryHash: TEXT_CORE_DICTIONARY_HASH,
-  sourceRevision: c.env?.TEXT_CORE_SOURCE_REVISION ?? TEXT_CORE_SOURCE_REVISION,
+  ...responseMetadata(c),
   profiles: supportedProfiles,
   tokenizerProfiles,
   tokenizerEnabled: true,
@@ -200,10 +208,7 @@ app.post("/v1/ruby/parse", async (c) => {
     const segments = TransformShared.parseRenderableRubySegments(body.text, markers);
     return c.json({
       segments,
-      engineVersion: ENGINE_VERSION,
-      ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
-      ruleSetHash: RULE_SET_HASH,
-      snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+      ...responseMetadata(c),
     });
   } catch {
     return errorResponse(c, 400, "invalid_markers", "markers must contain valid open and close strings");
@@ -234,10 +239,7 @@ app.post("/v1/transform", async (c) => {
   return c.json({
     text: transformed.text,
     profile: selection.stages.map((stage) => stage.id),
-    engineVersion: ENGINE_VERSION,
-    ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
-    ruleSetHash: RULE_SET_HASH,
-    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+    ...responseMetadata(c),
   });
 });
 
@@ -270,10 +272,7 @@ app.post("/v1/transform/batch", async (c) => {
   return c.json({
     texts: transformed,
     profile: selection.stages.map((stage) => stage.id),
-    engineVersion: ENGINE_VERSION,
-    ruleSetVersion: TEXT_CORE_RULE_SET_VERSION,
-    ruleSetHash: RULE_SET_HASH,
-    snapshotHash: TEXT_CORE_SNAPSHOT_HASH,
+    ...responseMetadata(c),
   });
 });
 

@@ -76,7 +76,7 @@
 
 - [x] core・rule・dictionary・Kuromojiを含むsnapshot生成コマンドを追加
 - [x] rule sourceから決定論的な`ruleSetHash`を生成し、API capabilities／transformレスポンスへ追加
-- [x] `engineVersion`、`ruleSetVersion`、`sourceRevision`をAPI capabilitiesへ追加
+- [x] `engineVersion`、`ruleSetVersion`、`dictionaryVersion`、`sourceRevision`をAPI capabilitiesへ追加
 - [x] transform／rubyレスポンスにもsnapshot／rule version情報を返す
 - [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
 - [x] 共通clientでAPIのruleSetHash不一致を検出し、fallbackへ切り替える契約を追加

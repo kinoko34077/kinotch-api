@@ -63,8 +63,11 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
     capabilities.status !== 200 ||
     !/^[a-f0-9]{64}$/.test(capabilities.payload?.ruleSetHash ?? "") ||
     !/^[a-f0-9]{64}$/.test(capabilities.payload?.snapshotHash ?? "") ||
+    !/^[a-f0-9]{64}$/.test(capabilities.payload?.dictionaryHash ?? "") ||
+    capabilities.payload?.engineVersion !== "0.2.0-phase2" ||
     capabilities.payload?.metadataVersion !== "snapshot-v1" ||
-    capabilities.payload?.ruleSetVersion !== "rules-v1"
+    capabilities.payload?.ruleSetVersion !== "rules-v1" ||
+    capabilities.payload?.dictionaryVersion !== "dictionary-v1"
   ) {
     throw new Error(`capabilities smoke failed with status ${capabilities.status}`);
   }
@@ -112,6 +115,17 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
     throw new Error(`query validation smoke failed with status ${invalidQuery.status}`);
   }
 
+  const oversizedBody = checkGuards
+    ? await request("/v1/transform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "x".repeat(600_000) }),
+    })
+    : null;
+  if (oversizedBody && (oversizedBody.status !== 413 || oversizedBody.payload?.error !== "payload_too_large")) {
+    throw new Error(`body limit smoke failed with status ${oversizedBody.status}`);
+  }
+
   if (
     health.requestId !== "smoke-health" ||
     capabilities.requestId !== "smoke-capabilities" ||
@@ -142,6 +156,7 @@ export async function runProductionSmoke({ checkDirect = false, checkGuards = tr
     batch: { status: batch.status, durationMs: batch.durationMs, itemCount: batch.payload.texts.length },
     invalidProfile: invalidProfile ? { status: invalidProfile.status } : null,
     invalidQuery: invalidQuery ? { status: invalidQuery.status } : null,
+    oversizedBody: oversizedBody ? { status: oversizedBody.status } : null,
     requestIds: {
       health: health.requestId,
       capabilities: capabilities.requestId,

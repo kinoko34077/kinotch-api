@@ -32,6 +32,7 @@ test("text transform health and capabilities are available", async () => {
   assert.match(payload.ruleSetHash, /^[a-f0-9]{64}$/);
   assert.equal(payload.metadataVersion, "snapshot-v1");
   assert.equal(payload.ruleSetVersion, "rules-v1");
+  assert.equal(payload.dictionaryVersion, "dictionary-v1");
   assert.match(payload.snapshotHash, /^[a-f0-9]{64}$/);
   assert.match(payload.dictionaryHash, /^[a-f0-9]{64}$/);
   assert.equal(payload.sourceRevision, "unknown");

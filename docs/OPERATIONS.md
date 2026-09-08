@@ -11,7 +11,7 @@
 5. 存在しないprofileがHTTP 400 `invalid_profile`になること。
 6. `X-Request-ID`がレスポンスにあり、指定したIDは下流にも引き継がれること。
 7. `/v1/capabilities`に`metadataVersion`、`ruleSetVersion`、`snapshotHash`、
-   `dictionaryHash`があること。
+   `dictionaryVersion`、`dictionaryHash`があること。
 
 ## 遅延の見方
 
@@ -29,6 +29,7 @@ validationを定義する。新しい公開routeは`registerRoute()`経由でPol
 - `transform/batch`: 1 MiB、30 requests/60 seconds/IP
 - その他の公開route: 60 requests/60 seconds/IP
 - 制限超過はGatewayでHTTP 429、`Retry-After`、`RateLimit-*`を返す。
+- `Content-Length`がない、または過少申告された場合もstream実測で上限超過をHTTP 413にする。
 - 本文の文字数・profileの意味検証は下流Text Workerにも残し、Gatewayのbyte制限と二重化する。
 - `text-transform`のworkers.dev URLは無効化し、GatewayのService Bindingだけを公開経路とする。
 - 下流Service Bindingの例外は502、下流503は503、上流応答の500は502、タイムアウトは504へ分類する。
@@ -44,7 +45,7 @@ Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認�
 - `ruleSetVersion`／`ruleSetHash`: rule dataの契約
 - `metadataVersion`／`snapshotHash`: engine、shared parser、dictionary、Kuromoji、rulesを
   含むfallback runtime全体の契約
-- `dictionaryHash`: Worker Assets辞書の契約
+- `dictionaryVersion`／`dictionaryHash`: Worker Assets辞書の契約
 - `sourceRevision`: release metadataで追跡するsource revision（ローカル生成時は`unknown`）
 
 `rules.generated.mjs`と`metadata.generated.mjs`は手編集せず、`npm run build:text-snapshot`
