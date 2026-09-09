@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readCanonicalTextClientSource } from "./generate-text-client.mjs";
 
 const EXPORT_NAMES = [
   "DEFAULT_TEXT_API_BASE_URL",
@@ -9,8 +9,7 @@ const EXPORT_NAMES = [
 ];
 
 export async function generateBrowserClientSource(projectRoot) {
-  const sourcePath = path.join(projectRoot, "src", "client", "text-transform.js");
-  const source = await readFile(sourcePath, "utf8");
+  const source = await readCanonicalTextClientSource(projectRoot);
   const body = source
     .replace(/^export\s+class\s+/gm, "class ")
     .replace(/^export\s+const\s+/gm, "const ")
@@ -32,4 +31,3 @@ export async function generateBrowserClientSource(projectRoot) {
     "",
   ].join("\n");
 }
-

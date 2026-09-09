@@ -9,6 +9,11 @@ clientはDOMやChrome APIに依存しない。
 環境では`npm run build:browser-client`の生成物を読み込む。IIFE生成物は手編集せず、
 `npm test`の前段でstaleチェックする。
 
+ESM consumer向けには同じ正本から`dist/text-transform.mjs`を生成する。
+`npm run build:text-client`で生成し、`npm run check:text-client`でstale状態を検査する。
+`standby-display`はその生成物を`npm run sync:text-client`で`vendor/text-transform.mjs`へ同期する。
+両方の生成物は手編集せず、変更は必ず`src/client/text-transform.js`へ戻す。
+
 ```js
 const textApi = createTextTransformClient({
   baseUrl: "https://api.kinotch.workers.dev",
