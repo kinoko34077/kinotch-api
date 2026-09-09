@@ -72,6 +72,30 @@ export function validateCapabilitiesPayload(payload, expectedSourceRevision) {
   return null;
 }
 
+export function validateClockPayload(payload) {
+  return Number.isFinite(Number(payload?.serverTime))
+    ? null
+    : "time payload has no finite serverTime";
+}
+
+export function validateWeatherPayload(payload) {
+  return Number.isFinite(Number(payload?.temp)) && typeof payload?.weather === "string" && payload.weather.length > 0
+    ? null
+    : "weather payload shape is invalid";
+}
+
+export function validateRokuyoPayload(payload) {
+  return Array.isArray(payload) && typeof payload[0]?.rokuyo === "string" && payload[0].rokuyo.length > 0
+    ? null
+    : "rokuyo payload shape is invalid";
+}
+
+export function validateMoonPayload(payload) {
+  return Array.isArray(payload?.result) && Number.isFinite(Number(payload.result[0]?.age))
+    ? null
+    : "moon payload shape is invalid";
+}
+
 export async function runProductionSmoke({
   checkDirect = false,
   checkGuards = true,
@@ -94,6 +118,30 @@ export async function runProductionSmoke({
   if (capabilitiesError) {
     throw new Error(`capabilities smoke failed with status ${capabilities.status}: ${capabilitiesError}`);
   }
+
+  const time = await request("/v1/time", {
+    headers: { "X-Request-ID": "smoke-time" },
+  }, fetchImpl);
+  const timeError = time.status === 200 ? validateClockPayload(time.payload) : "time request failed";
+  if (timeError) throw new Error(`time smoke failed with status ${time.status}: ${timeError}`);
+
+  const weather = await request("/v1/weather?lat=35.6812&lon=139.7671", {
+    headers: { "X-Request-ID": "smoke-weather" },
+  }, fetchImpl);
+  const weatherError = weather.status === 200 ? validateWeatherPayload(weather.payload) : "weather request failed";
+  if (weatherError) throw new Error(`weather smoke failed with status ${weather.status}: ${weatherError}`);
+
+  const rokuyo = await request("/v1/calendar/rokuyo?date=2026-09-09", {
+    headers: { "X-Request-ID": "smoke-rokuyo" },
+  }, fetchImpl);
+  const rokuyoError = rokuyo.status === 200 ? validateRokuyoPayload(rokuyo.payload) : "rokuyo request failed";
+  if (rokuyoError) throw new Error(`rokuyo smoke failed with status ${rokuyo.status}: ${rokuyoError}`);
+
+  const moon = await request("/v1/astronomy/moon?lat=35.6812&lon=139.7671", {
+    headers: { "X-Request-ID": "smoke-moon" },
+  }, fetchImpl);
+  const moonError = moon.status === 200 ? validateMoonPayload(moon.payload) : "moon request failed";
+  if (moonError) throw new Error(`moon smoke failed with status ${moon.status}: ${moonError}`);
 
   const preflight = await request("/v1/transform", {
     method: "OPTIONS",
@@ -163,7 +211,11 @@ export async function runProductionSmoke({
   if (
     health.requestId !== "smoke-health" ||
     capabilities.requestId !== "smoke-capabilities" ||
-    batch.requestId !== "smoke-batch"
+    batch.requestId !== "smoke-batch" ||
+    time.requestId !== "smoke-time" ||
+    weather.requestId !== "smoke-weather" ||
+    rokuyo.requestId !== "smoke-rokuyo" ||
+    moon.requestId !== "smoke-moon"
   ) {
     throw new Error("request ID propagation smoke failed");
   }
@@ -187,6 +239,12 @@ export async function runProductionSmoke({
       dictionaryHash: capabilities.payload.dictionaryHash,
       sourceRevision: capabilities.payload.sourceRevision,
     },
+    services: {
+      time: { status: time.status, durationMs: time.durationMs, serverTime: time.payload.serverTime },
+      weather: { status: weather.status, durationMs: weather.durationMs, temp: weather.payload.temp, weather: weather.payload.weather },
+      rokuyo: { status: rokuyo.status, durationMs: rokuyo.durationMs, rokuyo: rokuyo.payload[0].rokuyo },
+      moon: { status: moon.status, durationMs: moon.durationMs, age: moon.payload.result[0].age },
+    },
     preflight: { status: preflight.status, allowHeaders: preflight.allowHeaders },
     batch: { status: batch.status, durationMs: batch.durationMs, itemCount: batch.payload.texts.length },
     cors: { exposedHeaders: batch.exposeHeaders },
@@ -197,6 +255,10 @@ export async function runProductionSmoke({
       health: health.requestId,
       capabilities: capabilities.requestId,
       batch: batch.requestId,
+      time: time.requestId,
+      weather: weather.requestId,
+      rokuyo: rokuyo.requestId,
+      moon: moon.requestId,
     },
     directTextWorker,
   };

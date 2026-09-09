@@ -6,6 +6,7 @@ import JSON5 from "json5";
 import { assertPrivateTextWorkerConfig } from "./deploy-guards.mjs";
 import {
   createRollbackArgs,
+  createWorkerRollbackArgs,
   parseActiveVersionId,
   rollbackAfterSmokeFailure,
 } from "./release-recovery.mjs";
@@ -56,6 +57,43 @@ async function getActiveTextVersionId() {
     "wrangler.text-transform.jsonc",
   ], { capture: true });
   return parseActiveVersionId(output);
+}
+
+async function getActiveGatewayVersionId() {
+  const output = await run(npxCommand, [
+    "wrangler",
+    "deployments",
+    "status",
+    "--name",
+    "api",
+    "--json",
+    "--config",
+    "wrangler.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output, "Gateway");
+}
+
+async function assertCleanWorktree() {
+  const output = await run("git", [
+    "-c",
+    `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
+    "status",
+    "--porcelain",
+  ], { capture: true });
+  if (output.trim() !== "") {
+    throw new Error("Production release requires a clean Git worktree");
+  }
+}
+
+async function assertBuildDidNotChangeTrackedFiles() {
+  await run("git", [
+    "-c",
+    `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
+    "diff",
+    "--exit-code",
+    "--",
+  ]);
+  await assertCleanWorktree();
 }
 
 function wait(milliseconds) {
@@ -128,16 +166,22 @@ async function main() {
     stage: "source revision",
     gitRevision: "unknown",
     previousTextVersionId: null,
+    previousGatewayVersionId: null,
     textVersionId: null,
     gatewayVersionId: null,
     textSmoke: null,
     gatewaySmoke: null,
     textRecovery: null,
+    gatewayRecovery: null,
     textDeployed: false,
     textSmokeCompleted: false,
+    gatewayDeployed: false,
+    gatewaySmokeCompleted: false,
   };
 
   try {
+    state.stage = "clean worktree assertion";
+    await assertCleanWorktree();
     state.gitRevision = await gitRevision();
     if (!/^[a-f0-9]{40}$/.test(state.gitRevision)) {
       throw new Error("Could not determine a 40-character Git source revision for production release");
@@ -152,6 +196,8 @@ async function main() {
 
     state.stage = "build snapshot";
     await run(npmCommand, ["run", "build:text-snapshot"]);
+    state.stage = "generated file stability assertion";
+    await assertBuildDidNotChangeTrackedFiles();
     state.stage = "snapshot checks";
     await run(npmCommand, ["run", "check:text-snapshot"]);
     state.stage = "test suite";
@@ -171,6 +217,8 @@ async function main() {
 
     state.stage = "capture previous Text Worker version";
     state.previousTextVersionId = await getActiveTextVersionId();
+    state.stage = "capture previous Gateway version";
+    state.previousGatewayVersionId = await getActiveGatewayVersionId();
 
     state.stage = "Text Worker deploy";
     const textDeployOutput = await run(
@@ -202,6 +250,7 @@ async function main() {
       ["wrangler", "deploy", "--config", "wrangler.jsonc"],
       { capture: true },
     );
+    state.gatewayDeployed = true;
     state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
 
     state.stage = "Gateway smoke";
@@ -209,6 +258,7 @@ async function main() {
       checkDirect: true,
       expectedSourceRevision: state.gitRevision,
     });
+    state.gatewaySmokeCompleted = true;
 
     state.stage = "write successful release metadata";
     const releasePath = await writeReleaseRecord({
@@ -222,7 +272,26 @@ async function main() {
     });
     console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
   } catch (error) {
-    if (state.textDeployed && !state.textSmokeCompleted && state.previousTextVersionId && !state.textRecovery) {
+    if (state.gatewayDeployed && state.previousGatewayVersionId && !state.gatewayRecovery) {
+      try {
+        state.gatewayRecovery = await rollbackAfterSmokeFailure({
+          previousVersionId: state.previousGatewayVersionId,
+          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+            versionId,
+            "automatic-gateway-smoke-failure-rollback",
+            { workerName: "api", config: "wrangler.jsonc" },
+          )),
+        });
+      } catch (rollbackError) {
+        state.gatewayRecovery = {
+          status: "rollback_failed",
+          targetVersionId: state.previousGatewayVersionId,
+          error: rollbackError.message,
+        };
+      }
+    }
+
+    if (state.textDeployed && state.previousTextVersionId && !state.textRecovery) {
       try {
         state.textRecovery = await rollbackAfterSmokeFailure({
           previousVersionId: state.previousTextVersionId,
@@ -246,11 +315,13 @@ async function main() {
         gitRevision: state.gitRevision,
         sourceRevision: state.gitRevision,
         previousTextVersionId: state.previousTextVersionId,
+        previousGatewayVersionId: state.previousGatewayVersionId,
         textVersionId: state.textVersionId,
         gatewayVersionId: state.gatewayVersionId,
         textSmoke: state.textSmoke,
         gatewaySmoke: state.gatewaySmoke,
         textRecovery: state.textRecovery,
+        gatewayRecovery: state.gatewayRecovery,
         failure: {
           stage: state.stage,
           message: error.message,

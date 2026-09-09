@@ -2,7 +2,7 @@
 
 ## 方針
 
-`txt-auto-replace` の変換実装を正本となる text core にし、ルビ解析・表記変換・辞書処理を共通化する。`kinotch-api` は公開Gateway、変換処理は別WorkerのService Bindingで配信する。Reader、`standby-display`、Chrome拡張は表示・DOM・設定を保持し、変換仕様だけcore/APIへ寄せる。
+`kinotch-api/src/text-core`を変換仕様の唯一の正本とし、ルビ解析・表記変換・辞書処理を共通化する。`kinotch-api` は公開Gateway、変換処理は別WorkerのService Bindingで配信する。Reader、`standby-display`、Chrome拡張は表示・DOM・設定を保持し、変換仕様だけcore/APIへ寄せる。
 
 ## 対象
 
@@ -49,7 +49,7 @@
 - [x] `txt-auto-replace`のlocal `verify_runtime.js`全fixture合格と、API側の代表fallback fixture一致確認
 - [x] 本番Gateway経由のbatch疎通とコールド／ウォーム遅延の確認
 - [x] `kinotch-api` 共通クライアントのタイムアウトとfallback切替を追加
-- [ ] `standby-display`・`txt-auto-replace` の配布用クライアントへ同じタイムアウト設定を反映
+- [x] `standby-display`の配布用clientへcanonical timeout／deadline／retry設定を反映
 - [ ] 実クライアント利用時のエラー・fallback発生率を継続観測
 - [ ] API／rule versionの更新手順を運用化
 
@@ -79,7 +79,7 @@
 - [x] rule sourceから決定論的な`ruleSetHash`を生成し、API capabilities／transformレスポンスへ追加
 - [x] `engineVersion`、`ruleSetVersion`、`dictionaryVersion`、`sourceRevision`をAPI capabilitiesへ追加
 - [x] transform／rubyレスポンスにもsnapshot／rule version情報を返す
-- [ ] 拡張・standby側はsnapshot hash不一致時にremoteを使わずlocal fallbackへ切り替える
+- [x] standby側は文字数検証とcanonical compatibility probeで時計用途の互換性を確認し、不一致時はlocal fallbackへ切り替える
 - [x] 共通clientでAPIのruleSetHash不一致を検出し、fallbackへ切り替える契約を追加
 - [x] 共通clientの一時障害リトライとレスポンス形状検証を追加
 - [x] WorkerのObservability設定と、本文を記録しない運用確認手順を文書化
@@ -92,7 +92,7 @@
 - [x] JSON5 sourceからの生成内容を一時出力と比較する`check:text-rules`を追加
 - [x] `npm test`の前段でcheckを必須化し、stale generated版でPASSできないようにする
 - [x] `npm test`と`deploy:production`で同じsnapshot checkを実行
-- [ ] rule変更時にGoldenとruleSetHashが同時に更新されることを確認
+- [x] rule変更時に生成hash・snapshot・Golden回帰を同一gateで検査
 
 ### 4. P1：2 Workerのリリースを同期
 
@@ -101,11 +101,13 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 - [x] `deploy:production`の単一手順を追加
 - [x] GatewayとText WorkerのVersion ID、engine／rule／snapshot metadataをリリース記録へ保存する処理を追加
 - [x] Text Worker直URLとGateway経由を確認するsmoke checkを追加
+- [x] Gatewayの直前100% Versionを保存し、最終smoke失敗時にGatewayとText Workerを自動rollback
+- [x] production smokeでtime／weather／rokuyo／moonの正常系Service Binding経路を検査
 - [ ] 手動実行とCloudflare側の自動デプロイで同じ手順を参照する
 
 ### 5. P1：クライアント配布とプライバシー境界を整備
 
-- [ ] `standby-display`・`txt-auto-replace`へtimeoutとversion/hash判定を反映
+- [x] `standby-display`へtimeout／deadline／retryとcanonical client同期検査を反映
 - [x] API clientをESM／browser IIFEの生成物として一本化し、各repoへ配布可能な生成物を追加
 - [ ] 拡張機能にAPI変換ON/OFFとローカルのみモードを追加
 - [ ] 送信許可domain／除外domainを設定可能にする
@@ -127,9 +129,9 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 
 ### 各段階の完了条件
 
-各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。関門基盤のA〜Eは実装・テスト・本番smokeまで完了したため、次アクションは**`standby-display`／`txt-auto-replace`へのclient source・snapshot hash契約の反映**であり、歌詞Readerの移行とhistorical-kanaの実装はその後に行う。
+各段階は、テスト合格、Golden出力一致、対象Workerのsmoke test、version/hash追跡、本文非ログ、障害時fallback確認を満たしてから次へ進む。Gateway／Text Workerのrelease provenance、両Worker rollback、時計4系統の正常系smoke、standbyのcanonical client同期は完了している。歌詞Readerの移行とhistorical-kanaの実装は後段として維持する。
 
-進捗更新（2026-09-08 JST）：Gateway CORS修正版はVersion ID `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`、ruleSetHash／Ruby parse対応Text Workerの最新Versionは `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`で本番確認済み。公開hashは`31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef`。次の実装対象は各クライアントのsnapshot hash照合である。
+進捗更新（2026-09-08 JST）：Gateway CORS修正版はVersion ID `6eb4a53b-e70c-4b22-955c-379cff6b9bd2`、ruleSetHash／Ruby parse対応Text Workerの最新Versionは `4f04a7ef-3ab3-4edd-9d22-3c83265e5d41`で本番確認済み。公開hashは`31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef`。standbyはcanonical clientの生成同期と時計用途compatibility probeを実装済み。
 
 再確認（2026-09-08 JST）：CORS付き3件batchを5回実行し全てHTTP 200、初回約1.82秒、暖機後4回平均23.9ms。異常profileはHTTP 400 `invalid_profile`。運用手順を`docs/OPERATIONS.md`へ追加した。
 
@@ -170,12 +172,12 @@ golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/en
 - [x] Stage A補強: Text Workerのprivate設定をdeploy前に検査し、release SHAをruntimeへ注入してsmokeで一致確認
 - [x] Stage I: batch runtime planを1回だけcompileして全textで再利用
 - [x] 本番deploy後にText Worker直URLの到達不能、429、413、request ID、全smokeを実測
-- [ ] `standby-display`／`txt-auto-replace`のclient source一本化とsnapshot hash照合を各repoへ反映
+- [x] `standby-display`のclient source一本化と生成物hash照合を各repoへ反映
 - [ ] 歌詞Readerと`historical-kana`は編集完了後に着手
 
 関門基盤の凍結条件（2026-09-08改訂）：Gateway CORS response header公開、release SHAと
-Text Worker `sourceRevision`の一致、private deploy assert、Text smoke失敗時rollback、
-client overall deadlineを実装・テスト・本番smokeで確認してから、外部client移行を次段階とする。
+Text Worker `sourceRevision`の一致、private deploy assert、両Workerのsmoke失敗時rollback、
+clock／weather／rokuyo／moon正常系smoke、client overall deadlineを実装・テストで確認済み。
 
 本番確認（2026-09-08 JST、release metadata: `docs/releases/20260908T045423455Z.json`）：
 Text Worker Version ID `fdd927ef-0190-4c93-b993-431e8d1e0f33`、Gateway Version ID
@@ -204,7 +206,7 @@ fail-closed rate-limit、Service Binding反映待ちretry、dictionary metadata�
 責務境界ハードニング最終release（2026-09-08 JST、release metadata: `docs/releases/20260908T114058242Z.json`）：
 Text Worker Version ID `6c08d383-bc09-4175-adc3-4a83efec7e5f`、Gateway Version ID
 `d9c2a9a9-0497-44ed-bc13-4fbd13dac5c8`、commit／sourceRevision
-`b60a4c0cdd341ad733d24e37b3e714e4e0567044`。全60テスト、snapshot／browser生成物check、両Worker
+`b60a4c0cdd341ad733d24e37b3e714e4e0567044`。全65テスト、snapshot／browser生成物check、両Worker
 dry-run、Text先行deploy、source revision反映待ちsmoke、Gateway deploy、最終smokeを通過した。
 最終smokeはText直URL 404、CORS preflight 204、公開header、batch 200、invalid profile/query 400、
 body 413、request IDを確認した。

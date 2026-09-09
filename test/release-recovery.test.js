@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createRollbackArgs,
+  createWorkerRollbackArgs,
   parseActiveVersionId,
   rollbackAfterSmokeFailure,
 } from "../scripts/release-recovery.mjs";
@@ -49,6 +50,27 @@ test("rollback args target the saved Text Worker version", () => {
       "rollback after text smoke failure",
       "--config",
       "wrangler.text-transform.jsonc",
+    ],
+  );
+});
+
+test("rollback args support the Gateway worker config", () => {
+  assert.deepEqual(
+    createWorkerRollbackArgs(
+      "12345678-1234-1234-1234-123456789abc",
+      "rollback gateway after smoke failure",
+      { workerName: "api", config: "wrangler.jsonc" },
+    ),
+    [
+      "wrangler",
+      "rollback",
+      "12345678-1234-1234-1234-123456789abc",
+      "--name",
+      "api",
+      "--message",
+      "rollback gateway after smoke failure",
+      "--config",
+      "wrangler.jsonc",
     ],
   );
 });

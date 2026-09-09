@@ -67,8 +67,8 @@ npx wrangler tail text-transform --format json
 
 ## リリース後の確認
 
-`npm run deploy:production`を使い、private設定検査 → build／check／test／dry-run → Text Worker → 境界smoke →
-Gateway → 全smokeの順で実行する。成功時は両WorkerのVersion ID、commit、engine／rule／snapshot
+`npm run deploy:production`を使い、clean worktree検査 → build後のgenerated差分検査 → check／test／dry-run →
+Text Worker → 境界smoke → Gateway → 全smokeの順で実行する。成功時は両WorkerのVersion ID、commit、engine／rule／snapshot
 metadata、JST時刻を`docs/releases/`へ記録する。手動で個別deployする場合もこの順序を守る。
 
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
@@ -78,18 +78,19 @@ Service Bindingの反映には時間差があるため、release gateはText／G
 5秒間隔で再確認する。source revision不一致が解消しない場合は失敗として扱う。
 
 Text Workerはdeploy前に`wrangler deployments status --name text-transform --json`で100% active
-Versionを保存する。Text smokeが最後まで通らない場合、release gateはGateway deployへ進まず、保存した
-Versionへ自動rollbackし、`status: "failed"`、失敗stage、対象Version、rollback結果を
+Versionを保存する。Gatewayもdeploy前に100% active Versionを保存する。いずれかのsmokeが最後まで
+通らない場合、release gateは保存した両Worker Versionへ自動rollbackし、`status: "failed"`、失敗stage、対象Version、rollback結果を
 `docs/releases/`へ記録する。rollback自体も失敗した場合は`textRecovery.status`が
-`rollback_failed`になるため、Cloudflare dashboardのDeploymentsから保存済みVersionを手動で
-再度activeにする。
+`rollback_failed`または`gatewayRecovery.status`が`rollback_failed`になるため、Cloudflare dashboardの
+Deploymentsから保存済みVersionを手動で再度activeにする。
 
 rollbackのdry scenarioは`test/release-recovery.test.js`で、100% active Versionの抽出、引数生成、
 成功・失敗をCloudflareへ変更を加えず検証する。productionで意図的にsmokeを壊す試験は行わない。
 
-境界smokeでは、Text Workerの直URLがHTTP 200にならないことと、Gateway経由のcapabilitiesが
-正常であることを確認する。直URLが200なら、Gateway唯一入口の条件を満たしていないため公開
-完了と扱わない。
+境界smokeでは、Text Workerの直URLがHTTP 200にならないこと、Gateway経由のcapabilitiesが
+正常であることに加え、時計が利用する`/v1/time`、`/v1/weather`、`/v1/calendar/rokuyo`、
+`/v1/astronomy/moon`の正常系レスポンス形状を確認する。直URLが200なら、Gateway唯一入口の
+条件を満たしていないため公開完了と扱わない。
 
 ## 拡張機能の再読み込み
 

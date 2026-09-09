@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateCapabilitiesPayload } from "../scripts/smoke-production.mjs";
+import {
+  validateCapabilitiesPayload,
+  validateClockPayload,
+  validateMoonPayload,
+  validateRokuyoPayload,
+  validateWeatherPayload,
+} from "../scripts/smoke-production.mjs";
 
 function capabilities(sourceRevision) {
   return {
@@ -26,4 +32,15 @@ test("capabilities smoke rejects a source revision mismatch", () => {
 
 test("local smoke still accepts unknown source revision without an expectation", () => {
   assert.equal(validateCapabilitiesPayload(capabilities("unknown")), null);
+});
+
+test("production smoke validators cover all standby service payloads", () => {
+  assert.equal(validateClockPayload({ serverTime: 1_725_800_000_000 }), null);
+  assert.equal(validateWeatherPayload({ temp: 24.5, weather: "Clear" }), null);
+  assert.equal(validateRokuyoPayload([{ rokuyo: "友引" }]), null);
+  assert.equal(validateMoonPayload({ result: [{ age: 14.2 }] }), null);
+  assert.notEqual(validateClockPayload({ serverTime: "invalid" }), null);
+  assert.notEqual(validateWeatherPayload({ temp: null, weather: "" }), null);
+  assert.notEqual(validateRokuyoPayload([]), null);
+  assert.notEqual(validateMoonPayload({ result: [] }), null);
 });
