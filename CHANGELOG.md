@@ -4,6 +4,11 @@
 旧側Workerの凍結、GitHub管理、自動デプロイ設定までを時系列でまとめたものです。
 Cloudflareの時刻はUTC、括弧内に日本時間（JST、UTC+9）を記載します。
 
+## 2026-09-10（生成物のCI再現性修正）
+
+- `generate-kanji-fallback.mjs`の`localeCompare()`依存を廃止し、Unicode／UTF-16 code unit基準の決定的な比較へ変更。`dist/kanji-fallback.mjs`を再生成し、CI環境差によるstale判定を回帰テストで固定した。
+- `npm audit`を確認。production依存（`--omit=dev --omit=optional`）は脆弱性0件。検出された3件のhighは`wrangler → miniflare → sharp`の開発依存チェーンで、現時点の自動修正はWranglerのbreaking変更を伴うため適用していない。
+
 ## 現在の構成
 
 ```text
