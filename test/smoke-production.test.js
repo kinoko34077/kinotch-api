@@ -3,10 +3,13 @@ import assert from "node:assert/strict";
 import {
   validateCapabilitiesPayload,
   validateClockPayload,
+  validateCompressionPayload,
   validateMoonPayload,
   validateRokuyoPayload,
   validateWeatherPayload,
+  runCompressionSmoke,
 } from "../scripts/smoke-production.mjs";
+import { buildCompressionResponse } from "../src/semantic-compression/contract.js";
 
 function capabilities(sourceRevision) {
   return {
@@ -43,4 +46,85 @@ test("production smoke validators cover all standby service payloads", () => {
   assert.notEqual(validateWeatherPayload({ temp: null, weather: "" }), null);
   assert.notEqual(validateRokuyoPayload([]), null);
   assert.notEqual(validateMoonPayload({ result: [] }), null);
+});
+
+test("compression smoke validator checks fixed provenance and exact text hashes", async () => {
+  const inputText = "A😀";
+  const payload = {
+    compressed_text: "題名\n- 内容",
+    profile: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1",
+    model: "gemini-2.5-flash-lite",
+    input_chars: 2,
+    output_chars: 7,
+    input_sha256: "".padStart(64, "0"),
+    output_sha256: "".padStart(64, "0"),
+    warnings: [],
+  };
+
+  const invalid = await validateCompressionPayload(payload, inputText);
+  assert.match(invalid ?? "", /input_sha256/i);
+});
+
+test("compression smoke calls the Gateway with a caller token and returns safe provenance", async () => {
+  const inputText = "事実: 観測値は10。推測: 原因はZの可能性がある。条件: AならB。";
+  let received;
+  const compressedPayload = await buildCompressionResponse({
+    compressedText: "要点",
+    inputText,
+    warnings: [],
+  });
+  const result = await runCompressionSmoke({
+    token: "smoke-token",
+    path: "/v1/compress",
+    fetchImpl: async (input, init) => {
+      received = { input, init };
+      return new Response(JSON.stringify(compressedPayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "X-Request-ID": "smoke-compression" },
+      });
+    },
+  });
+
+  assert.match(received.input, /\/v1\/compress$/);
+  assert.equal(new Headers(received.init.headers).get("Authorization"), "Bearer smoke-token");
+  assert.equal(JSON.parse(received.init.body).profile, "semantic-dense-v1");
+  assert.equal(result.status, 200);
+  assert.equal(result.model, "gemini-2.5-flash-lite");
+  assert.equal(result.promptVersion, "semantic-dense-v1");
+  assert.equal(result.requestId, "smoke-compression");
+});
+
+test("compression smoke refuses to run without an explicit caller token", async () => {
+  await assert.rejects(
+    () => runCompressionSmoke({ fetchImpl: async () => { throw new Error("network must not be called"); } }),
+    /COMPRESSION_SMOKE_TOKEN/,
+  );
+});
+
+test("compression smoke validator rejects changed model, prompt, counts, hashes, and warnings", async () => {
+  const base = {
+    compressed_text: "題名\n- 内容",
+    profile: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1",
+    model: "gemini-2.5-flash-lite",
+    input_chars: 2,
+    output_chars: 7,
+    input_sha256: "a".repeat(64),
+    output_sha256: "b".repeat(64),
+    warnings: [],
+  };
+  const cases = [
+    [{ ...base, model: "other" }, /model/i],
+    [{ ...base, prompt_version: "other" }, /prompt/i],
+    [{ ...base, input_chars: 99 }, /input_chars/i],
+    [{ ...base, output_chars: 99 }, /output_chars/i],
+    [{ ...base, input_sha256: "A".repeat(64) }, /input_sha256/i],
+    [{ ...base, output_sha256: "not-a-hash" }, /output_sha256/i],
+    [{ ...base, warnings: "warning" }, /warnings/i],
+  ];
+  for (const [payload, pattern] of cases) {
+    const error = await validateCompressionPayload(payload, "入力");
+    assert.match(error ?? "", pattern);
+  }
 });

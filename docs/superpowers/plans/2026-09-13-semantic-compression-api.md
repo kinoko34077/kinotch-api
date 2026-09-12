@@ -462,7 +462,7 @@ git push origin main
 - Produces `validateCompressionPayload(payload, inputText)` returning `null` or a safe validation message.
 - Produces `runCompressionSmoke({ fetchImpl, token, path })` returning status/duration/provenance summary or throwing a safe smoke error.
 
-- [ ] **Step 1: Write failing smoke and golden tests**
+- [x] **Step 1: Write failing smoke and golden tests**
 
 Add a validator test requiring `compressed_text`, fixed profile/version/model, exact Unicode input/output counts, 64-character lowercase hashes, and an array `warnings`. Reject wrong model, prompt version, counts, hash shape, and non-array warnings.
 
@@ -482,25 +482,25 @@ The test must assert provider request/response contract and provenance, not a li
 
 Add a live test that is skipped unless `RUN_GEMINI_LIVE_TEST === "true"` and `GEMINI_API_KEY` is present. It must call the Worker with the real provider, never print the key or full text, and assert only the response contract.
 
-- [ ] **Step 2: Run the focused tests to verify they fail**
+- [x] **Step 2: Run the focused tests to verify they fail**
 
 Run: `node --test test/smoke-production.test.js test/semantic-compression-golden.test.js test/semantic-compression-live.test.js`
 
 Expected: FAIL for missing validator/smoke exports and missing fixture behavior; the live test is allowed to be skipped only after its test body is implemented.
 
-- [ ] **Step 3: Implement smoke and test script wiring**
+- [x] **Step 3: Implement smoke and test script wiring**
 
 Add a compression smoke request to the existing production smoke module that sends `Authorization: Bearer ${token}` only when explicitly supplied. In the full production smoke path, require a caller token before the Compression smoke stage; do not silently omit a required production Compression check. Record only status, duration, counts, model, prompt version, and hashes in in-memory return data; do not log bodies or secrets.
 
 Add `"test:compression:live": "node --test test/semantic-compression-live.test.js"` to `package.json`. The test file itself must enforce both the explicit flag and credential presence, so the normal suite cannot incur an external call.
 
-- [ ] **Step 4: Run focused tests to verify they pass**
+- [x] **Step 4: Run focused tests to verify they pass**
 
 Run: `node --test test/smoke-production.test.js test/semantic-compression-golden.test.js test/semantic-compression-live.test.js`
 
 Expected: PASS with the live test skipped when no explicit flag is set.
 
-- [ ] **Step 5: Commit and push smoke/test boundaries**
+- [x] **Step 5: Commit and push smoke/test boundaries**
 
 ```powershell
 git add scripts/smoke-production.mjs test/smoke-production.test.js test/semantic-compression-golden.test.js test/semantic-compression-live.test.js package.json

@@ -1,4 +1,11 @@
 import { performance } from "node:perf_hooks";
+import {
+  COMPRESSION_MODEL,
+  COMPRESSION_PROFILE,
+  COMPRESSION_PROMPT_VERSION,
+  countUnicodeCodePoints,
+  sha256Hex,
+} from "../src/semantic-compression/contract.js";
 
 const API_BASE_URL = (process.env.API_BASE_URL ?? "https://api.kinotch.workers.dev").replace(/\/+$/, "");
 const TEXT_DIRECT_URL = (process.env.TEXT_DIRECT_URL ?? "https://text-transform.kinotch.workers.dev").replace(/\/+$/, "");
@@ -96,9 +103,73 @@ export function validateMoonPayload(payload) {
     : "moon payload shape is invalid";
 }
 
+export async function validateCompressionPayload(payload, inputText) {
+  if (typeof inputText !== "string") return "input text is invalid";
+  if (typeof payload?.compressed_text !== "string" || payload.compressed_text.trim() === "") {
+    return "compressed_text is missing or empty";
+  }
+  if (payload.profile !== COMPRESSION_PROFILE) return "compression profile is invalid";
+  if (payload.prompt_version !== COMPRESSION_PROMPT_VERSION) return "compression prompt version is invalid";
+  if (payload.model !== COMPRESSION_MODEL) return "compression model is invalid";
+  if (payload.input_chars !== countUnicodeCodePoints(inputText)) return "input_chars is invalid";
+  if (payload.output_chars !== countUnicodeCodePoints(payload.compressed_text)) return "output_chars is invalid";
+  if (!/^[a-f0-9]{64}$/.test(payload.input_sha256 ?? "")) return "input_sha256 is invalid";
+  if (!/^[a-f0-9]{64}$/.test(payload.output_sha256 ?? "")) return "output_sha256 is invalid";
+  if (!Array.isArray(payload.warnings)) return "warnings must be an array";
+
+  const [inputHash, outputHash] = await Promise.all([
+    sha256Hex(inputText),
+    sha256Hex(payload.compressed_text),
+  ]);
+  if (payload.input_sha256 !== inputHash) return "input_sha256 does not match input text";
+  if (payload.output_sha256 !== outputHash) return "output_sha256 does not match compressed text";
+  return null;
+}
+
+export async function runCompressionSmoke({
+  fetchImpl = globalThis.fetch,
+  token,
+  path = "/v1/compress",
+} = {}) {
+  if (typeof token !== "string" || token.length === 0) {
+    throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
+  }
+
+  const inputText = "事実: 観測値は10。推測: 原因はZの可能性がある。条件: AならB。";
+  const result = await request(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "X-Request-ID": "smoke-compression",
+    },
+    body: JSON.stringify({ text: inputText, profile: COMPRESSION_PROFILE }),
+  }, fetchImpl);
+  const validationError = result.status === 200
+    ? await validateCompressionPayload(result.payload, inputText)
+    : "compression request failed";
+  if (validationError) {
+    throw new Error(`compression smoke failed with status ${result.status}: ${validationError}`);
+  }
+
+  return {
+    status: result.status,
+    durationMs: result.durationMs,
+    requestId: result.requestId,
+    inputChars: result.payload.input_chars,
+    outputChars: result.payload.output_chars,
+    model: result.payload.model,
+    promptVersion: result.payload.prompt_version,
+    inputSha256: result.payload.input_sha256,
+    outputSha256: result.payload.output_sha256,
+  };
+}
+
 export async function runProductionSmoke({
   checkDirect = false,
   checkGuards = true,
+  checkCompression = true,
+  compressionToken,
   expectedSourceRevision,
   fetchImpl = globalThis.fetch,
 } = {}) {
@@ -148,12 +219,13 @@ export async function runProductionSmoke({
     headers: {
       Origin: "https://smoke.invalid",
       "Access-Control-Request-Method": "POST",
-      "Access-Control-Request-Headers": "content-type, x-request-id",
+      "Access-Control-Request-Headers": "authorization, content-type, x-request-id",
     },
   }, fetchImpl);
   if (
     preflight.status !== 204 ||
     !/content-type/i.test(preflight.allowHeaders ?? "") ||
+    !/authorization/i.test(preflight.allowHeaders ?? "") ||
     !/x-request-id/i.test(preflight.allowHeaders ?? "")
   ) {
     throw new Error(`CORS preflight smoke failed with status ${preflight.status}`);
@@ -180,6 +252,10 @@ export async function runProductionSmoke({
       throw new Error(`CORS expose-header smoke failed for ${header}`);
     }
   }
+
+  const compression = checkCompression
+    ? await runCompressionSmoke({ fetchImpl, token: compressionToken })
+    : null;
 
   const invalidProfile = checkGuards
     ? await request("/v1/transform", {
@@ -219,6 +295,9 @@ export async function runProductionSmoke({
   ) {
     throw new Error("request ID propagation smoke failed");
   }
+  if (compression && compression.requestId !== "smoke-compression") {
+    throw new Error("compression request ID propagation smoke failed");
+  }
 
   const directTextWorker = checkDirect ? await checkDirectTextWorker({ fetchImpl }) : null;
   if (directTextWorker?.reachable) {
@@ -251,6 +330,7 @@ export async function runProductionSmoke({
     invalidProfile: invalidProfile ? { status: invalidProfile.status } : null,
     invalidQuery: invalidQuery ? { status: invalidQuery.status } : null,
     oversizedBody: oversizedBody ? { status: oversizedBody.status } : null,
+    compression,
     requestIds: {
       health: health.requestId,
       capabilities: capabilities.requestId,
@@ -265,6 +345,9 @@ export async function runProductionSmoke({
 }
 
 if (process.argv[1]?.endsWith("smoke-production.mjs")) {
-  const result = await runProductionSmoke({ checkDirect: process.env.CHECK_DIRECT_TEXT_WORKER === "true" });
+  const result = await runProductionSmoke({
+    checkDirect: process.env.CHECK_DIRECT_TEXT_WORKER === "true",
+    compressionToken: process.env.COMPRESSION_SMOKE_TOKEN,
+  });
   console.log(JSON.stringify(result, null, 2));
 }
