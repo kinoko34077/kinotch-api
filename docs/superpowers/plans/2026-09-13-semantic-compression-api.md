@@ -547,7 +547,7 @@ compressionSmokeCompleted: false,
 
 Add config assertion using `assertPrivateWorkerConfig` for `wrangler.semantic-compression.jsonc`. Add the Compression dry-run before Gateway dry-run. Capture the active Compression version with `wrangler deployments status --name semantic-compression --config wrangler.semantic-compression.jsonc --json` and the existing 100%-active parser.
 
-Deploy Text, smoke Text, deploy Compression, run Compression smoke through the Gateway using `COMPRESSION_SMOKE_TOKEN`, then deploy Gateway and run the complete smoke. Use no retry for Gemini itself; retain the existing propagation retry around post-deploy smoke. If the token is missing, reject before deployments so the script cannot produce a false successful release.
+Deploy Text and smoke it, deploy Compression, deploy Gateway, then run Compression smoke through the new Gateway path using `COMPRESSION_SMOKE_TOKEN`, followed by the complete Gateway smoke. The Gateway must be deployed before this smoke because the new Service Binding route does not exist in the previous Gateway version. Use no retry for Gemini itself; retain the existing propagation retry around post-deploy smoke. If the token is missing, reject before deployments so the script cannot produce a false successful release.
 
 On any failure after a Worker deploy, rollback Gateway if deployed, Compression if deployed, and Text if deployed, each to its captured 100%-active version. Use safe single-token rollback messages or the existing argument helper to avoid Windows shell splitting. Record all three recovery results.
 
@@ -644,13 +644,13 @@ git push origin main
 - Modify: `docs/superpowers/plans/2026-09-13-semantic-compression-api.md`
 - Do not modify: `CHANGELOG.md` unless the repository's current release convention is verified to require an entry for this API addition.
 
-- [ ] **Step 1: Run generated checks and the full regression suite**
+- [x] **Step 1: Run generated checks and the full regression suite**
 
 Run: `npm test`
 
 Expected: all existing 67 tests plus all new non-live tests pass; generated Text artifacts remain current; live Gemini test is not invoked.
 
-- [ ] **Step 2: Run both Worker and Gateway dry-runs**
+- [x] **Step 2: Run both Worker and Gateway dry-runs**
 
 Run: `npx wrangler deploy --config wrangler.text-transform.jsonc --dry-run`
 
@@ -664,7 +664,7 @@ Run: `npx wrangler deploy --config wrangler.jsonc --dry-run`
 
 Expected: PASS with all existing and Compression bindings.
 
-- [ ] **Step 3: Run static privacy and scope checks**
+- [x] **Step 3: Run static privacy and scope checks**
 
 Run: `rg -n "GEMINI_API_KEY|COMPRESSION_API_TOKEN|COMPRESSION_SMOKE_TOKEN|Authorization|system_instruction|console\\.(log|error)" src scripts test docs README.md wrangler*.jsonc`
 
@@ -682,7 +682,9 @@ npm run test:compression:live
 
 Expected: PASS only with a valid external credential; otherwise leave it unexecuted and report it as not verified. Do not place the key in command history, files, logs, or final output.
 
-- [ ] **Step 5: Review final status and complete the plan**
+- [x] **Step 5: Review final status and complete the plan**
+
+Step 4 remains intentionally unchecked: no `RUN_GEMINI_LIVE_TEST` flag or `GEMINI_API_KEY` was supplied, so the live provider call and production deploy/smoke were not executed.
 
 Run: `git status --short --branch` and `git log -8 --oneline --decorate`.
 
