@@ -67,3 +67,11 @@ registerRoute(apiRoutes, "POST", "/v1/transform/batch", routePolicies.transformB
     headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
   }),
 );
+
+registerRoute(apiRoutes, "POST", "/v1/compress", routePolicies.compression, (c) =>
+  proxyToWorker(c, c.env.COMPRESSION, "/v1/compress", {
+    method: "POST",
+    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+    timeoutMs: routePolicies.compression.upstreamTimeoutMs,
+  }),
+);

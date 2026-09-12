@@ -259,7 +259,7 @@ git push origin main
 - Produces `validateCompressionBody(body)` returning `null` or `{ status, code, message, details }`.
 - Produces `routePolicies.compression` with id `semantic-compression`, path `/v1/compress`, method `POST`, 8 MiB body limit, 5/60 `COMPRESSION_RATE_LIMITER`, authentication hook, and 50,000 ms upstream timeout.
 
-- [ ] **Step 1: Write failing Gateway tests**
+- [x] **Step 1: Write failing Gateway tests**
 
 Add tests for auth, validation, dedicated binding, forwarding, error passthrough, body/rate limits, and request ID:
 
@@ -312,13 +312,13 @@ test("authenticated compression request forwards only the fixed public body", as
 
 Add cases for empty text, wrong profile, non-string text, unknown fields, malformed JSON, over-8-MiB bytes before upstream, unavailable dedicated rate limiter, and upstream 429/502/504 mapping. Add a CORS preflight assertion that includes `authorization` while preserving existing POST preflight behavior.
 
-- [ ] **Step 2: Run the Gateway tests to verify they fail**
+- [x] **Step 2: Run the Gateway tests to verify they fail**
 
 Run: `node --test test/compression-api.test.js test/api.test.js`
 
 Expected: FAIL because the auth hook, policy, binding, and route are absent.
 
-- [ ] **Step 3: Implement timing-safe authentication and compression validation**
+- [x] **Step 3: Implement timing-safe authentication and compression validation**
 
 In `authentication.js`, accept only `Authorization: Bearer <non-whitespace-token>`. Hash the presented and configured token using SHA-256 and compare the fixed 32-byte digests with a loop that accumulates differences. Return 401 for malformed/missing/wrong credentials and 503 when the configured secret is absent or cryptography is unavailable. Do not set context values containing the token.
 
@@ -326,7 +326,7 @@ In `guard.js`, run `policy.authenticate` before rate limiting so unauthorized ca
 
 In `validation.js`, make Compression validation strict: plain JSON object, exactly `text` and `profile`, `text` string, non-empty, at most 1,000,000 code points, and exact profile. Use `invalid_body`, `empty_text`, and `invalid_profile` codes from the approved contract.
 
-- [ ] **Step 4: Register the dedicated Policy and route**
+- [x] **Step 4: Register the dedicated Policy and route**
 
 Add a frozen policy:
 
@@ -346,7 +346,7 @@ compression: Object.freeze({
 
 Register `/v1/compress` with `registerRoute` and call `proxyToWorker` using `c.env.COMPRESSION`, `POST`, JSON content type, and `routePolicies.compression.upstreamTimeoutMs`. Do not forward the Authorization header. Add `Authorization` to the CORS allowed headers list while retaining all existing allowed and exposed headers.
 
-- [ ] **Step 5: Add the Gateway binding and rate limiter configuration**
+- [x] **Step 5: Add the Gateway binding and rate limiter configuration**
 
 In `wrangler.jsonc`, preserve all four existing services and add:
 
@@ -366,13 +366,13 @@ Preserve both existing rate limiters and add:
 
 Do not add token values or Gemini values to `vars`.
 
-- [ ] **Step 6: Run focused Gateway and regression tests**
+- [x] **Step 6: Run focused Gateway and regression tests**
 
 Run: `node --test test/compression-api.test.js test/api.test.js`
 
 Expected: PASS; existing route assertions remain unchanged.
 
-- [ ] **Step 7: Commit and push the Gateway boundary**
+- [x] **Step 7: Commit and push the Gateway boundary**
 
 ```powershell
 git add src/middleware/authentication.js src/middleware/guard.js src/middleware/validation.js src/policies/routes.js src/routes/api.js src/middleware/cors.js wrangler.jsonc test/compression-api.test.js test/api.test.js

@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 export const corsMiddleware = cors({
   origin: "*",
   allowMethods: ["GET", "POST", "OPTIONS"],
-  allowHeaders: ["Content-Type", "X-Request-ID"],
+  allowHeaders: ["Authorization", "Content-Type", "X-Request-ID"],
   exposeHeaders: [
     "X-Request-ID",
     "Retry-After",

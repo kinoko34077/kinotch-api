@@ -16,6 +16,11 @@ export function policyMiddleware(policy) {
   return async (c, next) => {
     if (c.req.method !== policy.method) return methodError(c, policy.method);
 
+    if (typeof policy.authenticate === "function") {
+      const authenticationError = await policy.authenticate(c);
+      if (authenticationError) return authenticationError;
+    }
+
     const rateLimitError = await enforceRateLimit(c, policy);
     if (rateLimitError) return rateLimitError;
 
@@ -41,4 +46,3 @@ export function registerRoute(router, method, path, policy, handler) {
   });
   router[normalizedMethod](path, policyMiddleware(policy), handler);
 }
-

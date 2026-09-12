@@ -9,7 +9,8 @@
     { "binding": "CLOCK_SERVER", "service": "clock-server" },
     { "binding": "WEATHER_PROXY", "service": "weather-proxy" },
     { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" },
-    { "binding": "TEXT_TRANSFORM", "service": "text-transform" }
+    { "binding": "TEXT_TRANSFORM", "service": "text-transform" },
+    { "binding": "COMPRESSION", "service": "semantic-compression" }
   ],
   "ratelimits": [
     {
@@ -21,6 +22,11 @@
       "name": "TEXT_RATE_LIMITER",
       "namespace_id": "26090802",
       "simple": { "limit": 30, "period": 60 }
+    },
+    {
+      "name": "COMPRESSION_RATE_LIMITER",
+      "namespace_id": "26090803",
+      "simple": { "limit": 5, "period": 60 }
     }
   ],
   "vars": {

@@ -2,9 +2,11 @@ import {
   validateBatchBody,
   validateCoordinatesQuery,
   validateDateQuery,
+  validateCompressionBody,
   validateRubyBody,
   validateTransformBody,
 } from "../middleware/validation.js";
+import { authenticateCompression } from "../middleware/authentication.js";
 
 const GENERAL_RATE_LIMIT = Object.freeze({
   binding: "GENERAL_RATE_LIMITER",
@@ -84,5 +86,19 @@ export const routePolicies = Object.freeze({
     rateLimit: TEXT_RATE_LIMIT,
     validateBody: validateBatchBody,
   }),
+  compression: Object.freeze({
+    id: "semantic-compression",
+    path: "/v1/compress",
+    method: "POST",
+    bodyType: "json",
+    bodyLimitBytes: 8 * 1024 * 1024,
+    rateLimit: Object.freeze({
+      binding: "COMPRESSION_RATE_LIMITER",
+      limit: 5,
+      period: 60,
+    }),
+    authenticate: authenticateCompression,
+    validateBody: validateCompressionBody,
+    upstreamTimeoutMs: 50_000,
+  }),
 });
-

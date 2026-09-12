@@ -1,3 +1,9 @@
+import {
+  COMPRESSION_PROFILE,
+  countUnicodeCodePoints,
+  MAX_COMPRESSION_TEXT_LENGTH,
+} from "../semantic-compression/contract.js";
+
 function errorResponse(c, status, code, message, details) {
   const requestId = c.get("requestId");
   return c.json({
@@ -72,6 +78,22 @@ export function validateRubyBody(body) {
       (typeof body.markers[key] !== "string" || body.markers[key].trim() === "" || body.markers[key].length > 32)) {
       return invalid("invalid_markers", "markers.open and markers.close must be non-empty strings of at most 32 characters");
     }
+  }
+  return null;
+}
+
+const COMPRESSION_REQUEST_FIELDS = new Set(["text", "profile"]);
+
+export function validateCompressionBody(body) {
+  if (!isPlainObject(body)) return invalid("invalid_body", "Request body must be a JSON object");
+
+  const hasUnsupportedField = Object.keys(body).some((key) => !COMPRESSION_REQUEST_FIELDS.has(key));
+  if (hasUnsupportedField) return invalid("invalid_body", "Request body contains unsupported fields");
+  if (typeof body.text !== "string") return invalid("invalid_body", "text must be a string");
+  if (body.text.length === 0) return invalid("empty_text", "text must not be empty");
+  if (body.profile !== COMPRESSION_PROFILE) return invalid("invalid_profile", "profile is not supported");
+  if (countUnicodeCodePoints(body.text) > MAX_COMPRESSION_TEXT_LENGTH) {
+    return { status: 413, code: "payload_too_large", message: "text exceeds the maximum length" };
   }
   return null;
 }
