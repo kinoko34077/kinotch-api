@@ -3,14 +3,15 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import JSON5 from "json5";
-import { assertPrivateTextWorkerConfig } from "./deploy-guards.mjs";
+import { assertPrivateTextWorkerConfig, assertPrivateWorkerConfig } from "./deploy-guards.mjs";
 import {
   createRollbackArgs,
   createWorkerRollbackArgs,
   parseActiveVersionId,
   rollbackAfterSmokeFailure,
 } from "./release-recovery.mjs";
-import { runProductionSmoke } from "./smoke-production.mjs";
+import { runCompressionSmoke, runProductionSmoke } from "./smoke-production.mjs";
+import { COMPRESSION_MODEL, COMPRESSION_PROMPT_VERSION } from "../src/semantic-compression/contract.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -73,6 +74,20 @@ async function getActiveGatewayVersionId() {
   return parseActiveVersionId(output, "Gateway");
 }
 
+async function getActiveCompressionVersionId() {
+  const output = await run(npxCommand, [
+    "wrangler",
+    "deployments",
+    "status",
+    "--name",
+    "semantic-compression",
+    "--json",
+    "--config",
+    "wrangler.semantic-compression.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output, "Compression Worker");
+}
+
 async function assertCleanWorktree() {
   const output = await run("git", [
     "-c",
@@ -109,6 +124,22 @@ async function runSmokeWithRetry(options, attempts = 12) {
       lastError = error;
       if (attempt < attempts) {
         console.warn(`Production smoke attempt ${attempt}/${attempts} failed; retrying after propagation wait`);
+        await wait(5_000);
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function runCompressionSmokeWithRetry(options, attempts = 12) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await runCompressionSmoke(options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        console.warn(`Compression smoke attempt ${attempt}/${attempts} failed; retrying after propagation wait`);
         await wait(5_000);
       }
     }
@@ -166,15 +197,21 @@ async function main() {
     stage: "source revision",
     gitRevision: "unknown",
     previousTextVersionId: null,
+    previousCompressionVersionId: null,
     previousGatewayVersionId: null,
     textVersionId: null,
+    compressionVersionId: null,
     gatewayVersionId: null,
     textSmoke: null,
+    compressionSmoke: null,
     gatewaySmoke: null,
     textRecovery: null,
+    compressionRecovery: null,
     gatewayRecovery: null,
     textDeployed: false,
     textSmokeCompleted: false,
+    compressionDeployed: false,
+    compressionSmokeCompleted: false,
     gatewayDeployed: false,
     gatewaySmokeCompleted: false,
   };
@@ -193,6 +230,15 @@ async function main() {
       "utf8",
     ));
     assertPrivateTextWorkerConfig(textWorkerConfig);
+    const compressionWorkerConfig = JSON5.parse(await readFile(
+      path.join(projectRoot, "wrangler.semantic-compression.jsonc"),
+      "utf8",
+    ));
+    assertPrivateWorkerConfig(compressionWorkerConfig, "semantic-compression");
+
+    if (typeof process.env.COMPRESSION_SMOKE_TOKEN !== "string" || process.env.COMPRESSION_SMOKE_TOKEN.length === 0) {
+      throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
+    }
 
     state.stage = "build snapshot";
     await run(npmCommand, ["run", "build:text-snapshot"]);
@@ -212,6 +258,14 @@ async function main() {
       "--var",
       `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
     ]);
+    state.stage = "Compression Worker dry-run";
+    await run(npxCommand, [
+      "wrangler",
+      "deploy",
+      "--config",
+      "wrangler.semantic-compression.jsonc",
+      "--dry-run",
+    ]);
     state.stage = "Gateway dry-run";
     await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
 
@@ -219,6 +273,8 @@ async function main() {
     state.previousTextVersionId = await getActiveTextVersionId();
     state.stage = "capture previous Gateway version";
     state.previousGatewayVersionId = await getActiveGatewayVersionId();
+    state.stage = "capture previous Compression Worker version";
+    state.previousCompressionVersionId = await getActiveCompressionVersionId();
 
     state.stage = "Text Worker deploy";
     const textDeployOutput = await run(
@@ -240,9 +296,24 @@ async function main() {
     state.textSmoke = await runSmokeWithRetry({
       checkDirect: true,
       checkGuards: false,
+      checkCompression: false,
       expectedSourceRevision: state.gitRevision,
     });
     state.textSmokeCompleted = true;
+
+    state.stage = "Compression Worker deploy";
+    const compressionDeployOutput = await run(
+      npxCommand,
+      [
+        "wrangler",
+        "deploy",
+        "--config",
+        "wrangler.semantic-compression.jsonc",
+      ],
+      { capture: true },
+    );
+    state.compressionDeployed = true;
+    state.compressionVersionId = getVersionId(compressionDeployOutput, "semantic-compression");
 
     state.stage = "Gateway deploy";
     const gatewayDeployOutput = await run(
@@ -253,9 +324,16 @@ async function main() {
     state.gatewayDeployed = true;
     state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
 
+    state.stage = "Compression smoke";
+    state.compressionSmoke = await runCompressionSmokeWithRetry({
+      token: process.env.COMPRESSION_SMOKE_TOKEN,
+    });
+    state.compressionSmokeCompleted = true;
+
     state.stage = "Gateway smoke";
     state.gatewaySmoke = await runSmokeWithRetry({
       checkDirect: true,
+      compressionToken: process.env.COMPRESSION_SMOKE_TOKEN,
       expectedSourceRevision: state.gitRevision,
     });
     state.gatewaySmokeCompleted = true;
@@ -266,9 +344,15 @@ async function main() {
       gitRevision: state.gitRevision,
       sourceRevision: state.gitRevision,
       textVersionId: state.textVersionId,
+      compressionVersionId: state.compressionVersionId,
+      previousCompressionVersionId: state.previousCompressionVersionId,
       gatewayVersionId: state.gatewayVersionId,
       textSmoke: state.textSmoke,
+      compressionSmoke: state.compressionSmoke,
       gatewaySmoke: state.gatewaySmoke,
+      compressionRecovery: state.compressionRecovery,
+      compressionModel: COMPRESSION_MODEL,
+      compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
     });
     console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
   } catch (error) {
@@ -286,6 +370,25 @@ async function main() {
         state.gatewayRecovery = {
           status: "rollback_failed",
           targetVersionId: state.previousGatewayVersionId,
+          error: rollbackError.message,
+        };
+      }
+    }
+
+    if (state.compressionDeployed && state.previousCompressionVersionId && !state.compressionRecovery) {
+      try {
+        state.compressionRecovery = await rollbackAfterSmokeFailure({
+          previousVersionId: state.previousCompressionVersionId,
+          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+            versionId,
+            "automatic-compression-smoke-failure-rollback",
+            { workerName: "semantic-compression", config: "wrangler.semantic-compression.jsonc" },
+          )),
+        });
+      } catch (rollbackError) {
+        state.compressionRecovery = {
+          status: "rollback_failed",
+          targetVersionId: state.previousCompressionVersionId,
           error: rollbackError.message,
         };
       }
@@ -315,13 +418,19 @@ async function main() {
         gitRevision: state.gitRevision,
         sourceRevision: state.gitRevision,
         previousTextVersionId: state.previousTextVersionId,
+        previousCompressionVersionId: state.previousCompressionVersionId,
         previousGatewayVersionId: state.previousGatewayVersionId,
         textVersionId: state.textVersionId,
+        compressionVersionId: state.compressionVersionId,
         gatewayVersionId: state.gatewayVersionId,
         textSmoke: state.textSmoke,
+        compressionSmoke: state.compressionSmoke,
         gatewaySmoke: state.gatewaySmoke,
         textRecovery: state.textRecovery,
+        compressionRecovery: state.compressionRecovery,
         gatewayRecovery: state.gatewayRecovery,
+        compressionModel: COMPRESSION_MODEL,
+        compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
         failure: {
           stage: state.stage,
           message: error.message,

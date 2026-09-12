@@ -18,3 +18,23 @@ test("production release captures and recovers the Gateway version", () => {
   assert.match(source, /automatic-gateway-smoke-failure-rollback/);
   assert.match(source, /gatewayRecovery/);
 });
+
+test("production release includes the private Compression Worker gate and provenance", () => {
+  assert.match(source, /wrangler\.semantic-compression\.jsonc/);
+  assert.match(source, /assertPrivateWorkerConfig/);
+  assert.match(source, /Compression Worker dry-run/);
+  assert.match(source, /getActiveCompressionVersionId/);
+  assert.match(source, /previousCompressionVersionId/);
+  assert.match(source, /compressionVersionId/);
+  assert.match(source, /compressionSmoke/);
+  assert.match(source, /compressionRecovery/);
+  assert.match(source, /compressionModel/);
+  assert.match(source, /compressionPromptVersion/);
+  assert.match(source, /COMPRESSION_SMOKE_TOKEN/);
+});
+
+test("production release fails closed before deployment without Compression smoke token", () => {
+  assert.match(source, /Compression smoke requires COMPRESSION_SMOKE_TOKEN/);
+  assert.match(source, /compressionDeployed/);
+  assert.match(source, /compressionSmokeCompleted/);
+});

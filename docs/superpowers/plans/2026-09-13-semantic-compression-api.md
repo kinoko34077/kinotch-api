@@ -520,19 +520,19 @@ git push origin main
 - Produces `getActiveCompressionVersionId()` and Compression deploy/rollback state fields.
 - Preserves `createRollbackArgs` and `createWorkerRollbackArgs` behavior for Text and Gateway.
 
-- [ ] **Step 1: Write failing release-gate tests**
+- [x] **Step 1: Write failing release-gate tests**
 
 Add source assertions for `wrangler.semantic-compression.jsonc`, Compression dry-run, previous Compression version capture, Compression deploy, Compression smoke, `compressionVersionId`, `previousCompressionVersionId`, `compressionSmoke`, `compressionRecovery`, `compressionModel`, and `compressionPromptVersion`. Add rollback argument assertions for `semantic-compression` with its config.
 
 Add a test that missing `COMPRESSION_SMOKE_TOKEN` causes the release gate to fail closed before any Worker deployment stage, with an error that identifies the required smoke credential without printing a token.
 
-- [ ] **Step 2: Run the release tests to verify they fail**
+- [x] **Step 2: Run the release tests to verify they fail**
 
 Run: `node --test test/deploy-production.test.js test/release-recovery.test.js`
 
 Expected: FAIL because the existing release script knows only Text and Gateway.
 
-- [ ] **Step 3: Implement Compression release state and rollback**
+- [x] **Step 3: Implement Compression release state and rollback**
 
 Add state fields initialized to null/false:
 
@@ -551,7 +551,7 @@ Deploy Text, smoke Text, deploy Compression, run Compression smoke through the G
 
 On any failure after a Worker deploy, rollback Gateway if deployed, Compression if deployed, and Text if deployed, each to its captured 100%-active version. Use safe single-token rollback messages or the existing argument helper to avoid Windows shell splitting. Record all three recovery results.
 
-- [ ] **Step 4: Extend success/failure release metadata**
+- [x] **Step 4: Extend success/failure release metadata**
 
 Add these fields to both success and failure records without removing existing fields:
 
@@ -566,7 +566,7 @@ compressionPromptVersion: "semantic-dense-v1",
 
 When a failure occurs before Compression deployment, leave its version/recovery fields null and record the failing stage. Never include `COMPRESSION_SMOKE_TOKEN`, `GEMINI_API_KEY`, request body, provider body, or prompt text.
 
-- [ ] **Step 5: Run release tests and dry-runs**
+- [x] **Step 5: Run release tests and dry-runs**
 
 Run: `node --test test/deploy-production.test.js test/release-recovery.test.js`
 
@@ -580,7 +580,7 @@ Run: `npx wrangler deploy --config wrangler.jsonc --dry-run`
 
 Expected: PASS with the preserved and new bindings.
 
-- [ ] **Step 6: Commit and push the release gate**
+- [x] **Step 6: Commit and push the release gate**
 
 ```powershell
 git add scripts/deploy-production.mjs scripts/release-recovery.mjs test/deploy-production.test.js test/release-recovery.test.js

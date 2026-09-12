@@ -75,6 +75,27 @@ test("rollback args support the Gateway worker config", () => {
   );
 });
 
+test("rollback args support the private semantic-compression Worker config", () => {
+  assert.deepEqual(
+    createWorkerRollbackArgs(
+      activeVersionId,
+      "rollback compression after smoke failure",
+      { workerName: "semantic-compression", config: "wrangler.semantic-compression.jsonc" },
+    ),
+    [
+      "wrangler",
+      "rollback",
+      activeVersionId,
+      "--name",
+      "semantic-compression",
+      "--message",
+      "rollback compression after smoke failure",
+      "--config",
+      "wrangler.semantic-compression.jsonc",
+    ],
+  );
+});
+
 test("rollback dry scenario reports a successful recovery", async () => {
   const calls = [];
   const result = await rollbackAfterSmokeFailure({
