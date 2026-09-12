@@ -5,17 +5,21 @@ function hasConfiguredValue(value) {
   return true;
 }
 
-export function assertPrivateTextWorkerConfig(config) {
+export function assertPrivateWorkerConfig(config, workerName = "worker") {
   if (config?.workers_dev !== false) {
-    throw new Error("text-transform workers_dev must be false");
+    throw new Error(`${workerName} workers_dev must be false`);
   }
   if (config?.preview_urls !== false) {
-    throw new Error("text-transform preview_urls must be false");
+    throw new Error(`${workerName} preview_urls must be false`);
   }
   for (const field of ["routes", "route", "domains"]) {
     if (hasConfiguredValue(config?.[field])) {
-      throw new Error(`text-transform ${field} must not be configured for a private Worker`);
+      throw new Error(`${workerName} ${field} must not be configured for a private Worker`);
     }
   }
   return true;
+}
+
+export function assertPrivateTextWorkerConfig(config) {
+  return assertPrivateWorkerConfig(config, "text-transform");
 }

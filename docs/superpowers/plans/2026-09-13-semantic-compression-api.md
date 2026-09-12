@@ -391,17 +391,17 @@ git push origin main
 - Produces `assertPrivateWorkerConfig(config, workerName)`.
 - Preserves `assertPrivateTextWorkerConfig(config)` as a compatibility wrapper.
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 Extend deploy guard tests with a valid compression config and failures for `workers_dev:true`, `preview_urls:true`, and non-empty `routes`, `route`, or `domains`. Assert the error includes `semantic-compression` and the violated field.
 
-- [ ] **Step 2: Run the guard test to verify it fails**
+- [x] **Step 2: Run the guard test to verify it fails**
 
 Run: `node --test test/deploy-guards.test.js`
 
 Expected: FAIL because only the Text-specific guard exists.
 
-- [ ] **Step 3: Implement the shared private Worker guard and config**
+- [x] **Step 3: Implement the shared private Worker guard and config**
 
 Generalize the existing checks without changing their behavior. The new config must be:
 
@@ -431,7 +431,7 @@ Generalize the existing checks without changing their behavior. The new config m
 
 Keep `GEMINI_API_KEY` out of the file; it is registered with Wrangler Secret.
 
-- [ ] **Step 4: Run guards and dry-run the new Worker**
+- [x] **Step 4: Run guards and dry-run the new Worker**
 
 Run: `node --test test/deploy-guards.test.js`
 
@@ -441,7 +441,7 @@ Run: `npx wrangler deploy --config wrangler.semantic-compression.jsonc --dry-run
 
 Expected: Wrangler accepts the private Worker config without requiring or exposing a secret.
 
-- [ ] **Step 5: Commit and push private configuration**
+- [x] **Step 5: Commit and push private configuration**
 
 ```powershell
 git add wrangler.semantic-compression.jsonc scripts/deploy-guards.mjs test/deploy-guards.test.js

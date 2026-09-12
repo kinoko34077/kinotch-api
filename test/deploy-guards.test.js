@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertPrivateTextWorkerConfig } from "../scripts/deploy-guards.mjs";
+import {
+  assertPrivateTextWorkerConfig,
+  assertPrivateWorkerConfig,
+} from "../scripts/deploy-guards.mjs";
 
 const validConfig = {
   workers_dev: false,
@@ -41,5 +44,30 @@ test("deploy guard rejects configured route and domains fields", () => {
   assert.throws(
     () => assertPrivateTextWorkerConfig({ ...validConfig, domains: ["example.test"] }),
     /domains.*not be configured/i,
+  );
+});
+
+const validCompressionConfig = {
+  workers_dev: false,
+  preview_urls: false,
+  vars: { ENABLE_REQUEST_LOGS: "true" },
+};
+
+test("private generic Worker config passes for semantic-compression", () => {
+  assert.equal(assertPrivateWorkerConfig(validCompressionConfig, "semantic-compression"), true);
+});
+
+test("generic deploy guard names the protected Worker and violated field", () => {
+  assert.throws(
+    () => assertPrivateWorkerConfig({ ...validCompressionConfig, workers_dev: true }, "semantic-compression"),
+    /semantic-compression.*workers_dev.*false/i,
+  );
+  assert.throws(
+    () => assertPrivateWorkerConfig({ ...validCompressionConfig, preview_urls: true }, "semantic-compression"),
+    /semantic-compression.*preview_urls.*false/i,
+  );
+  assert.throws(
+    () => assertPrivateWorkerConfig({ ...validCompressionConfig, routes: [{ pattern: "example.test/*" }] }, "semantic-compression"),
+    /semantic-compression.*routes.*not be configured/i,
   );
 });
