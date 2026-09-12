@@ -127,7 +127,7 @@ git push origin main
 - `extractInteractionText(payload)` returns a non-empty string or throws a provider-invalid-response error.
 - `createCompressionWorkerApp({ fetchImpl })` returns a Hono app; the default export is an app using the real global `fetch`.
 
-- [ ] **Step 1: Write failing adapter and Worker tests**
+- [x] **Step 1: Write failing adapter and Worker tests**
 
 Add a fake provider fetch and assert the request sent by the Worker:
 
@@ -211,13 +211,13 @@ test("provider timeout becomes 504 without retry", async () => {
 
 Keep `requestInit` as a test-only helper in the test file. Add cases for provider 429 with a safe numeric `Retry-After`, provider non-2xx, invalid JSON, thrown fetch errors, missing key, and malformed `steps`/`model_output` shapes.
 
-- [ ] **Step 2: Run the focused Worker test to verify it fails**
+- [x] **Step 2: Run the focused Worker test to verify it fails**
 
 Run: `node --test test/semantic-compression-worker.test.js`
 
 Expected: FAIL because the provider adapter and Worker do not exist.
 
-- [ ] **Step 3: Implement the fixed adapter and Worker**
+- [x] **Step 3: Implement the fixed adapter and Worker**
 
 Use `POST https://generativelanguage.googleapis.com/v1beta/interactions` with JSON headers and the API key only in `x-goog-api-key`. Send `{ model, input, system_instruction, store: false }`; do not add caller fields or provider framework options. Use `AbortController` with a 45,000 ms default and `GEMINI_TIMEOUT_MS` only as an operator-side Worker variable for tests/deployment configuration.
 
@@ -227,13 +227,13 @@ The Worker must validate the request itself, require `Content-Type: application/
 
 Add Worker request metrics middleware or `finally` logging that records only safe counts, ratio, model, prompt version, status, elapsed time, and error category. Never log the request or response text.
 
-- [ ] **Step 4: Run the focused Worker test to verify it passes**
+- [x] **Step 4: Run the focused Worker test to verify it passes**
 
 Run: `node --test test/semantic-compression-worker.test.js`
 
 Expected: PASS with the fake backend and no external request.
 
-- [ ] **Step 5: Commit and push the Worker boundary**
+- [x] **Step 5: Commit and push the Worker boundary**
 
 ```powershell
 git add src/semantic-compression/gemini.js src/semantic-compression-worker.js test/semantic-compression-worker.test.js
