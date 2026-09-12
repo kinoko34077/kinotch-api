@@ -41,7 +41,7 @@
 - Produces `COMPRESSION_PROFILE`, `COMPRESSION_PROMPT_VERSION`, `COMPRESSION_MODEL`, `MAX_COMPRESSION_TEXT_LENGTH`, `countUnicodeCodePoints(value)`, `sha256Hex(value, cryptoImpl)`, and `buildCompressionResponse({ compressedText, inputText, warnings, cryptoImpl })`.
 - Produces `COMPRESSION_SYSTEM_INSTRUCTION`, containing the service prompt boundary followed by the complete semantic-dense-v1 prompt supplied in the approved design/specification.
 
-- [ ] **Step 1: Write the failing contract tests**
+- [x] **Step 1: Write the failing contract tests**
 
 Add tests that require the exact constants and behavior:
 
@@ -89,25 +89,25 @@ test("success response contains the fixed provenance contract", async () => {
 
 The expected hash must be the known SHA-256 of the UTF-8 bytes of `学校`; do not compute the expected value using the production helper.
 
-- [ ] **Step 2: Run the focused test to verify it fails**
+- [x] **Step 2: Run the focused test to verify it fails**
 
 Run: `node --test test/semantic-compression-contract.test.js`
 
 Expected: FAIL because the new contract module and prompt source do not exist.
 
-- [ ] **Step 3: Write the minimal contract and fixed prompt**
+- [x] **Step 3: Write the minimal contract and fixed prompt**
 
 Implement `countUnicodeCodePoints` with `Array.from(value).length`, not `value.length`. Implement `sha256Hex` with `TextEncoder`, `crypto.subtle.digest("SHA-256", bytes)`, and lowercase two-digit hexadecimal encoding. `buildCompressionResponse` must hash the exact input and output strings and return only the nine specified fields.
 
 Place the complete approved Japanese `semantic-dense-v1` prompt in `prompt.js`. Keep the service boundary above it in the same exported system instruction. Do not copy the prompt into tests, README, or another runtime file.
 
-- [ ] **Step 4: Run the focused test to verify it passes**
+- [x] **Step 4: Run the focused test to verify it passes**
 
 Run: `node --test test/semantic-compression-contract.test.js`
 
 Expected: PASS with no provider/network access.
 
-- [ ] **Step 5: Commit and push the contract boundary**
+- [x] **Step 5: Commit and push the contract boundary**
 
 ```powershell
 git add src/semantic-compression/contract.js src/semantic-compression/prompt.js test/semantic-compression-contract.test.js
