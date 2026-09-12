@@ -37,5 +37,10 @@ dry-run、`npm run deploy:production`の本番疎通確認を行ったうえで�
 到達させます。Gatewayにはroute policy、JSON schema、byte body limit、Cloudflare
 Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用しています。
 
+意味保存型の高密度圧縮専用API `/v1/compress` も、認証済みGatewayから
+`semantic-compression` WorkerのService Binding経由で提供します。固定profile、固定model、
+本文非ログ、secret登録、live test、deploy／rollback手順は
+[`docs/semantic-compression.md`](docs/semantic-compression.md) にまとめています。
+
 Text Coreのrules・engine・dictionary・Kuromojiを含むsnapshot metadataは
 `npm run build:text-snapshot`で生成し、`npm test`の前段でstaleチェックします。

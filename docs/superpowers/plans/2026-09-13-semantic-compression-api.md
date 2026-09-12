@@ -600,17 +600,17 @@ git push origin main
 **Interfaces:**
 - Produces standalone operator documentation for `/v1/compress`, secret setup, live test, deploy order, smoke boundary, rollback, logging privacy, rate limit, body limit, timeout, and prompt versioning.
 
-- [ ] **Step 1: Write failing documentation checks**
+- [x] **Step 1: Write failing documentation checks**
 
 Add assertions that the docs contain `/v1/compress`, `semantic-dense-v1`, `gemini-2.5-flash-lite`, `GEMINI_API_KEY`, `COMPRESSION_API_TOKEN`, `COMPRESSION_SMOKE_TOKEN`, `workers_dev`, `store:false`, `8 MiB`, `5 requests`, the live-test command, rollback order, and the no-body-logging rule. Assert that no API key/token example contains a value-looking secret.
 
-- [ ] **Step 2: Run the documentation check to verify it fails**
+- [x] **Step 2: Run the documentation check to verify it fails**
 
 Run: `node --test test/semantic-compression-docs.test.js`
 
 Expected: FAIL because the new standalone documentation and references do not exist.
 
-- [ ] **Step 3: Add operator-facing documentation**
+- [x] **Step 3: Add operator-facing documentation**
 
 Document these commands with placeholders only:
 
@@ -624,13 +624,13 @@ npm run deploy:production
 
 Explain that the first two values are entered interactively and never committed. Explain that `COMPRESSION_SMOKE_TOKEN` is a local release-smoke environment value, not a new Worker secret. Document that a missing value makes `deploy:production` stop before deployment; a missing production Gemini secret causes Compression smoke failure and rollback rather than a success record. Include the exact response contract and normalized errors without copying raw provider responses.
 
-- [ ] **Step 4: Run the documentation check to verify it passes**
+- [x] **Step 4: Run the documentation check to verify it passes**
 
 Run: `node --test test/semantic-compression-docs.test.js`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit and push documentation**
+- [x] **Step 5: Commit and push documentation**
 
 ```powershell
 git add README.md docs/OPERATIONS.md docs/API_PLAN.md docs/semantic-compression.md test/semantic-compression-docs.test.js

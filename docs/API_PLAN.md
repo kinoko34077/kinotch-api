@@ -152,6 +152,22 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 3. Chrome拡張のcore利用/API fallback（batch APIへ移行）
 4. historical-kanaの新規実装
 
+## Semantic Compression API（2026-09-13）
+
+`POST /v1/compress` を、既存Gatewayの認証・Policy・Service Binding基盤上へ追加する。
+処理は独立private `semantic-compression` Workerへ分離し、Google Geminiの
+`gemini-2.5-flash-lite`を `store:false` のstateless Interactionsとして固定利用する。
+callerが変更できるのは `text` と固定profile `semantic-dense-v1` だけで、任意prompt／model／provider／toolsは受け付けない。
+
+- [x] 固定Compression contract、Unicode code point count、UTF-8 SHA-256、provenance response
+- [x] Service側固定promptとprompt injection境界
+- [x] Gatewayの専用認証、8 MiB byte limit、5 requests/60 seconds rate limit、COMPRESSION binding
+- [x] private Worker config、dry-run、fake-provider Worker/Gateway integration、golden test
+- [x] Text → Compression → Gateway release gate、Compression smoke、rollback metadata
+- [x] Secret、live test、本文非ログ、prompt version更新手順の単独文書化
+
+詳細なAPI／運用契約は[`docs/semantic-compression.md`](semantic-compression.md)を参照する。
+
 ## 受入条件
 
 golden testで旧実装との出力一致、既存4 APIの回帰なし、rule/engine versionの追跡、本文をログへ残さないこと、API障害時のクライアントfallbackを確認してから公開する。Golden回帰、API回帰、version追跡、fallback確認は完了。残る作業は実クライアントでの継続的な遅延・エラー・fallback観測と、歌詞Readerの編集完了後の移行である。

@@ -14,6 +14,14 @@
 7. `/v1/capabilities`に`metadataVersion`、`ruleSetVersion`、`snapshotHash`、
    `dictionaryVersion`、`dictionaryHash`があること。
 
+## Semantic Compression API
+
+`POST /v1/compress` の契約、`semantic-dense-v1` の固定prompt、
+`gemini-2.5-flash-lite`、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
+`COMPRESSION_SMOKE_TOKEN` を使うlive smoke、8 MiB body limit、5 requests/60 secondsの
+専用rate limit、本文をログへ残さない方針、deployとGateway → Compression → Textのrollbackは
+[`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
+
 ## 遅延の見方
 
 - 初回のTokenizer利用リクエストは辞書初期化のため遅くなる。現在の目安は約1.8〜3.3秒。

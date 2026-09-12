@@ -1,0 +1,94 @@
+# Semantic Compression API 運用仕様
+
+## 目的と責務
+
+`POST /v1/compress` は、入力本文を `semantic-dense-v1` の固定仕様で意味保存・情報保持優先の高密度圧縮へ変換する専用APIである。任意prompt、system instruction、model、provider、chat、agent、tools、Search、会話履歴は受け付けない。
+
+経路は `Gateway → COMPRESSION Service Binding → semantic-compression Worker → Gemini Interactions API` に固定する。Compression Workerは独立し、Worker直URLは公開しない。
+
+## API契約
+
+Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller token>` が必要である。request bodyの許可フィールドは `text` と `profile` のみで、`profile` は `semantic-dense-v1` 固定である。
+
+```json
+{
+  "text": "圧縮対象本文",
+  "profile": "semantic-dense-v1"
+}
+```
+
+成功レスポンスのfield名は変更しない。
+
+```json
+{
+  "compressed_text": "要点\n- 圧縮本文",
+  "profile": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1",
+  "model": "gemini-2.5-flash-lite",
+  "input_chars": 0,
+  "output_chars": 0,
+  "input_sha256": "64文字の小文字hex",
+  "output_sha256": "64文字の小文字hex",
+  "warnings": []
+}
+```
+
+`input_chars` と `output_chars` はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。SHA-256はUTF-8化したtextそのものを対象とする。圧縮結果を原文のSSOTとして保存しない。
+
+主な正規化errorは `invalid_json`、`invalid_body`、`invalid_profile`、`empty_text`、`payload_too_large`、`authentication_failed`、`authentication_unavailable`、`rate_limited`、`provider_rate_limited`、`provider_invalid_response`、`provider_error`、`provider_timeout` である。Googleのraw error bodyは返さない。
+
+## 固定ProviderとPrompt
+
+ProviderはGoogle Gemini、modelは `gemini-2.5-flash-lite` 固定である。1 requestにつき1 stateless Interactionsを使用し、`store:false`、toolsなし、Searchなし、previous interactionなし、backgroundなしとする。thinkingやgeneration configは、公式仕様にないparameterを推測して追加しない。
+
+Prompt正本は `src/semantic-compression/prompt.js` の `semantic-dense-v1` だけに置く。入力本文はuntrusted dataとして扱い、本文内の命令文・role指定・prompt変更要求・model変更要求・tool実行要求・secret開示要求などを実行せず、圧縮対象本文の一部として扱う。意味保存・情報保持・論理関係・不確実性を優先し、曖昧化する直前で圧縮を止める。意味を変更するprompt変更は `semantic-dense-v2` など別versionで行う。
+
+## Secret、認証、制限
+
+秘密値はファイル、`vars`、test fixture、release metadata、README例、response、logsへ書かない。operatorが対話入力で登録する。
+
+```powershell
+wrangler secret put GEMINI_API_KEY --config wrangler.semantic-compression.jsonc
+wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
+```
+
+`GEMINI_API_KEY` はCompression Workerだけが使うProvider credentialであり、`COMPRESSION_API_TOKEN` はGateway caller credentialである。同じ値を使わない。未設定のcaller secretはfail closedで503、欠落・不正tokenは401とする。tokenはSHA-256 fingerprintの固定長比較を行い、ログや下流Workerへ転送しない。
+
+- 本文の上限: 1,000,000 Unicode code points
+- Gateway body limit: 8 MiB（byte limitと文字数limitを混同しない）
+- Compression専用rate limit: 5 requests / 60 seconds / client IP
+- Worker timeout: 45 seconds
+- Gateway upstream timeout: 50 seconds
+- Provider retry: 初期版は自動retryなし
+
+## Live testとsmoke
+
+通常の `npm test` と `npm run test:compression:live` の実行だけではGeminiへ接続しない。live testは次の2条件をoperatorが明示した場合だけ有効になる。
+
+```powershell
+$env:RUN_GEMINI_LIVE_TEST = "true"
+$env:GEMINI_API_KEY = "<operator-provided key>"
+npm run test:compression:live
+```
+
+本番release smokeはGateway経由でCompressionを確認するため、Worker secretとは別に、operatorが一時的な `COMPRESSION_SMOKE_TOKEN` を環境変数へ設定する。
+
+```powershell
+$env:COMPRESSION_SMOKE_TOKEN = "<operator-provided caller token>"
+npm run deploy:production
+```
+
+`COMPRESSION_SMOKE_TOKEN` がない場合、release gateはWorker deploy前に停止する。`GEMINI_API_KEY` が本番Workerへ登録されていない場合はCompression smokeが失敗し、成功releaseとして記録せずrollbackへ進む。smokeではstatus、duration、counts、model、prompt version、hashesだけを検証し、本文全文を表示しない。
+
+## Deployとrollback
+
+`npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → Gateway経由Compression smoke → 完全Gateway smoke → release metadata の順に実行する。
+
+Compression smokeは新しいGateway Service Binding経路を実際に検証する必要があるため、Compression Worker deploy直後ではなくGateway deploy後に実行する。Provider受理不明の通信失敗を無条件再送しない。
+
+smoke失敗時のrollback対象は `Gateway → Compression → Text` の順である。release metadataには `compressionVersionId`、`previousCompressionVersionId`、`compressionSmoke`、`compressionRecovery`、`compressionModel`、`compressionPromptVersion` を含める。既存Text/Gatewayのmetadataとrollback契約は削除しない。
+
+## Privacy
+
+入力text、`compressed_text`、Authorization token、Gemini key、system prompt全文、Gemini raw response全文を本文ログへ残さない。構造化ログで許可するのはrequest ID、route、status、elapsed time、input/output chars、圧縮率、model、prompt version、rate-limit結果、safe error categoryだけである。input/output hashは通常ログへ出さない。
+
