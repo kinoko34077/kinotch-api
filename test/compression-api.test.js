@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import app from "../src/index.js";
 import { routePolicies } from "../src/policies/routes.js";
+import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 
-const TOKEN = "correct-token";
+const TOKEN = "<fixture-caller-token>";
 
 function requestInit(body, headers = {}) {
   return {
@@ -66,7 +67,7 @@ test("compression route rejects missing and invalid caller credentials", async (
 
   const wrong = await app.request(
     "http://example.test/v1/compress",
-    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: "Bearer wrong-token" }),
+    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: "Bearer <wrong-fixture-token>" }),
     env(),
   );
   assert.equal(wrong.status, 401);
@@ -147,6 +148,43 @@ test("authenticated compression requests use only the Compression binding and fi
   });
   assert.equal(compressionRateLimitCalls, 1);
   assert.equal(textRateLimitCalls, 0);
+});
+
+test("Gateway to Service Binding to Worker reaches the fake Gemini boundary", async () => {
+  let geminiRequest;
+  const workerApp = createCompressionWorkerApp({
+    fetchImpl: async (input, init) => {
+      geminiRequest = { input, init, body: JSON.parse(init.body) };
+      return new Response(JSON.stringify({
+        status: "completed",
+        steps: [{ type: "model_output", content: [{ type: "text", text: "要点\n- 結果" }] }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit(
+      { text: "原文", profile: "semantic-dense-v1" },
+      { Authorization: `Bearer ${TOKEN}`, "X-Request-ID": "e2e-compression" },
+    ),
+    env({
+      COMPRESSION: {
+        fetch(request) {
+          return workerApp.fetch(request, { GEMINI_API_KEY: "<fixture-gemini-key>" });
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.compressed_text, "要点\n- 結果");
+  assert.equal(payload.input_chars, 2);
+  assert.equal(payload.output_chars, 7);
+  assert.equal(response.headers.get("X-Request-ID"), "e2e-compression");
+  assert.equal(geminiRequest.body.input, "原文");
+  assert.equal(geminiRequest.body.store, false);
+  assert.equal(new Headers(geminiRequest.init.headers).get("x-goog-api-key"), "<fixture-gemini-key>");
 });
 
 test("compression route rejects caller prompt/model fields and invalid profiles", async () => {

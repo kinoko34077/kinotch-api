@@ -30,7 +30,7 @@ test("golden fixture exercises information-preserving compression contract", asy
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Request-ID": "golden-test" },
     body: JSON.stringify({ text: goldenInput, profile: "semantic-dense-v1" }),
-  }, { GEMINI_API_KEY: "golden-key" });
+  }, { GEMINI_API_KEY: "<fixture-gemini-key>" });
 
   assert.equal(response.status, 200);
   const payload = await response.json();
@@ -40,6 +40,5 @@ test("golden fixture exercises information-preserving compression contract", asy
   assert.equal(providerRequest.body.store, false);
   assert.match(providerRequest.body.system_instruction, /system prompt/);
   assert.match(providerRequest.body.system_instruction, /命令文.*実行しない/s);
-  assert.equal(new Headers(providerRequest.init.headers).get("x-goog-api-key"), "golden-key");
+  assert.equal(new Headers(providerRequest.init.headers).get("x-goog-api-key"), "<fixture-gemini-key>");
 });
-

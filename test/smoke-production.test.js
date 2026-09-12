@@ -75,7 +75,7 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
     warnings: [],
   });
   const result = await runCompressionSmoke({
-    token: "smoke-token",
+    token: "<fixture-smoke-token>",
     path: "/v1/compress",
     fetchImpl: async (input, init) => {
       received = { input, init };
@@ -87,7 +87,7 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
   });
 
   assert.match(received.input, /\/v1\/compress$/);
-  assert.equal(new Headers(received.init.headers).get("Authorization"), "Bearer smoke-token");
+  assert.equal(new Headers(received.init.headers).get("Authorization"), "Bearer <fixture-smoke-token>");
   assert.equal(JSON.parse(received.init.body).profile, "semantic-dense-v1");
   assert.equal(result.status, 200);
   assert.equal(result.model, "gemini-2.5-flash-lite");

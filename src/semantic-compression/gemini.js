@@ -31,14 +31,15 @@ export function extractInteractionText(payload) {
     throw invalidProviderResponse();
   }
 
+  const finalStep = payload.steps.at(-1);
+  if (!finalStep || typeof finalStep !== "object" || finalStep.type !== "model_output" || !Array.isArray(finalStep.content)) {
+    throw invalidProviderResponse();
+  }
+
   const parts = [];
-  for (const step of payload.steps) {
-    if (!step || typeof step !== "object" || step.type !== "model_output") continue;
-    if (!Array.isArray(step.content)) throw invalidProviderResponse();
-    for (const content of step.content) {
-      if (content?.type === "text" && typeof content.text === "string") {
-        parts.push(content.text);
-      }
+  for (const content of finalStep.content) {
+    if (content?.type === "text" && typeof content.text === "string") {
+      parts.push(content.text);
     }
   }
 

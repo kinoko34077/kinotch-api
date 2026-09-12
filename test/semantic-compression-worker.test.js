@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 
-const API_KEY = "secret-test-key";
+const API_KEY = "<fixture-gemini-key>";
 
 function requestBody(body) {
   return {

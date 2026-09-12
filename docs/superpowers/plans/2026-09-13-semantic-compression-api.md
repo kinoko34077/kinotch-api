@@ -147,7 +147,7 @@ test("Worker sends one fixed stateless Interactions request", async () => {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Request-ID": "worker-test" },
     body: JSON.stringify({ text: "原文", profile: "semantic-dense-v1" }),
-  }, { GEMINI_API_KEY: "secret-test-key" });
+  }, { GEMINI_API_KEY: "<fixture-gemini-key>" });
 
   assert.equal(response.status, 200);
   assert.equal(request.input, "https://generativelanguage.googleapis.com/v1beta/interactions");
@@ -170,7 +170,7 @@ test("Worker rejects caller fields that could alter the provider contract", asyn
     body: JSON.stringify({
       text: "原文", profile: "semantic-dense-v1", model: "other-model", prompt: "override",
     }),
-  }, { GEMINI_API_KEY: "secret-test-key" });
+  }, { GEMINI_API_KEY: "<fixture-gemini-key>" });
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error, "invalid_body");
 });
@@ -183,7 +183,7 @@ test("malformed, incomplete, and empty provider output become 502", async () => 
   ]) {
     const response = await createCompressionWorkerApp({
       fetchImpl: async () => new Response(JSON.stringify(payload), { status: 200 }),
-    }).request("https://internal.test/v1/compress", requestInit({ text: "原文" }), { GEMINI_API_KEY: "key" });
+    }).request("https://internal.test/v1/compress", requestInit({ text: "原文" }), { GEMINI_API_KEY: "<fixture-gemini-key>" });
     assert.equal(response.status, 502);
     assert.equal((await response.json()).error, "provider_invalid_response");
   }
@@ -201,7 +201,7 @@ test("provider timeout becomes 504 without retry", async () => {
       }, { once: true });
     }),
   }).request("https://internal.test/v1/compress", requestInit({ text: "原文" }), {
-    GEMINI_API_KEY: "key", GEMINI_TIMEOUT_MS: "5",
+    GEMINI_API_KEY: "<fixture-gemini-key>", GEMINI_TIMEOUT_MS: "5",
   });
   assert.equal(response.status, 504);
   assert.equal((await response.json()).error, "provider_timeout");
@@ -266,22 +266,22 @@ Add tests for auth, validation, dedicated binding, forwarding, error passthrough
 ```js
 test("compression route rejects missing and invalid caller credentials", async () => {
   const missing = await app.request("http://example.test/v1/compress", requestInit({ text: "原文" }), env({
-    COMPRESSION_API_TOKEN: "correct-token",
+    COMPRESSION_API_TOKEN: "<fixture-caller-token>",
   }));
   assert.equal(missing.status, 401);
   assert.equal((await missing.json()).error, "authentication_failed");
 
   const wrong = await app.request("http://example.test/v1/compress", {
     ...requestInit({ text: "原文" }),
-    headers: { "Content-Type": "application/json", Authorization: "Bearer wrong-token" },
-  }, env({ COMPRESSION_API_TOKEN: "correct-token" }));
+    headers: { "Content-Type": "application/json", Authorization: "Bearer <wrong-fixture-token>" },
+  }, env({ COMPRESSION_API_TOKEN: "<fixture-caller-token>" }));
   assert.equal(wrong.status, 401);
 });
 
 test("compression route fails closed when caller secret is absent", async () => {
   const response = await app.request("http://example.test/v1/compress", {
     ...requestInit({ text: "原文" }),
-    headers: { "Content-Type": "application/json", Authorization: "Bearer any-token" },
+    headers: { "Content-Type": "application/json", Authorization: "Bearer <any-fixture-token>" },
   }, env({ COMPRESSION_API_TOKEN: undefined }));
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "authentication_unavailable");
@@ -293,11 +293,11 @@ test("authenticated compression request forwards only the fixed public body", as
     ...requestInit({ text: "原文", profile: "semantic-dense-v1" }),
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer correct-token",
+      Authorization: "Bearer <fixture-caller-token>",
       "X-Request-ID": "compression-test",
     },
   }, env({
-    COMPRESSION_API_TOKEN: "correct-token",
+    COMPRESSION_API_TOKEN: "<fixture-caller-token>",
     COMPRESSION: { fetch: async (request) => {
       received = { authorization: request.headers.get("Authorization"), body: await request.json() };
       return new Response(JSON.stringify({ compressed_text: "圧縮", warnings: [] }), { status: 200 });

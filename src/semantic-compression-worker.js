@@ -90,7 +90,7 @@ export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch } = {}
     let status = 500;
     try {
       const contentType = c.req.header("Content-Type")?.toLowerCase() ?? "";
-      if (!contentType.startsWith("application/json")) {
+      if (!/^application\/json(?:\s*;|\s*$)/i.test(contentType.trim())) {
         status = 400;
         c.set("errorCategory", "invalid_body");
         return errorResponse(c, status, "invalid_body", "Content-Type must be application/json");
