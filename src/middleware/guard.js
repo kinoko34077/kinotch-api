@@ -16,6 +16,9 @@ export function policyMiddleware(policy) {
   return async (c, next) => {
     if (c.req.method !== policy.method) return methodError(c, policy.method);
 
+    const preAuthRateLimitError = await enforceRateLimit(c, policy, policy.preAuthRateLimit);
+    if (preAuthRateLimitError) return preAuthRateLimitError;
+
     if (typeof policy.authenticate === "function") {
       const authenticationError = await policy.authenticate(c);
       if (authenticationError) return authenticationError;
@@ -23,6 +26,9 @@ export function policyMiddleware(policy) {
 
     const rateLimitError = await enforceRateLimit(c, policy);
     if (rateLimitError) return rateLimitError;
+
+    const tokenRateLimitError = await enforceRateLimit(c, policy, policy.tokenRateLimit);
+    if (tokenRateLimitError) return tokenRateLimitError;
 
     const bodyLimitError = await enforceBodyLimit(c, policy);
     if (bodyLimitError) return bodyLimitError;

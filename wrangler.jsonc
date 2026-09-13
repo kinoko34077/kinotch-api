@@ -27,6 +27,16 @@
       "name": "COMPRESSION_RATE_LIMITER",
       "namespace_id": "26090803",
       "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "COMPRESSION_PREAUTH_RATE_LIMITER",
+      "namespace_id": "26090804",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "COMPRESSION_TOKEN_RATE_LIMITER",
+      "namespace_id": "26090805",
+      "simple": { "limit": 5, "period": 60 }
     }
   ],
   "vars": {

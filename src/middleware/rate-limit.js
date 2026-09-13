@@ -14,8 +14,15 @@ function getClientKey(c) {
   return forwarded || "anonymous";
 }
 
-export async function enforceRateLimit(c, policy) {
-  const config = policy.rateLimit;
+function getRateLimitKey(c, policy, config) {
+  const suffix = typeof config.key === "function" ? config.key(c) : getClientKey(c);
+  if (typeof suffix !== "string" || suffix.length === 0) {
+    throw new Error("Rate limit key is unavailable");
+  }
+  return `${config.keyPrefix ?? policy.id}:${suffix}`;
+}
+
+export async function enforceRateLimit(c, policy, config = policy.rateLimit) {
   if (!config) return null;
 
   const limiter = c.env?.[config.binding];
@@ -24,8 +31,8 @@ export async function enforceRateLimit(c, policy) {
     return errorResponse(c, 503, "rate_limiter_unavailable", "Rate limiting is temporarily unavailable");
   }
 
-  const key = `${policy.id}:${getClientKey(c)}`;
   try {
+    const key = getRateLimitKey(c, policy, config);
     const result = await limiter.limit({ key });
     if (result?.success !== true) {
       c.set("rateLimitResult", "blocked");

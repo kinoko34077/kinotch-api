@@ -17,6 +17,10 @@ function timingSafeEqual(left, right) {
   return difference === 0;
 }
 
+function bytesToHex(bytes) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function errorResponse(c, status, code, message) {
   const requestId = c.get("requestId");
   return c.json({
@@ -46,6 +50,7 @@ export async function authenticateCompression(c) {
     if (!timingSafeEqual(presentedFingerprint, expectedFingerprint)) {
       return errorResponse(c, 401, "authentication_failed", "Compression authentication failed");
     }
+    c.set("compressionAuthFingerprint", bytesToHex(presentedFingerprint));
   } catch {
     return errorResponse(c, 503, "authentication_unavailable", "Compression authentication is unavailable");
   }

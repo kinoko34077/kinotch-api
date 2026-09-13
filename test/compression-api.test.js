@@ -32,7 +32,9 @@ function compressionResponse(body, status = 200, headers = {}) {
 function env(overrides = {}) {
   return {
     COMPRESSION_API_TOKEN: TOKEN,
+    COMPRESSION_PREAUTH_RATE_LIMITER: allowRateLimiter(),
     COMPRESSION_RATE_LIMITER: allowRateLimiter(),
+    COMPRESSION_TOKEN_RATE_LIMITER: allowRateLimiter(),
     COMPRESSION: {
       fetch() {
         return Promise.resolve(compressionResponse({ compressed_text: "題名\n- 結果" }));
@@ -72,6 +74,110 @@ test("compression route rejects missing and invalid caller credentials", async (
   );
   assert.equal(wrong.status, 401);
   assert.equal((await wrong.json()).error, "authentication_failed");
+});
+
+test("compression route applies the pre-auth IP limiter before reading or authenticating the body", async () => {
+  let authenticatedLimiterCalls = 0;
+  let upstreamCalls = 0;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "x".repeat(100), profile: "semantic-dense-v1" }, {
+      Authorization: `Bearer ${TOKEN}`,
+      "CF-Connecting-IP": "198.51.100.20",
+      "X-Request-ID": "preauth-limit-test",
+    }),
+    env({
+      COMPRESSION_PREAUTH_RATE_LIMITER: {
+        limit(input) {
+          assert.equal(input.key, "semantic-compression-preauth:198.51.100.20");
+          return Promise.resolve({ success: false });
+        },
+      },
+      COMPRESSION_RATE_LIMITER: { limit() { authenticatedLimiterCalls += 1; return Promise.resolve({ success: true }); } },
+      COMPRESSION: { fetch() { upstreamCalls += 1; return Promise.resolve(compressionResponse({})); } },
+    }),
+  );
+
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).error, "rate_limited");
+  assert.equal(authenticatedLimiterCalls, 0);
+  assert.equal(upstreamCalls, 0);
+});
+
+test("compression route limits successful credentials by a non-reversible token fingerprint", async () => {
+  let authenticatedIpKey;
+  let tokenKey;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: `Bearer ${TOKEN}` }),
+    env({
+      COMPRESSION_RATE_LIMITER: {
+        limit(input) {
+          authenticatedIpKey = input.key;
+          return Promise.resolve({ success: true });
+        },
+      },
+      COMPRESSION_TOKEN_RATE_LIMITER: {
+        limit(input) {
+          tokenKey = input.key;
+          return Promise.resolve({ success: true });
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(authenticatedIpKey, /^semantic-compression:/);
+  assert.match(tokenKey, /^semantic-compression-auth:[0-9a-f]{64}$/);
+  assert.doesNotMatch(tokenKey, new RegExp(TOKEN));
+});
+
+test("compression route fails closed when the pre-auth limiter is unavailable", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: `Bearer ${TOKEN}` }),
+    env({
+      COMPRESSION_PREAUTH_RATE_LIMITER: undefined,
+      COMPRESSION: { fetch() { upstreamCalls += 1; return Promise.resolve(compressionResponse({})); } },
+    }),
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "rate_limiter_unavailable");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("compression route fails closed when the token fingerprint limiter fails", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: `Bearer ${TOKEN}` }),
+    env({
+      COMPRESSION_TOKEN_RATE_LIMITER: { limit() { return Promise.resolve({ success: false }); } },
+      COMPRESSION: { fetch() { upstreamCalls += 1; return Promise.resolve(compressionResponse({})); } },
+    }),
+  );
+
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).error, "rate_limited");
+  assert.equal(upstreamCalls, 0);
+});
+
+test("compression route fails closed when the token fingerprint limiter is unavailable", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "原文", profile: "semantic-dense-v1" }, { Authorization: `Bearer ${TOKEN}` }),
+    env({
+      COMPRESSION_TOKEN_RATE_LIMITER: undefined,
+      COMPRESSION: { fetch() { upstreamCalls += 1; return Promise.resolve(compressionResponse({})); } },
+    }),
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "rate_limiter_unavailable");
+  assert.equal(upstreamCalls, 0);
 });
 
 test("compression route fails closed when caller secret is absent", async () => {

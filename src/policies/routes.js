@@ -18,6 +18,24 @@ const TEXT_RATE_LIMIT = Object.freeze({
   limit: 30,
   period: 60,
 });
+const COMPRESSION_PREAUTH_RATE_LIMIT = Object.freeze({
+  binding: "COMPRESSION_PREAUTH_RATE_LIMITER",
+  keyPrefix: "semantic-compression-preauth",
+  limit: 5,
+  period: 60,
+});
+const COMPRESSION_RATE_LIMIT = Object.freeze({
+  binding: "COMPRESSION_RATE_LIMITER",
+  limit: 5,
+  period: 60,
+});
+const COMPRESSION_TOKEN_RATE_LIMIT = Object.freeze({
+  binding: "COMPRESSION_TOKEN_RATE_LIMITER",
+  keyPrefix: "semantic-compression-auth",
+  key: (c) => c.get("compressionAuthFingerprint"),
+  limit: 5,
+  period: 60,
+});
 
 export const routePolicies = Object.freeze({
   health: Object.freeze({
@@ -92,11 +110,9 @@ export const routePolicies = Object.freeze({
     method: "POST",
     bodyType: "json",
     bodyLimitBytes: 8 * 1024 * 1024,
-    rateLimit: Object.freeze({
-      binding: "COMPRESSION_RATE_LIMITER",
-      limit: 5,
-      period: 60,
-    }),
+    preAuthRateLimit: COMPRESSION_PREAUTH_RATE_LIMIT,
+    rateLimit: COMPRESSION_RATE_LIMIT,
+    tokenRateLimit: COMPRESSION_TOKEN_RATE_LIMIT,
     authenticate: authenticateCompression,
     validateBody: validateCompressionBody,
     upstreamTimeoutMs: 50_000,
