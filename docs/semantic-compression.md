@@ -108,6 +108,18 @@ Remove-Item Env:COMPRESSION_QUALITY_INTERVAL_MS
 
 `COMPRESSION_QUALITY_OUTPUT` を指定した場合だけ、synthetic入力、実際の圧縮結果、機械的marker確認を人手レビュー用JSONへ保存する。通常の `npm test` はこのscriptを呼ばず、外部Geminiへ接続しない。出力は現行 `semantic-dense-v1` のbaselineであり、因果・否定範囲・不確実性・事実／推測境界を自動判定せず、合格thresholdも定義しない。
 
+既存の50件は意味保存のControl評価で、長文の圧縮効率は `test/fixtures/semantic-compression-long.json` の10件を別に指定して測定する。内部CandidateをControlと比較する場合だけ、`COMPRESSION_QUALITY_PROMPT_VARIANT=candidate` を追加する。Candidateの評価versionは `semantic-dense-v2-candidate` だが、公開profile、公開 `prompt_version`、model、Production WorkerのPromptは変更しない。Candidateのq45/q47を含む意味レビューで重大FAILが残る場合は採用せず、Production releaseを実行しない。
+
+既存artifactの再送なしに比率・marker欠落・category別分布を集計するには、次を実行する。出力はローカル `artifacts/` のレビュー資料であり、本文を本番ログへ追加しない。
+
+```powershell
+$env:COMPRESSION_QUALITY_INPUT = ".\\artifacts\\compression-quality-baseline.json"
+$env:COMPRESSION_QUALITY_REVIEW_OUTPUT = ".\\artifacts\\compression-quality-review.json"
+node scripts/analyze-compression-baseline.mjs
+Remove-Item Env:COMPRESSION_QUALITY_INPUT
+Remove-Item Env:COMPRESSION_QUALITY_REVIEW_OUTPUT
+```
+
 Geminiのrate limitはproject/model/tierごとに異なり、RPM・input TPM・RPD等で管理されるため、固定の許容値として扱わない。評価scriptは既定15秒（約4 request/minute）の間隔を入れ、429発生時は自動再送せず停止する。レスポンスに安全な数値形式の `Retry-After` がある場合だけ、待機目安をエラーへ表示する。間隔は `COMPRESSION_QUALITY_INTERVAL_MS` で調整できるが、quotaを保証する値ではない。
 
 ## Token usage の実測
@@ -117,11 +129,17 @@ Interactions API responseのusageを、opt-inの測定scriptから数値だけ�
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_COMPRESSION_USAGE_MEASURE = "true"
+# 任意: Controlが既定。Candidate Promptの内部比較時だけ指定する。
+$env:COMPRESSION_USAGE_PROMPT_VARIANT = "candidate"
+# 任意: 安全な数値だけのusage artifactを保存する。
+$env:COMPRESSION_USAGE_OUTPUT = ".\\artifacts\\compression-usage-candidate.json"
 # 任意: 既定15秒。短縮する場合も1秒未満にはできない。
 $env:COMPRESSION_USAGE_INTERVAL_MS = "15000"
 npm run measure:compression:usage
 Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
 Remove-Item Env:RUN_COMPRESSION_USAGE_MEASURE
+Remove-Item Env:COMPRESSION_USAGE_PROMPT_VARIANT
+Remove-Item Env:COMPRESSION_USAGE_OUTPUT
 Remove-Item Env:COMPRESSION_USAGE_INTERVAL_MS
 ```
 

@@ -1,9 +1,12 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import {
   COMPRESSION_PROFILE,
   COMPRESSION_MODEL,
 } from "../src/semantic-compression/contract.js";
 import { validateCompressionPayload } from "./smoke-production.mjs";
+import { resolveQualityVariant } from "./evaluate-compression.mjs";
 import {
   getSafeRetryAfterSeconds,
   resolveMeasurementIntervalMs,
@@ -43,6 +46,10 @@ export const USAGE_MEASUREMENT_SCENARIOS = [
   },
 ];
 
+export function resolveUsageVariant(name = process.env.COMPRESSION_USAGE_PROMPT_VARIANT) {
+  return resolveQualityVariant(name);
+}
+
 function summarizeNumbers(values) {
   const observed = values.filter((value) => Number.isSafeInteger(value) && value >= 0);
   return {
@@ -57,7 +64,11 @@ function summarizeNumbers(values) {
   };
 }
 
-export function buildUsageMeasurementOutput(records, { requestIntervalMs = null } = {}) {
+export function buildUsageMeasurementOutput(records, {
+  requestIntervalMs = null,
+  promptVariant = "control",
+  evaluationPromptVersion = null,
+} = {}) {
   const safeRecords = records.map((record) => ({
     scenario: record.scenario,
     index: record.index,
@@ -85,6 +96,8 @@ export function buildUsageMeasurementOutput(records, { requestIntervalMs = null 
   return {
     event: "compression_usage_measurement",
     model: COMPRESSION_MODEL,
+    promptVariant,
+    evaluationPromptVersion,
     requestIntervalMs,
     stateless: true,
     explicitCache: false,
@@ -99,9 +112,11 @@ async function measure() {
     process.env,
     "COMPRESSION_USAGE_INTERVAL_MS",
   );
+  const variant = resolveUsageVariant(process.env.COMPRESSION_USAGE_PROMPT_VARIANT);
   let currentUsage = null;
   const app = createCompressionWorkerApp({
     onUsage: (usage) => { currentUsage = usage; },
+    systemInstruction: variant.systemInstruction,
   });
 
   const records = [];
@@ -156,7 +171,18 @@ async function measure() {
     }
   }
 
-  console.log(JSON.stringify(buildUsageMeasurementOutput(records, { requestIntervalMs })));
+  const output = buildUsageMeasurementOutput(records, {
+    requestIntervalMs,
+    promptVariant: variant.name,
+    evaluationPromptVersion: variant.evaluationPromptVersion,
+  });
+  const outputPath = process.env.COMPRESSION_USAGE_OUTPUT;
+  if (typeof outputPath === "string" && outputPath.length > 0) {
+    const resolvedOutputPath = resolve(outputPath);
+    await mkdir(dirname(resolvedOutputPath), { recursive: true });
+    await writeFile(resolvedOutputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+  }
+  console.log(JSON.stringify(output));
 }
 
 if (process.argv[1]?.endsWith("measure-compression-usage.mjs")) {

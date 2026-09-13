@@ -7,7 +7,9 @@ import { createCompressionWorkerApp } from "../src/semantic-compression-worker.j
 import {
   USAGE_MEASUREMENT_SCENARIOS,
   buildUsageMeasurementOutput,
+  resolveUsageVariant,
 } from "../scripts/measure-compression-usage.mjs";
+import { COMPRESSION_CANDIDATE_PROMPT_VERSION } from "../src/semantic-compression/prompt-candidate.js";
 
 const API_KEY = "<fixture-gemini-key>";
 
@@ -148,4 +150,20 @@ test("usage measurement separates system-only and shared-input-prefix scenarios"
   assert.equal(output.records[0].scenario, "system-only");
   assert.equal(output.records[1].scenario, "shared-input-prefix");
   assert.doesNotMatch(JSON.stringify(output), /synthetic secret text|compressed text/);
+});
+
+test("usage measurement can select the internal candidate prompt without exposing prompt text", () => {
+  const variant = resolveUsageVariant("candidate");
+  assert.equal(variant.name, "candidate");
+  assert.equal(variant.evaluationPromptVersion, COMPRESSION_CANDIDATE_PROMPT_VERSION);
+
+  const output = buildUsageMeasurementOutput([], {
+    requestIntervalMs: 15000,
+    promptVariant: variant.name,
+    evaluationPromptVersion: variant.evaluationPromptVersion,
+  });
+
+  assert.equal(output.promptVariant, "candidate");
+  assert.equal(output.evaluationPromptVersion, COMPRESSION_CANDIDATE_PROMPT_VERSION);
+  assert.doesNotMatch(JSON.stringify(output), /意味保存|圧縮対象データ/);
 });
