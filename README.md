@@ -45,6 +45,8 @@ Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用�
 `semantic-compression` WorkerのService Binding経由で提供します。固定profile
 `compact-v1` / `semantic-dense-v1`、固定model、公開usage、本文非ログ、secret登録、live test、deploy／rollback手順は
 [`docs/semantic-compression.md`](docs/semantic-compression.md) にまとめています。
+公開APIの契約・データ仕様は
+[`docs/specs/semantic-compression-api.md`](docs/specs/semantic-compression-api.md) を参照してください。
 ローカルlive testのGemini credentialには専用の
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` を使用し、Cloudflare Worker Secretの
 `GEMINI_API_KEY` と分離します。

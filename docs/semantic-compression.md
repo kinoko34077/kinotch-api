@@ -1,5 +1,9 @@
 # Semantic Compression API 運用仕様
 
+公開APIの契約・機能・挙動・データ仕様は
+[`docs/specs/semantic-compression-api.md`](specs/semantic-compression-api.md) を正本とし、
+本文書では運用・secret・live test・deploy手順を扱う。
+
 ## 目的と責務
 
 `POST /v1/compress` は、入力本文を `compact-v1` または `semantic-dense-v1` の固定仕様で圧縮する専用APIである。任意prompt、system instruction、model、provider、chat、agent、tools、Search、会話履歴は受け付けない。
@@ -24,8 +28,8 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 ```json
 {
   "compressed_text": "要点\n- 圧縮本文",
-  "profile": "compact-v1",
-  "prompt_version": "compact-v1",
+  "profile": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1",
   "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,
@@ -33,8 +37,8 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
   "output_sha256": "64文字の小文字hex",
   "usage": {
     "input_tokens": 4321,
-    "system_prompt_tokens": 1548,
-    "content_input_tokens": 2773,
+    "system_prompt_tokens": 1549,
+    "content_input_tokens": 2772,
     "output_tokens": 987,
     "thought_tokens": 0,
     "cached_tokens": 0,

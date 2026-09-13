@@ -7,6 +7,7 @@ const documentPaths = [
   new URL("../docs/OPERATIONS.md", import.meta.url),
   new URL("../docs/API_PLAN.md", import.meta.url),
   new URL("../docs/semantic-compression.md", import.meta.url),
+  new URL("../docs/specs/semantic-compression-api.md", import.meta.url),
 ];
 const documentText = (await Promise.all(documentPaths.map((url) => readFile(url, "utf8")))).join("\n");
 
