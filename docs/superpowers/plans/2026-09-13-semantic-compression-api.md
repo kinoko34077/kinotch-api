@@ -666,7 +666,7 @@ Expected: PASS with all existing and Compression bindings.
 
 - [x] **Step 3: Run static privacy and scope checks**
 
-Run: `rg -n "GEMINI_API_KEY|COMPRESSION_API_TOKEN|COMPRESSION_SMOKE_TOKEN|Authorization|system_instruction|console\\.(log|error)" src scripts test docs README.md wrangler*.jsonc`
+Run: `rg -n "GEMINI_API_KEY|COMPRESSION_API_TOKEN|COMPRESSION_SMOKE_TOKEN|Authorization|system_instruction|console\\.(log|error)" -g "wrangler*.jsonc" src scripts test docs README.md .`
 
 Inspect every result to confirm only secret names/placeholders and safe logging appear. Run: `git diff --check` and confirm `src/text-core` has no changes.
 
@@ -684,7 +684,7 @@ Expected: PASS only with a valid external credential; otherwise leave it unexecu
 
 - [x] **Step 5: Review final status and complete the plan**
 
-Step 4 remains intentionally unchecked: no `RUN_GEMINI_LIVE_TEST` flag or `GEMINI_API_KEY` was supplied, so the live provider call and production deploy/smoke were not executed.
+Step 4 remains intentionally unchecked: no `RUN_GEMINI_LIVE_TEST` flag or `GEMINI_API_KEY` was supplied, so the live provider call and production deploy/smoke were not executed. The production hardening follow-up is recorded in `docs/superpowers/plans/2026-09-13-semantic-compression-production-hardening.md`; local evidence remains non-production evidence.
 
 Run: `git status --short --branch` and `git log -8 --oneline --decorate`.
 
