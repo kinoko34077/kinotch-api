@@ -159,7 +159,7 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 `POST /v1/compress` を、既存Gatewayの認証・Policy・Service Binding基盤上へ追加する。
 処理は独立private `semantic-compression` Workerへ分離し、Google Geminiの
 `gemini-3.5-flash-lite`を `store:false` のstateless Interactionsとして固定利用する。
-callerが変更できるのは `text` と固定profile `semantic-dense-v1` だけで、任意prompt／model／provider／toolsは受け付けない。
+callerが変更できるのは `text` と固定profile `compact-v1` / `semantic-dense-v1` だけで、任意prompt／model／provider／toolsは受け付けない。成功responseにはProvider usageを安全なsnake_case fieldで含める。
 
 - [x] 固定Compression contract、Unicode code point count、UTF-8 SHA-256、provenance response
 - [x] Service側固定promptとprompt injection境界

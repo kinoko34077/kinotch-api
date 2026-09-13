@@ -2,10 +2,9 @@ import { Hono } from "hono";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import {
   buildCompressionResponse,
-  COMPRESSION_PROFILE,
   COMPRESSION_MODEL,
-  COMPRESSION_PROMPT_VERSION,
   countUnicodeCodePoints,
+  isSupportedCompressionProfile,
   MAX_GEMINI_INPUT_CODE_POINTS,
   MAX_COMPRESSION_TEXT_LENGTH,
 } from "./semantic-compression/contract.js";
@@ -13,7 +12,7 @@ import {
   CompressionProviderError,
   requestGeminiCompression,
 } from "./semantic-compression/gemini.js";
-import { COMPRESSION_SYSTEM_INSTRUCTION } from "./semantic-compression/prompt.js";
+import { resolveCompressionProfile } from "./semantic-compression/prompt.js";
 
 const SERVICE_VERSION = "v1";
 const ALLOWED_REQUEST_FIELDS = new Set(["text", "profile"]);
@@ -43,7 +42,7 @@ function validateCompressionBody(body) {
   if (body.text.length === 0) {
     return { status: 400, code: "empty_text", message: "text must not be empty" };
   }
-  if (body.profile !== COMPRESSION_PROFILE) {
+  if (!isSupportedCompressionProfile(body.profile)) {
     return { status: 400, code: "invalid_profile", message: "profile is not supported" };
   }
 
@@ -71,7 +70,7 @@ function logSafeMetrics(c, status, inputChars, outputChars, startedAt) {
     inputChars: inputChars ?? null,
     outputChars: outputChars ?? null,
     model: COMPRESSION_MODEL,
-    promptVersion: COMPRESSION_PROMPT_VERSION,
+    promptVersion: c.get("compressionPromptVersion") ?? null,
     errorCategory: c.get("errorCategory") ?? null,
     compressionRatio: ratio,
   }));
@@ -81,7 +80,7 @@ export function createCompressionWorkerApp({
   fetchImpl = globalThis.fetch,
   onProviderDiagnostic,
   onUsage,
-  systemInstruction = COMPRESSION_SYSTEM_INSTRUCTION,
+  systemInstruction = null,
 } = {}) {
   const app = new Hono();
 
@@ -122,18 +121,29 @@ export function createCompressionWorkerApp({
         return errorResponse(c, status, validationError.code, validationError.message);
       }
 
+      const profileConfig = resolveCompressionProfile(body.profile);
+      if (!profileConfig) {
+        status = 400;
+        c.set("errorCategory", "invalid_profile");
+        return errorResponse(c, status, "invalid_profile", "profile is not supported");
+      }
+      c.set("compressionPromptVersion", profileConfig.promptVersion);
       inputChars = countUnicodeCodePoints(body.text);
-      const compressedText = await requestGeminiCompression(body.text, {
+      const result = await requestGeminiCompression(body.text, {
         apiKey: c.env?.GEMINI_API_KEY,
         fetchImpl,
         timeoutMs: c.env?.GEMINI_TIMEOUT_MS,
         onUsage,
-        systemInstruction,
+        systemInstruction: systemInstruction ?? profileConfig.systemInstruction,
       });
+      const { compressedText, usage } = result;
       outputChars = countUnicodeCodePoints(compressedText);
       const response = await buildCompressionResponse({
         compressedText,
         inputText: body.text,
+        profile: profileConfig.profile,
+        promptVersion: profileConfig.promptVersion,
+        usage,
         warnings: [],
       });
       status = 200;

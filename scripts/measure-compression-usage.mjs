@@ -155,8 +155,8 @@ async function measure() {
       if (validationError) {
         throw new Error(`usage measurement ${scenario.name} contract failed for request ${index + 1}: ${validationError}`);
       }
-      if (payload.usage !== undefined) {
-        throw new Error(`usage measurement public response changed for ${scenario.name} request ${index + 1}`);
+      if (!payload.usage || typeof payload.usage !== "object" || Array.isArray(payload.usage)) {
+        throw new Error(`usage measurement public response is missing usage for ${scenario.name} request ${index + 1}`);
       }
 
       records.push({
@@ -166,7 +166,13 @@ async function measure() {
         model: COMPRESSION_MODEL,
         inputChars: payload.input_chars,
         outputChars: payload.output_chars,
-        usage: currentUsage,
+        usage: {
+          inputTokens: payload.usage.input_tokens,
+          outputTokens: payload.usage.output_tokens,
+          thoughtTokens: payload.usage.thought_tokens,
+          cachedTokens: payload.usage.cached_tokens,
+          totalTokens: payload.usage.total_tokens,
+        },
       });
     }
   }

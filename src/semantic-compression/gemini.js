@@ -173,14 +173,15 @@ export async function requestGeminiCompression(
       throw invalidProviderResponse();
     }
     const compressedText = extractInteractionText(payload);
+    const usage = normalizeInteractionUsage(payload.usage);
     if (typeof onUsage === "function") {
       try {
-        onUsage(normalizeInteractionUsage(payload.usage));
+        onUsage(usage);
       } catch {
         // Usage observers are test/evaluation-only and must not affect the response contract.
       }
     }
-    return compressedText;
+    return { compressedText, usage };
   } finally {
     clearTimeout(timer);
   }

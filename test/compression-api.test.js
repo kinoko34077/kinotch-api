@@ -120,6 +120,13 @@ test("authenticated compression requests use only the Compression binding and fi
             output_chars: 7,
             input_sha256: "a".repeat(64),
             output_sha256: "b".repeat(64),
+            usage: {
+              input_tokens: 100,
+              output_tokens: 30,
+              thought_tokens: 0,
+              cached_tokens: 10,
+              total_tokens: 130,
+            },
             warnings: [],
           }));
         },
@@ -137,6 +144,13 @@ test("authenticated compression requests use only the Compression binding and fi
     output_chars: 7,
     input_sha256: "a".repeat(64),
     output_sha256: "b".repeat(64),
+    usage: {
+      input_tokens: 100,
+      output_tokens: 30,
+      thought_tokens: 0,
+      cached_tokens: 10,
+      total_tokens: 130,
+    },
     warnings: [],
   });
   assert.equal(upstreamRequest.method, "POST");
@@ -148,6 +162,47 @@ test("authenticated compression requests use only the Compression binding and fi
   });
   assert.equal(compressionRateLimitCalls, 1);
   assert.equal(textRateLimitCalls, 0);
+});
+
+test("Gateway accepts compact-v1 and forwards only the public compression request", async () => {
+  let forwarded;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit(
+      { text: "原文", profile: "compact-v1" },
+      { Authorization: `Bearer ${TOKEN}` },
+    ),
+    env({
+      COMPRESSION: {
+        fetch(request) {
+          forwarded = request;
+          return Promise.resolve(compressionResponse({
+            compressed_text: "短縮結果",
+            profile: "compact-v1",
+            prompt_version: "compact-v1",
+            model: "gemini-3.5-flash-lite",
+            input_chars: 2,
+            output_chars: 4,
+            input_sha256: "a".repeat(64),
+            output_sha256: "b".repeat(64),
+            usage: {
+              input_tokens: 100,
+              output_tokens: 30,
+              thought_tokens: 0,
+              cached_tokens: 10,
+              total_tokens: 130,
+            },
+            warnings: [],
+          }));
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).profile, "compact-v1");
+  assert.deepEqual(await forwarded.json(), { text: "原文", profile: "compact-v1" });
+  assert.equal(forwarded.headers.get("Authorization"), null);
 });
 
 test("Gateway to Service Binding to Worker reaches the fake Gemini boundary", async () => {

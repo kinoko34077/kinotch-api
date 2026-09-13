@@ -30,6 +30,9 @@ test("production release includes the private Compression Worker gate and proven
   assert.match(source, /compressionRecovery/);
   assert.match(source, /compressionModel/);
   assert.match(source, /compressionPromptVersion/);
+  assert.match(source, /COMPRESSION_PROFILE_COMPACT/);
+  assert.match(source, /COMPRESSION_PROFILE_SEMANTIC_DENSE/);
+  assert.match(source, /compressionPromptVersions/);
   assert.match(source, /COMPRESSION_SMOKE_TOKEN/);
 });
 
@@ -43,5 +46,7 @@ test("production release retries only non-billable Compression readiness", () =>
   assert.doesNotMatch(source, /runCompressionSmokeWithRetry/);
   assert.match(source, /runCompressionGatewayReadinessWithRetry/);
   assert.match(source, /runCompressionSmoke\(/);
+  assert.match(source, /profile: COMPRESSION_PROFILE_COMPACT/);
+  assert.match(source, /profile: COMPRESSION_PROFILE_SEMANTIC_DENSE/);
   assert.match(source, /checkCompression:\s*false/);
 });

@@ -1,9 +1,10 @@
 import { performance } from "node:perf_hooks";
 import {
   COMPRESSION_MODEL,
-  COMPRESSION_PROFILE,
-  COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROFILE_COMPACT,
+  COMPRESSION_PROFILE_SEMANTIC_DENSE,
   countUnicodeCodePoints,
+  isSupportedCompressionProfile,
   sha256Hex,
 } from "../src/semantic-compression/contract.js";
 
@@ -114,18 +115,33 @@ export function validateMoonPayload(payload) {
     : "moon payload shape is invalid";
 }
 
-export async function validateCompressionPayload(payload, inputText) {
+function isUsageCount(value) {
+  return value === null || (Number.isSafeInteger(value) && value >= 0);
+}
+
+export async function validateCompressionPayload(
+  payload,
+  inputText,
+  expectedProfile = COMPRESSION_PROFILE_SEMANTIC_DENSE,
+) {
   if (typeof inputText !== "string") return "input text is invalid";
+  if (!isSupportedCompressionProfile(expectedProfile)) return "expected compression profile is invalid";
   if (typeof payload?.compressed_text !== "string" || payload.compressed_text.trim() === "") {
     return "compressed_text is missing or empty";
   }
-  if (payload.profile !== COMPRESSION_PROFILE) return "compression profile is invalid";
-  if (payload.prompt_version !== COMPRESSION_PROMPT_VERSION) return "compression prompt version is invalid";
+  if (payload.profile !== expectedProfile) return "compression profile is invalid";
+  if (payload.prompt_version !== expectedProfile) return "compression prompt version is invalid";
   if (payload.model !== COMPRESSION_MODEL) return "compression model is invalid";
   if (payload.input_chars !== countUnicodeCodePoints(inputText)) return "input_chars is invalid";
   if (payload.output_chars !== countUnicodeCodePoints(payload.compressed_text)) return "output_chars is invalid";
   if (!/^[a-f0-9]{64}$/.test(payload.input_sha256 ?? "")) return "input_sha256 is invalid";
   if (!/^[a-f0-9]{64}$/.test(payload.output_sha256 ?? "")) return "output_sha256 is invalid";
+  if (!payload.usage || typeof payload.usage !== "object" || Array.isArray(payload.usage)) {
+    return "usage is invalid";
+  }
+  for (const field of ["input_tokens", "output_tokens", "thought_tokens", "cached_tokens", "total_tokens"]) {
+    if (!isUsageCount(payload.usage[field])) return `usage.${field} is invalid`;
+  }
   if (!Array.isArray(payload.warnings)) return "warnings must be an array";
 
   const [inputHash, outputHash] = await Promise.all([
@@ -141,24 +157,31 @@ export async function runCompressionSmoke({
   fetchImpl = globalThis.fetch,
   token,
   path = "/v1/compress",
+  profile = COMPRESSION_PROFILE_SEMANTIC_DENSE,
+  inputText = "事実: 観測値は10。推測: 原因はZの可能性がある。条件: AならB。",
+  requestId = profile === COMPRESSION_PROFILE_COMPACT
+    ? "smoke-compression-compact"
+    : "smoke-compression",
   timeoutMs = COMPRESSION_SMOKE_TIMEOUT_MS,
 } = {}) {
   if (typeof token !== "string" || token.length === 0) {
     throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
   }
+  if (!isSupportedCompressionProfile(profile)) {
+    throw new Error("Compression smoke requires a supported profile");
+  }
 
-  const inputText = "事実: 観測値は10。推測: 原因はZの可能性がある。条件: AならB。";
   const result = await request(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      "X-Request-ID": "smoke-compression",
+      "X-Request-ID": requestId,
     },
-    body: JSON.stringify({ text: inputText, profile: COMPRESSION_PROFILE }),
+    body: JSON.stringify({ text: inputText, profile }),
   }, fetchImpl, timeoutMs);
   const validationError = result.status === 200
-    ? await validateCompressionPayload(result.payload, inputText)
+    ? await validateCompressionPayload(result.payload, inputText, profile)
     : "compression request failed";
   if (validationError) {
     throw new Error(`compression smoke failed with status ${result.status}: ${validationError}`);
@@ -174,6 +197,7 @@ export async function runCompressionSmoke({
     promptVersion: result.payload.prompt_version,
     inputSha256: result.payload.input_sha256,
     outputSha256: result.payload.output_sha256,
+    usage: result.payload.usage,
   };
 }
 
@@ -284,7 +308,18 @@ export async function runProductionSmoke({
   }
 
   const compression = checkCompression
-    ? await runCompressionSmoke({ fetchImpl, token: compressionToken })
+    ? {
+      compact: await runCompressionSmoke({
+        fetchImpl,
+        token: compressionToken,
+        profile: COMPRESSION_PROFILE_COMPACT,
+      }),
+      semanticDense: await runCompressionSmoke({
+        fetchImpl,
+        token: compressionToken,
+        profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+      }),
+    }
     : null;
 
   const invalidProfile = checkGuards
@@ -325,7 +360,11 @@ export async function runProductionSmoke({
   ) {
     throw new Error("request ID propagation smoke failed");
   }
-  if (compression && compression.requestId !== "smoke-compression") {
+  if (
+    compression &&
+    (compression.compact.requestId !== "smoke-compression-compact" ||
+      compression.semanticDense.requestId !== "smoke-compression")
+  ) {
     throw new Error("compression request ID propagation smoke failed");
   }
 

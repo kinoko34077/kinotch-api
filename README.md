@@ -42,8 +42,8 @@ operator設定として維持します。詳細は[`docs/OPERATIONS.md`](docs/OP
 Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用しています。
 
 意味保存型の高密度圧縮専用API `/v1/compress` も、認証済みGatewayから
-`semantic-compression` WorkerのService Binding経由で提供します。固定profile、固定model、
-本文非ログ、secret登録、live test、deploy／rollback手順は
+`semantic-compression` WorkerのService Binding経由で提供します。固定profile
+`compact-v1` / `semantic-dense-v1`、固定model、公開usage、本文非ログ、secret登録、live test、deploy／rollback手順は
 [`docs/semantic-compression.md`](docs/semantic-compression.md) にまとめています。
 ローカルlive testのGemini credentialには専用の
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` を使用し、Cloudflare Worker Secretの

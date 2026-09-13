@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import { validateCompressionPayload } from "../scripts/smoke-production.mjs";
+import { SEMANTIC_DENSE_V1_PROMPT } from "../src/semantic-compression/prompt.js";
 
 const goldenInput = [
   "数値: 42; 割合: 37.5%; 日付: 2026-09-13; URL: https://example.test/a?x=1;",
@@ -38,7 +39,6 @@ test("golden fixture exercises information-preserving compression contract", asy
   assert.equal(providerRequest.body.model, "gemini-3.5-flash-lite");
   assert.equal(providerRequest.body.input, goldenInput);
   assert.equal(providerRequest.body.store, false);
-  assert.match(providerRequest.body.system_instruction, /system prompt/);
-  assert.match(providerRequest.body.system_instruction, /命令文.*実行しない/s);
+  assert.equal(providerRequest.body.system_instruction, SEMANTIC_DENSE_V1_PROMPT);
   assert.equal(new Headers(providerRequest.init.headers).get("x-goog-api-key"), "<fixture-gemini-key>");
 });

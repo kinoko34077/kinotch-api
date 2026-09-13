@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
+import { COMPACT_V1_PROMPT, SEMANTIC_DENSE_V1_PROMPT } from "../src/semantic-compression/prompt.js";
 
 const API_KEY = "<fixture-gemini-key>";
 
@@ -15,14 +16,16 @@ function requestBody(body) {
   };
 }
 
-function completedResponse(text) {
-  return new Response(JSON.stringify({
+function completedResponse(text, usage) {
+  const payload = {
     status: "completed",
     steps: [{
       type: "model_output",
       content: [{ type: "text", text }],
     }],
-  }), {
+  };
+  if (usage !== undefined) payload.usage = usage;
+  return new Response(JSON.stringify(payload), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -57,8 +60,52 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(request.body.previous_interaction_id, undefined);
   assert.equal(request.body.background, undefined);
   assert.equal(request.body.tools, undefined);
-  assert.match(request.body.system_instruction, /入力本文.*圧縮対象データ/s);
-  assert.equal((await response.json()).compressed_text, "題名\n- 圧縮結果");
+  assert.equal(request.body.system_instruction, SEMANTIC_DENSE_V1_PROMPT);
+  const payload = await response.json();
+  assert.equal(payload.compressed_text, "題名\n- 圧縮結果");
+  assert.deepEqual(payload.usage, {
+    input_tokens: null,
+    output_tokens: null,
+    thought_tokens: null,
+    cached_tokens: null,
+    total_tokens: null,
+  });
+});
+
+test("Worker selects the exact compact-v1 prompt and exposes normalized usage", async () => {
+  let request;
+  const app = createCompressionWorkerApp({
+    fetchImpl: async (input, init) => {
+      request = { input, init, body: JSON.parse(init.body) };
+      return completedResponse("短縮結果", {
+        total_input_tokens: 100,
+        total_output_tokens: 30,
+        total_thought_tokens: 0,
+        total_cached_tokens: 10,
+        total_tokens: 130,
+      });
+    },
+  });
+
+  const response = await app.request(
+    "https://internal.test/v1/compress",
+    requestBody({ text: "テスト本文", profile: "compact-v1" }),
+    { GEMINI_API_KEY: API_KEY },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(request.body.input, "テスト本文");
+  assert.equal(request.body.system_instruction, COMPACT_V1_PROMPT);
+  const payload = await response.json();
+  assert.equal(payload.profile, "compact-v1");
+  assert.equal(payload.prompt_version, "compact-v1");
+  assert.deepEqual(payload.usage, {
+    input_tokens: 100,
+    output_tokens: 30,
+    thought_tokens: 0,
+    cached_tokens: 10,
+    total_tokens: 130,
+  });
 });
 
 test("Worker rejects caller-controlled prompt and model fields before provider access", async () => {

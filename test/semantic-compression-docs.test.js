@@ -13,6 +13,7 @@ const documentText = (await Promise.all(documentPaths.map((url) => readFile(url,
 test("semantic compression operations are documented independently", () => {
   for (const required of [
     "/v1/compress",
+    "compact-v1",
     "semantic-dense-v1",
     "gemini-3.5-flash-lite",
     "thinking_level",
@@ -44,6 +45,8 @@ test("semantic compression operations are documented independently", () => {
     "COMPRESSION_USAGE_INTERVAL_MS",
     "measure:compression:usage",
     "cachedTokens",
+    "input_tokens",
+    "output_tokens",
     "Explicit Context Cache",
   ]) {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);

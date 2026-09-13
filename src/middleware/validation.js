@@ -1,6 +1,6 @@
 import {
-  COMPRESSION_PROFILE,
   countUnicodeCodePoints,
+  isSupportedCompressionProfile,
   MAX_GEMINI_INPUT_CODE_POINTS,
   MAX_COMPRESSION_TEXT_LENGTH,
 } from "../semantic-compression/contract.js";
@@ -92,7 +92,7 @@ export function validateCompressionBody(body) {
   if (hasUnsupportedField) return invalid("invalid_body", "Request body contains unsupported fields");
   if (typeof body.text !== "string") return invalid("invalid_body", "text must be a string");
   if (body.text.length === 0) return invalid("empty_text", "text must not be empty");
-  if (body.profile !== COMPRESSION_PROFILE) return invalid("invalid_profile", "profile is not supported");
+  if (!isSupportedCompressionProfile(body.profile)) return invalid("invalid_profile", "profile is not supported");
   if (countUnicodeCodePoints(body.text) > MAX_COMPRESSION_TEXT_LENGTH) {
     return { status: 413, code: "payload_too_large", message: "text exceeds the maximum length" };
   }

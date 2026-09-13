@@ -28,6 +28,7 @@ const EXPECTED_PUBLIC_KEYS = [
   "output_sha256",
   "profile",
   "prompt_version",
+  "usage",
   "warnings",
 ].sort();
 

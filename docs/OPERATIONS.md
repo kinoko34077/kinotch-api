@@ -25,8 +25,8 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 
 ## Semantic Compression API
 
-`POST /v1/compress` の契約、`semantic-dense-v1` の固定prompt、
-`gemini-3.5-flash-lite`、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
+`POST /v1/compress` の契約、`compact-v1` / `semantic-dense-v1` の固定prompt、
+`gemini-3.5-flash-lite`、公開usage、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
 `COMPRESSION_SMOKE_TOKEN` を使うlive smoke、8 MiB body limit、5 requests/60 secondsの
 専用rate limit、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → Textのrollbackは
 [`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
@@ -36,7 +36,8 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 smokeから自動実行しない。人手レビュー用出力を保存する場合もsynthetic corpusだけを使い、
 本文・Prompt・secret・raw provider responseをログや本番metadataへ残さない。
 
-Token usageの実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
+Production responseのusageはProviderのinput/output/thought/cached/total tokenをsnake_caseで返す。
+追加のToken usage実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とする別のopt-in scriptで行う。
 共通prefixなしの `system-only` 4件と、共通prefixありの `shared-input-prefix` 4件について、
 scenario別にinput/output/thought/cached/total tokenの数値だけを出力する。Implicit Cachingの効果は観測値として扱い、Explicit Context Cache、

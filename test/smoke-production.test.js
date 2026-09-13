@@ -62,6 +62,13 @@ test("compression smoke validator checks fixed provenance and exact text hashes"
     output_chars: 7,
     input_sha256: "".padStart(64, "0"),
     output_sha256: "".padStart(64, "0"),
+    usage: {
+      input_tokens: null,
+      output_tokens: null,
+      thought_tokens: null,
+      cached_tokens: null,
+      total_tokens: null,
+    },
     warnings: [],
   };
 
@@ -96,6 +103,47 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
   assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(result.promptVersion, "semantic-dense-v1");
   assert.equal(result.requestId, "smoke-compression");
+  assert.deepEqual(result.usage, {
+    input_tokens: null,
+    output_tokens: null,
+    thought_tokens: null,
+    cached_tokens: null,
+    total_tokens: null,
+  });
+});
+
+test("compression smoke supports compact-v1 and validates its public mapping", async () => {
+  const inputText = "短い入力";
+  const compressedPayload = await buildCompressionResponse({
+    compressedText: "短縮",
+    inputText,
+    profile: "compact-v1",
+    promptVersion: "compact-v1",
+    usage: {
+      inputTokens: 100,
+      outputTokens: 30,
+      thoughtTokens: 0,
+      cachedTokens: 10,
+      totalTokens: 130,
+    },
+  });
+  let received;
+  const result = await runCompressionSmoke({
+    token: "<fixture-smoke-token>",
+    profile: "compact-v1",
+    inputText,
+    fetchImpl: async (input, init) => {
+      received = { input, init };
+      return new Response(JSON.stringify(compressedPayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "X-Request-ID": "smoke-compression-compact" },
+      });
+    },
+  });
+
+  assert.equal(JSON.parse(received.init.body).profile, "compact-v1");
+  assert.equal(result.promptVersion, "compact-v1");
+  assert.equal(result.usage.input_tokens, 100);
 });
 
 test("compression smoke refuses to run without an explicit caller token", async () => {
@@ -146,6 +194,13 @@ test("compression smoke validator rejects changed model, prompt, counts, hashes,
     output_chars: 7,
     input_sha256: "a".repeat(64),
     output_sha256: "b".repeat(64),
+    usage: {
+      input_tokens: null,
+      output_tokens: null,
+      thought_tokens: null,
+      cached_tokens: null,
+      total_tokens: null,
+    },
     warnings: [],
   };
   const cases = [

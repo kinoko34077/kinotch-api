@@ -17,7 +17,12 @@ import {
   runCompressionSmoke,
   runProductionSmoke,
 } from "./smoke-production.mjs";
-import { COMPRESSION_MODEL, COMPRESSION_PROMPT_VERSION } from "../src/semantic-compression/contract.js";
+import {
+  COMPRESSION_MODEL,
+  COMPRESSION_PROFILE_COMPACT,
+  COMPRESSION_PROFILE_SEMANTIC_DENSE,
+  COMPRESSION_PROMPT_VERSION,
+} from "../src/semantic-compression/contract.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -352,9 +357,16 @@ async function main() {
     await runCompressionGatewayReadinessWithRetry();
 
     state.stage = "Compression smoke";
-    state.compressionSmoke = await runCompressionSmoke({
-      token: process.env.COMPRESSION_SMOKE_TOKEN,
-    });
+    state.compressionSmoke = {
+      compact: await runCompressionSmoke({
+        token: process.env.COMPRESSION_SMOKE_TOKEN,
+        profile: COMPRESSION_PROFILE_COMPACT,
+      }),
+      semanticDense: await runCompressionSmoke({
+        token: process.env.COMPRESSION_SMOKE_TOKEN,
+        profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+      }),
+    };
     state.compressionSmokeCompleted = true;
 
     state.stage = "Gateway smoke";
@@ -380,6 +392,10 @@ async function main() {
       compressionRecovery: state.compressionRecovery,
       compressionModel: COMPRESSION_MODEL,
       compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
+      compressionPromptVersions: {
+        compact: COMPRESSION_PROFILE_COMPACT,
+        semanticDense: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+      },
     });
     console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
   } catch (error) {
@@ -458,6 +474,10 @@ async function main() {
         gatewayRecovery: state.gatewayRecovery,
         compressionModel: COMPRESSION_MODEL,
         compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
+        compressionPromptVersions: {
+          compact: COMPRESSION_PROFILE_COMPACT,
+          semanticDense: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+        },
         failure: {
           stage: state.stage,
           message: error.message,

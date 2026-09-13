@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   normalizeInteractionUsage,
+  requestGeminiCompression,
 } from "../src/semantic-compression/gemini.js";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import {
@@ -73,7 +74,35 @@ test("normalizes missing and malformed Interaction usage fields to null", () => 
   });
 });
 
-test("Worker sends usage only to an injected observer, never to the public response", async () => {
+test("Gemini adapter returns compressed text and normalized usage to the Worker", async () => {
+  const result = await requestGeminiCompression("本文", {
+    apiKey: API_KEY,
+    fetchImpl: async (_input, init) => {
+      const body = JSON.parse(init.body);
+      assert.equal(body.input, "本文");
+      assert.equal(body.model, "gemini-3.5-flash-lite");
+      assert.deepEqual(body.generation_config, { thinking_level: "minimal" });
+      return completedResponse({
+        total_input_tokens: 100,
+        total_output_tokens: 30,
+        total_thought_tokens: 0,
+        total_cached_tokens: 10,
+        total_tokens: 130,
+      });
+    },
+  });
+
+  assert.equal(result.compressedText, "要点\n- 結果");
+  assert.deepEqual(result.usage, {
+    inputTokens: 100,
+    outputTokens: 30,
+    thoughtTokens: 0,
+    cachedTokens: 10,
+    totalTokens: 130,
+  });
+});
+
+test("Worker exposes normalized usage publicly and to the safe observer", async () => {
   let observedUsage;
   const app = createCompressionWorkerApp({
     onUsage: (usage) => { observedUsage = usage; },
@@ -101,7 +130,13 @@ test("Worker sends usage only to an injected observer, never to the public respo
     totalTokens: 122,
   });
   const body = await response.json();
-  assert.equal(body.usage, undefined);
+  assert.deepEqual(body.usage, {
+    input_tokens: 100,
+    output_tokens: 20,
+    thought_tokens: 2,
+    cached_tokens: 30,
+    total_tokens: 122,
+  });
   assert.deepEqual(Object.keys(body).sort(), [
     "compressed_text",
     "input_chars",
@@ -111,6 +146,7 @@ test("Worker sends usage only to an injected observer, never to the public respo
     "output_sha256",
     "profile",
     "prompt_version",
+    "usage",
     "warnings",
   ].sort());
 });
