@@ -60,7 +60,7 @@ Successful responses use exactly these semantic fields:
   "compressed_text": "...",
   "profile": "semantic-dense-v1",
   "prompt_version": "semantic-dense-v1",
-  "model": "gemini-2.5-flash-lite",
+  "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,
   "input_sha256": "...",
@@ -82,7 +82,7 @@ The prompt requires preservation of numerical and named facts, conditions, proce
 
 The Worker sends one stateless Gemini interaction per request with:
 
-- `model: "gemini-2.5-flash-lite"`
+- `model: "gemini-3.5-flash-lite"`
 - `input: text`
 - the fixed `system_instruction`
 - `store: false`

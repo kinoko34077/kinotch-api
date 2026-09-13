@@ -35,7 +35,7 @@ test("golden fixture exercises information-preserving compression contract", asy
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(await validateCompressionPayload(payload, goldenInput), null);
-  assert.equal(providerRequest.body.model, "gemini-2.5-flash-lite");
+  assert.equal(providerRequest.body.model, "gemini-3.5-flash-lite");
   assert.equal(providerRequest.body.input, goldenInput);
   assert.equal(providerRequest.body.store, false);
   assert.match(providerRequest.body.system_instruction, /system prompt/);

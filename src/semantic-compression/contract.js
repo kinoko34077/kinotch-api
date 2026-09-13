@@ -1,6 +1,6 @@
 export const COMPRESSION_PROFILE = "semantic-dense-v1";
 export const COMPRESSION_PROMPT_VERSION = "semantic-dense-v1";
-export const COMPRESSION_MODEL = "gemini-2.5-flash-lite";
+export const COMPRESSION_MODEL = "gemini-3.5-flash-lite";
 export const MAX_COMPRESSION_TEXT_LENGTH = 1_000_000;
 export const MAX_GEMINI_INPUT_CODE_POINTS = 200_000;
 

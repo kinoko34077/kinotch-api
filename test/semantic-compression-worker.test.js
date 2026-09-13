@@ -46,7 +46,7 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(response.status, 200);
   assert.equal(request.input, "https://generativelanguage.googleapis.com/v1beta/interactions");
   assert.equal(new Headers(request.init.headers).get("x-goog-api-key"), API_KEY);
-  assert.equal(request.body.model, "gemini-2.5-flash-lite");
+  assert.equal(request.body.model, "gemini-3.5-flash-lite");
   assert.equal(request.body.input, "原文");
   assert.equal(request.body.store, false);
   assert.equal(request.body.previous_interaction_id, undefined);
@@ -176,6 +176,76 @@ test("Worker maps provider quota response and preserves only safe retry metadata
   assert.match(body, /provider_rate_limited/);
   assert.doesNotMatch(body, /raw provider detail/);
   assert.equal(response.headers.get("Retry-After"), "7");
+});
+
+test("Worker exposes only safe diagnostics to an injected live-test observer", async () => {
+  let diagnostic;
+  const rawMessage = "model models/gemini-3.5-flash-lite is unavailable; secret=do-not-expose";
+  const app = createCompressionWorkerApp({
+    onProviderDiagnostic: (value) => {
+      diagnostic = value;
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: {
+        code: 404,
+        message: rawMessage,
+        status: "NOT_FOUND",
+        details: [{
+          "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+          reason: "MODEL_NOT_AVAILABLE",
+          metadata: { model: "secret-model-name" },
+        }],
+      },
+    }), { status: 404, headers: { "Content-Type": "application/json" } }),
+  });
+
+  const response = await app.request(
+    "https://internal.test/v1/compress",
+    requestBody({ text: "原文", profile: "semantic-dense-v1" }),
+    { GEMINI_API_KEY: API_KEY },
+  );
+  const body = await response.text();
+
+  assert.equal(response.status, 502);
+  assert.deepEqual(diagnostic, {
+    upstreamStatus: 404,
+    providerStatus: "NOT_FOUND",
+    providerReason: "MODEL_NOT_AVAILABLE",
+    safeMessage: "Gemini request failed (NOT_FOUND)",
+  });
+  assert.doesNotMatch(JSON.stringify(diagnostic), /secret-model-name|do-not-expose/);
+  assert.doesNotMatch(body, /secret-model-name|do-not-expose/);
+  assert.doesNotMatch(body, new RegExp(API_KEY));
+});
+
+test("Worker derives a safe provider status from an Interactions error code", async () => {
+  let diagnostic;
+  const app = createCompressionWorkerApp({
+    onProviderDiagnostic: (value) => {
+      diagnostic = value;
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: {
+        code: "model_not_found",
+        message: "raw interaction error detail",
+      },
+    }), { status: 404, headers: { "Content-Type": "application/json" } }),
+  });
+
+  const response = await app.request(
+    "https://internal.test/v1/compress",
+    requestBody({ text: "原文", profile: "semantic-dense-v1" }),
+    { GEMINI_API_KEY: API_KEY },
+  );
+
+  assert.equal(response.status, 502);
+  assert.deepEqual(diagnostic, {
+    upstreamStatus: 404,
+    providerStatus: "model_not_found",
+    providerReason: null,
+    safeMessage: "Gemini request failed (model_not_found)",
+  });
+  assert.doesNotMatch(await response.text(), /raw interaction error detail/);
 });
 
 test("Worker maps timeout and missing secret without leaking configuration", async () => {

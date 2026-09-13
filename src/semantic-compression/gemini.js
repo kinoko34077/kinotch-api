@@ -8,12 +8,13 @@ export const GEMINI_INTERACTIONS_ENDPOINT =
 export const DEFAULT_GEMINI_TIMEOUT_MS = 45_000;
 
 export class CompressionProviderError extends Error {
-  constructor(code, status, { retryAfter } = {}) {
+  constructor(code, status, { retryAfter, diagnostic } = {}) {
     super(code);
     this.name = "CompressionProviderError";
     this.code = code;
     this.status = status;
     if (retryAfter !== undefined) this.retryAfter = retryAfter;
+    if (diagnostic !== undefined) this.diagnostic = diagnostic;
   }
 }
 
@@ -24,6 +25,48 @@ function invalidProviderResponse() {
 function normalizeRetryAfter(value) {
   if (typeof value !== "string" || !/^\d{1,6}$/.test(value)) return undefined;
   return value;
+}
+
+const MAX_PROVIDER_DIAGNOSTIC_VALUE_LENGTH = 128;
+
+function normalizeDiagnosticValue(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (normalized.length === 0 || normalized.length > MAX_PROVIDER_DIAGNOSTIC_VALUE_LENGTH) return null;
+  return normalized;
+}
+
+function firstProviderReason(details) {
+  if (!Array.isArray(details)) return null;
+  const detail = details.find((value) => value && typeof value === "object" && typeof value.reason === "string");
+  return normalizeDiagnosticValue(detail?.reason);
+}
+
+function buildProviderDiagnostic({ upstreamStatus, payload }) {
+  const providerError = payload?.error;
+  const providerStatus = normalizeDiagnosticValue(providerError?.status)
+    ?? normalizeDiagnosticValue(providerError?.code);
+  const providerReason = normalizeDiagnosticValue(providerError?.reason)
+    ?? firstProviderReason(providerError?.details);
+  const safeMessage = providerStatus
+    ? `Gemini request failed (${providerStatus})`
+    : `Gemini request failed with HTTP ${upstreamStatus}`;
+
+  return {
+    upstreamStatus,
+    providerStatus,
+    providerReason,
+    safeMessage,
+  };
+}
+
+async function parseProviderErrorPayload(response) {
+  try {
+    const payload = await response.json();
+    return payload && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
+  } catch {
+    return null;
+  }
 }
 
 export function extractInteractionText(payload) {
@@ -88,13 +131,16 @@ export async function requestGeminiCompression(
       throw new CompressionProviderError("provider_error", 502);
     }
 
-    if (response?.status === 429) {
-      const retryAfter = normalizeRetryAfter(response.headers?.get("Retry-After"));
-      throw new CompressionProviderError("provider_rate_limited", 429, { retryAfter });
-    }
-
     if (!response?.ok) {
-      throw new CompressionProviderError("provider_error", 502);
+      const diagnostic = buildProviderDiagnostic({
+        upstreamStatus: response?.status,
+        payload: await parseProviderErrorPayload(response),
+      });
+      if (response?.status === 429) {
+        const retryAfter = normalizeRetryAfter(response.headers?.get("Retry-After"));
+        throw new CompressionProviderError("provider_rate_limited", 429, { retryAfter, diagnostic });
+      }
+      throw new CompressionProviderError("provider_error", 502, { diagnostic });
     }
 
     let payload;

@@ -14,7 +14,7 @@ test("semantic compression operations are documented independently", () => {
   for (const required of [
     "/v1/compress",
     "semantic-dense-v1",
-    "gemini-2.5-flash-lite",
+    "gemini-3.5-flash-lite",
     "GEMINI_API_KEY",
     "KINOTCH_COMPRESSION_GEMINI_API_KEY",
     "COMPRESSION_API_TOKEN",

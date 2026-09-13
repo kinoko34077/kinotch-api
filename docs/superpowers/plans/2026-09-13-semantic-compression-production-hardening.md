@@ -14,7 +14,7 @@
 
 - Preserve existing Gateway routes, Text Core, Text Worker behavior, and all existing Service Bindings.
 - Keep `semantic-compression` independent, `workers_dev:false`, `preview_urls:false`, with no public Worker route.
-- Accept only `{ text, profile }`; keep `semantic-dense-v1`, `gemini-2.5-flash-lite`, fixed prompt, `store:false`, and no caller-controlled provider options.
+- Accept only `{ text, profile }`; keep `semantic-dense-v1`, `gemini-3.5-flash-lite`, fixed prompt, `store:false`, and no caller-controlled provider options.
 - Never log or return input text, compressed text, credentials, prompt text, or raw Gemini response data.
 - Do not retry an ambiguous Gemini generation request; only retry non-provider propagation/readiness checks.
 - Do not run live Gemini calls or production deploys without explicitly supplied operator credentials.

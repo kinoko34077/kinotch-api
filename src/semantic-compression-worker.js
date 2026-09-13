@@ -76,7 +76,7 @@ function logSafeMetrics(c, status, inputChars, outputChars, startedAt) {
   }));
 }
 
-export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch } = {}) {
+export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onProviderDiagnostic } = {}) {
   const app = new Hono();
 
   app.use("*", requestIdMiddleware());
@@ -132,6 +132,13 @@ export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch } = {}
       return c.json(response, status);
     } catch (error) {
       if (error instanceof CompressionProviderError) {
+        if (error.diagnostic && typeof onProviderDiagnostic === "function") {
+          try {
+            onProviderDiagnostic(error.diagnostic);
+          } catch {
+            // Diagnostic observers are test-only and must not affect the response contract.
+          }
+        }
         status = error.status;
         c.set("errorCategory", error.code);
         if (error.retryAfter !== undefined) c.header("Retry-After", error.retryAfter);

@@ -15,7 +15,7 @@ import { COMPRESSION_SYSTEM_INSTRUCTION } from "../src/semantic-compression/prom
 test("compression contract fixes profile, prompt version, and model", () => {
   assert.equal(COMPRESSION_PROFILE, "semantic-dense-v1");
   assert.equal(COMPRESSION_PROMPT_VERSION, "semantic-dense-v1");
-  assert.equal(COMPRESSION_MODEL, "gemini-2.5-flash-lite");
+  assert.equal(COMPRESSION_MODEL, "gemini-3.5-flash-lite");
   assert.equal(MAX_COMPRESSION_TEXT_LENGTH, 1_000_000);
   assert.equal(MAX_GEMINI_INPUT_CODE_POINTS, 200_000);
   assert.match(COMPRESSION_SYSTEM_INSTRUCTION, /入力本文.*圧縮対象データ/s);
@@ -47,7 +47,7 @@ test("success response contains the fixed provenance contract", async () => {
   ]);
   assert.equal(response.profile, "semantic-dense-v1");
   assert.equal(response.prompt_version, "semantic-dense-v1");
-  assert.equal(response.model, "gemini-2.5-flash-lite");
+  assert.equal(response.model, "gemini-3.5-flash-lite");
   assert.equal(response.input_chars, 2);
   assert.equal(response.output_chars, 7);
   assert.deepEqual(response.warnings, []);

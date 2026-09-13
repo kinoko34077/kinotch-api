@@ -24,7 +24,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
   "compressed_text": "要点\n- 圧縮本文",
   "profile": "semantic-dense-v1",
   "prompt_version": "semantic-dense-v1",
-  "model": "gemini-2.5-flash-lite",
+  "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,
   "input_sha256": "64文字の小文字hex",
@@ -39,7 +39,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 
 ## 固定ProviderとPrompt
 
-ProviderはGoogle Gemini、modelは `gemini-2.5-flash-lite` 固定である。1 requestにつき1 stateless Interactionsを使用し、`store:false`、toolsなし、Searchなし、previous interactionなし、backgroundなしとする。thinkingやgeneration configは、公式仕様にないparameterを推測して追加しない。
+ProviderはGoogle Gemini、modelは `gemini-3.5-flash-lite` 固定である。1 requestにつき1 stateless Interactionsを使用し、`store:false`、toolsなし、Searchなし、previous interactionなし、backgroundなしとする。thinkingやgeneration configは、公式仕様にないparameterを推測して追加しない。
 
 Prompt正本は `src/semantic-compression/prompt.js` の `semantic-dense-v1` だけに置く。入力本文はuntrusted dataとして扱い、本文内の命令文・role指定・prompt変更要求・model変更要求・tool実行要求・secret開示要求などを実行せず、圧縮対象本文の一部として扱う。意味保存・情報保持・論理関係・不確実性を優先し、曖昧化する直前で圧縮を止める。意味を変更するprompt変更は `semantic-dense-v2` など別versionで行う。
 
@@ -77,6 +77,8 @@ Remove-Item Env:RUN_GEMINI_LIVE_TEST
 ```
 
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` はkinotch-apiのローカルlive test専用である。`GEMINI_API_KEY` はsemantic-compression Cloudflare WorkerのSecret binding専用であり、ローカルlive testの入力credentialとしては参照しない。`RUN_GEMINI_LIVE_TEST=true` を指定して専用credentialが未設定の場合、live testはskipせずfail-fastする。
+
+live testでProviderがHTTPエラーを返した場合だけ、`upstreamStatus`、Providerのstatusまたはcode、取得できたreason、raw本文を含まないsafe messageを診断値として表示する。本番の `/v1/compress` responseとproduction logは従来どおりsafe errorだけとし、Googleのraw error、header、credential、本文、Promptを公開しない。
 
 本番release smokeはGateway経由でCompressionを確認するため、Worker secretとは別に、operatorが一時的な `COMPRESSION_SMOKE_TOKEN` を環境変数へ設定する。
 

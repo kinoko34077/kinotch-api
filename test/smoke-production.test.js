@@ -57,7 +57,7 @@ test("compression smoke validator checks fixed provenance and exact text hashes"
     compressed_text: "題名\n- 内容",
     profile: "semantic-dense-v1",
     prompt_version: "semantic-dense-v1",
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 7,
     input_sha256: "".padStart(64, "0"),
@@ -93,7 +93,7 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
   assert.equal(new Headers(received.init.headers).get("Authorization"), "Bearer <fixture-smoke-token>");
   assert.equal(JSON.parse(received.init.body).profile, "semantic-dense-v1");
   assert.equal(result.status, 200);
-  assert.equal(result.model, "gemini-2.5-flash-lite");
+  assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(result.promptVersion, "semantic-dense-v1");
   assert.equal(result.requestId, "smoke-compression");
 });
@@ -141,7 +141,7 @@ test("compression smoke validator rejects changed model, prompt, counts, hashes,
     compressed_text: "題名\n- 内容",
     profile: "semantic-dense-v1",
     prompt_version: "semantic-dense-v1",
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 7,
     input_sha256: "a".repeat(64),

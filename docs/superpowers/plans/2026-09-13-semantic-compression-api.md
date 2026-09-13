@@ -17,7 +17,7 @@
 - Compression is not a general LLM proxy, chat API, agent API, arbitrary-prompt API, multi-provider router, model-selection API, tool runner, search integration, conversation store, cache, or persistence layer.
 - Accepted request fields are only `text` and `profile`; `profile` must equal `semantic-dense-v1`.
 - `text` is non-empty and at most 1,000,000 Unicode code points; Gateway body limit is 8 MiB.
-- Fixed model is `gemini-2.5-flash-lite`; caller cannot change model, prompt, provider, tools, or generation configuration.
+- Fixed model is `gemini-3.5-flash-lite`; caller cannot change model, prompt, provider, tools, or generation configuration.
 - Gemini call uses one stateless Interactions API request with `store:false`, no `previous_interaction_id`, background execution, tools, or search.
 - `COMPRESSION_API_TOKEN` and `GEMINI_API_KEY` are secrets only; no secret value enters source, vars, logs, responses, fixtures, or release metadata.
 - `semantic-dense-v1` prompt text has one source of truth and is immutable after release.
@@ -49,7 +49,7 @@ Add tests that require the exact constants and behavior:
 test("compression contract fixes profile, prompt version, and model", () => {
   assert.equal(COMPRESSION_PROFILE, "semantic-dense-v1");
   assert.equal(COMPRESSION_PROMPT_VERSION, "semantic-dense-v1");
-  assert.equal(COMPRESSION_MODEL, "gemini-2.5-flash-lite");
+  assert.equal(COMPRESSION_MODEL, "gemini-3.5-flash-lite");
   assert.equal(MAX_COMPRESSION_TEXT_LENGTH, 1_000_000);
   assert.match(COMPRESSION_SYSTEM_INSTRUCTION, /入力本文.*圧縮対象データ/s);
   assert.match(COMPRESSION_SYSTEM_INSTRUCTION, /命令文.*実行しない/s);
@@ -80,7 +80,7 @@ test("success response contains the fixed provenance contract", async () => {
   ]);
   assert.equal(response.profile, "semantic-dense-v1");
   assert.equal(response.prompt_version, "semantic-dense-v1");
-  assert.equal(response.model, "gemini-2.5-flash-lite");
+  assert.equal(response.model, "gemini-3.5-flash-lite");
   assert.equal(response.input_chars, 2);
   assert.equal(response.output_chars, 7);
   assert.deepEqual(response.warnings, []);
@@ -152,7 +152,7 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(response.status, 200);
   assert.equal(request.input, "https://generativelanguage.googleapis.com/v1beta/interactions");
   assert.equal(request.init.headers["x-goog-api-key"], "secret-test-key");
-  assert.equal(request.body.model, "gemini-2.5-flash-lite");
+  assert.equal(request.body.model, "gemini-3.5-flash-lite");
   assert.equal(request.body.input, "原文");
   assert.equal(request.body.store, false);
   assert.equal(request.body.previous_interaction_id, undefined);
@@ -560,7 +560,7 @@ compressionVersionId: state.compressionVersionId,
 previousCompressionVersionId: state.previousCompressionVersionId,
 compressionSmoke: state.compressionSmoke,
 compressionRecovery: state.compressionRecovery,
-compressionModel: "gemini-2.5-flash-lite",
+compressionModel: "gemini-3.5-flash-lite",
 compressionPromptVersion: "semantic-dense-v1",
 ```
 
@@ -602,7 +602,7 @@ git push origin main
 
 - [x] **Step 1: Write failing documentation checks**
 
-Add assertions that the docs contain `/v1/compress`, `semantic-dense-v1`, `gemini-2.5-flash-lite`, `GEMINI_API_KEY`, `COMPRESSION_API_TOKEN`, `COMPRESSION_SMOKE_TOKEN`, `workers_dev`, `store:false`, `8 MiB`, `5 requests`, the live-test command, rollback order, and the no-body-logging rule. Assert that no API key/token example contains a value-looking secret.
+Add assertions that the docs contain `/v1/compress`, `semantic-dense-v1`, `gemini-3.5-flash-lite`, `GEMINI_API_KEY`, `KINOTCH_COMPRESSION_GEMINI_API_KEY`, `COMPRESSION_API_TOKEN`, `COMPRESSION_SMOKE_TOKEN`, `workers_dev`, `store:false`, `8 MiB`, `5 requests`, the live-test command, rollback order, and the no-body-logging rule. Assert that no API key/token example contains a value-looking secret.
 
 - [x] **Step 2: Run the documentation check to verify it fails**
 
