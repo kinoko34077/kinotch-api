@@ -38,6 +38,8 @@ const liveGemini = resolveLiveGeminiConfig(process.env);
     assert.equal(payload.profile, profile);
     assert.equal(payload.prompt_version, profile);
     assert.ok(Number.isSafeInteger(payload.usage.input_tokens));
+    assert.ok(Number.isSafeInteger(payload.usage.system_prompt_tokens));
+    assert.ok(payload.usage.content_input_tokens === null || Number.isSafeInteger(payload.usage.content_input_tokens));
     assert.ok(Number.isSafeInteger(payload.usage.output_tokens));
   }
 });

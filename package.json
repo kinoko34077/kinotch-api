@@ -16,6 +16,7 @@
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
     "evaluate:compression": "node scripts/evaluate-compression.mjs",
     "measure:compression:usage": "node scripts/measure-compression-usage.mjs",
+    "measure:compression:prompt-tokens": "node scripts/measure-compression-prompt-tokens.mjs",
     "deploy:production": "node scripts/deploy-production.mjs",
     "check:text-rules": "node scripts/check-text-rules.mjs",
     "check:text-metadata": "node scripts/check-text-metadata.mjs",

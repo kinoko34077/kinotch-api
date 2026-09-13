@@ -139,8 +139,16 @@ export async function validateCompressionPayload(
   if (!payload.usage || typeof payload.usage !== "object" || Array.isArray(payload.usage)) {
     return "usage is invalid";
   }
-  for (const field of ["input_tokens", "output_tokens", "thought_tokens", "cached_tokens", "total_tokens"]) {
+  for (const field of ["input_tokens", "system_prompt_tokens", "content_input_tokens", "output_tokens", "thought_tokens", "cached_tokens", "total_tokens"]) {
     if (!isUsageCount(payload.usage[field])) return `usage.${field} is invalid`;
+  }
+  if (
+    payload.usage.input_tokens !== null &&
+    payload.usage.system_prompt_tokens !== null &&
+    payload.usage.content_input_tokens !== null &&
+    payload.usage.content_input_tokens !== payload.usage.input_tokens - payload.usage.system_prompt_tokens
+  ) {
+    return "usage.content_input_tokens is inconsistent";
   }
   if (!Array.isArray(payload.warnings)) return "warnings must be an array";
 

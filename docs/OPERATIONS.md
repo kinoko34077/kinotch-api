@@ -36,7 +36,7 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 smokeから自動実行しない。人手レビュー用出力を保存する場合もsynthetic corpusだけを使い、
 本文・Prompt・secret・raw provider responseをログや本番metadataへ残さない。
 
-Production responseのusageはProviderのinput/output/thought/cached/total tokenをsnake_caseで返す。
+Production responseのusageはProviderのinput/output/thought/cached/total tokenに加え、固定Promptの`system_prompt_tokens`と残差`content_input_tokens`をsnake_caseで返す。`input_tokens`はProviderの総inputであり、本文だけのtoken数ではない。Prompt token数はprofileごとの事前測定metadataで、Production requestごとには`countTokens`を呼ばない。
 追加のToken usage実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とする別のopt-in scriptで行う。
 共通prefixなしの `system-only` 4件と、共通prefixありの `shared-input-prefix` 4件について、
@@ -44,6 +44,8 @@ scenario別にinput/output/thought/cached/total tokenの数値だけを出力す
 `generateContent`、未合意のthresholdは導入しない。
 
 外部Geminiのrate limitはproject/model/tier依存でRPM・input TPM・RPD等により変動するため、測定scriptは既定15秒間隔（約4 request/minute）で送信する。品質評価は `COMPRESSION_QUALITY_INTERVAL_MS`、usage測定は `COMPRESSION_USAGE_INTERVAL_MS` で調整できる。いずれも1秒未満は許可せず、429時の自動再送は行わない。安全な数値形式の `Retry-After` が応答にある場合だけ、測定停止時のエラーへ秒数を表示する。
+
+Prompt token metadataの再測定はPromptまたはmodel変更時だけ行う。`RUN_COMPRESSION_PROMPT_TOKEN_MEASURE=true` と専用credentialを設定し、`npm run measure:compression:prompt-tokens` を実行する。現在値は`compact-v1: 266`、`semantic-dense-v1: 1549`で、対応Prompt SHA-256とともにtestでstale検出する。
 
 ## 遅延の見方
 

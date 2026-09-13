@@ -5,6 +5,8 @@ import {
   requestGeminiCompression,
 } from "../src/semantic-compression/gemini.js";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
+import { deriveContentInputTokens } from "../src/semantic-compression/contract.js";
+import { getCompressionPromptMetadata } from "../src/semantic-compression/prompt-metadata.js";
 import {
   USAGE_MEASUREMENT_SCENARIOS,
   buildUsageMeasurementOutput,
@@ -130,8 +132,11 @@ test("Worker exposes normalized usage publicly and to the safe observer", async 
     totalTokens: 122,
   });
   const body = await response.json();
+  const systemPromptTokens = getCompressionPromptMetadata("semantic-dense-v1").systemPromptTokens;
   assert.deepEqual(body.usage, {
     input_tokens: 100,
+    system_prompt_tokens: systemPromptTokens,
+    content_input_tokens: deriveContentInputTokens(100, systemPromptTokens),
     output_tokens: 20,
     thought_tokens: 2,
     cached_tokens: 30,

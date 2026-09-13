@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import { COMPACT_V1_PROMPT, SEMANTIC_DENSE_V1_PROMPT } from "../src/semantic-compression/prompt.js";
+import { deriveContentInputTokens } from "../src/semantic-compression/contract.js";
+import { getCompressionPromptMetadata } from "../src/semantic-compression/prompt-metadata.js";
 
 const API_KEY = "<fixture-gemini-key>";
 
@@ -63,8 +65,11 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(request.body.system_instruction, SEMANTIC_DENSE_V1_PROMPT);
   const payload = await response.json();
   assert.equal(payload.compressed_text, "題名\n- 圧縮結果");
+  const semanticPromptTokens = getCompressionPromptMetadata("semantic-dense-v1").systemPromptTokens;
   assert.deepEqual(payload.usage, {
     input_tokens: null,
+    system_prompt_tokens: semanticPromptTokens,
+    content_input_tokens: null,
     output_tokens: null,
     thought_tokens: null,
     cached_tokens: null,
@@ -99,8 +104,11 @@ test("Worker selects the exact compact-v1 prompt and exposes normalized usage", 
   const payload = await response.json();
   assert.equal(payload.profile, "compact-v1");
   assert.equal(payload.prompt_version, "compact-v1");
+  const compactPromptTokens = getCompressionPromptMetadata("compact-v1").systemPromptTokens;
   assert.deepEqual(payload.usage, {
     input_tokens: 100,
+    system_prompt_tokens: compactPromptTokens,
+    content_input_tokens: deriveContentInputTokens(100, compactPromptTokens),
     output_tokens: 30,
     thought_tokens: 0,
     cached_tokens: 10,

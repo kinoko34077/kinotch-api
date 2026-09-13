@@ -46,6 +46,12 @@ test("semantic compression operations are documented independently", () => {
     "measure:compression:usage",
     "cachedTokens",
     "input_tokens",
+    "system_prompt_tokens",
+    "content_input_tokens",
+    "RUN_COMPRESSION_PROMPT_TOKEN_MEASURE",
+    "COMPRESSION_PROMPT_TOKEN_MEASURE_INTERVAL_MS",
+    "measure:compression:prompt-tokens",
+    "countTokens",
     "output_tokens",
     "Explicit Context Cache",
   ]) {

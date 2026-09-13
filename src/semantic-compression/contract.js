@@ -21,6 +21,15 @@ export function isSupportedCompressionProfile(value) {
   return COMPRESSION_PROFILES.includes(value);
 }
 
+export function deriveContentInputTokens(inputTokens, systemPromptTokens) {
+  const isCount = (value) => Number.isSafeInteger(value) && value >= 0;
+  if (!isCount(inputTokens) || !isCount(systemPromptTokens)) return null;
+  const contentInputTokens = inputTokens - systemPromptTokens;
+  return Number.isSafeInteger(contentInputTokens) && contentInputTokens >= 0
+    ? contentInputTokens
+    : null;
+}
+
 export async function sha256Hex(value, cryptoImpl = globalThis.crypto) {
   if (!cryptoImpl?.subtle || typeof cryptoImpl.subtle.digest !== "function") {
     throw new Error("Web Crypto SHA-256 is unavailable");
@@ -37,6 +46,7 @@ export async function buildCompressionResponse({
   profile = COMPRESSION_PROFILE_SEMANTIC_DENSE,
   promptVersion,
   usage,
+  systemPromptTokens,
   warnings = [],
   cryptoImpl = globalThis.crypto,
 }) {
@@ -45,6 +55,10 @@ export async function buildCompressionResponse({
     const value = normalizedUsage[camelCase] ?? normalizedUsage[snakeCase];
     return Number.isSafeInteger(value) && value >= 0 ? value : null;
   };
+  const normalizedSystemPromptTokens = Number.isSafeInteger(systemPromptTokens) && systemPromptTokens >= 0
+    ? systemPromptTokens
+    : null;
+  const inputTokens = usageValue("inputTokens", "input_tokens");
 
   return {
     compressed_text: compressedText,
@@ -56,7 +70,9 @@ export async function buildCompressionResponse({
     input_sha256: await sha256Hex(inputText, cryptoImpl),
     output_sha256: await sha256Hex(compressedText, cryptoImpl),
     usage: {
-      input_tokens: usageValue("inputTokens", "input_tokens"),
+      input_tokens: inputTokens,
+      system_prompt_tokens: normalizedSystemPromptTokens,
+      content_input_tokens: deriveContentInputTokens(inputTokens, normalizedSystemPromptTokens),
       output_tokens: usageValue("outputTokens", "output_tokens"),
       thought_tokens: usageValue("thoughtTokens", "thought_tokens"),
       cached_tokens: usageValue("cachedTokens", "cached_tokens"),

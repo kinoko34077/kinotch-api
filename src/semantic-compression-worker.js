@@ -13,6 +13,7 @@ import {
   requestGeminiCompression,
 } from "./semantic-compression/gemini.js";
 import { resolveCompressionProfile } from "./semantic-compression/prompt.js";
+import { getCompressionPromptMetadata } from "./semantic-compression/prompt-metadata.js";
 
 const SERVICE_VERSION = "v1";
 const ALLOWED_REQUEST_FIELDS = new Set(["text", "profile"]);
@@ -128,6 +129,9 @@ export function createCompressionWorkerApp({
         return errorResponse(c, status, "invalid_profile", "profile is not supported");
       }
       c.set("compressionPromptVersion", profileConfig.promptVersion);
+      const promptMetadata = systemInstruction === null
+        ? getCompressionPromptMetadata(profileConfig.profile)
+        : null;
       inputChars = countUnicodeCodePoints(body.text);
       const result = await requestGeminiCompression(body.text, {
         apiKey: c.env?.GEMINI_API_KEY,
@@ -144,6 +148,7 @@ export function createCompressionWorkerApp({
         profile: profileConfig.profile,
         promptVersion: profileConfig.promptVersion,
         usage,
+        systemPromptTokens: promptMetadata?.systemPromptTokens,
         warnings: [],
       });
       status = 200;

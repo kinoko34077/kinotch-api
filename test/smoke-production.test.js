@@ -64,6 +64,8 @@ test("compression smoke validator checks fixed provenance and exact text hashes"
     output_sha256: "".padStart(64, "0"),
     usage: {
       input_tokens: null,
+      system_prompt_tokens: null,
+      content_input_tokens: null,
       output_tokens: null,
       thought_tokens: null,
       cached_tokens: null,
@@ -105,6 +107,8 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
   assert.equal(result.requestId, "smoke-compression");
   assert.deepEqual(result.usage, {
     input_tokens: null,
+    system_prompt_tokens: null,
+    content_input_tokens: null,
     output_tokens: null,
     thought_tokens: null,
     cached_tokens: null,
@@ -196,6 +200,8 @@ test("compression smoke validator rejects changed model, prompt, counts, hashes,
     output_sha256: "b".repeat(64),
     usage: {
       input_tokens: null,
+      system_prompt_tokens: null,
+      content_input_tokens: null,
       output_tokens: null,
       thought_tokens: null,
       cached_tokens: null,

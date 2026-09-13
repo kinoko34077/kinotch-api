@@ -33,6 +33,8 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
   "output_sha256": "64文字の小文字hex",
   "usage": {
     "input_tokens": 4321,
+    "system_prompt_tokens": 1548,
+    "content_input_tokens": 2773,
     "output_tokens": 987,
     "thought_tokens": 0,
     "cached_tokens": 0,
@@ -42,7 +44,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 }
 ```
 
-`usage` はProvider responseの `total_input_tokens`、`total_output_tokens`、`total_thought_tokens`、`total_cached_tokens`、`total_tokens` を正規化した値である。`input_tokens` は本文だけでなくsystem instruction等を含むProvider側のinput usageで、報告されない値は `null` になる。`semantic-dense-v1` の成功responseは `profile` と `prompt_version` がともに `semantic-dense-v1` になる。
+`usage` はProvider responseの `total_input_tokens`、`total_output_tokens`、`total_thought_tokens`、`total_cached_tokens`、`total_tokens` を正規化した値である。`input_tokens` は本文だけでなくsystem instruction等を含むProvider側のinput usageで、報告されない値は `null` になる。`system_prompt_tokens` は、選択した固定Prompt文字列を同じmodelのGemini `countTokens` で事前測定した固定metadataである。`content_input_tokens` は `input_tokens - system_prompt_tokens` の非負残差で、Provider内部のframing等を含む可能性があるため本文そのものの厳密なtoken数ではない。いずれかの値が欠落・不整合なら `content_input_tokens` は `null` とする。`semantic-dense-v1` の成功responseは `profile` と `prompt_version` がともに `semantic-dense-v1` になる。
 
 `input_chars` と `output_chars` はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。SHA-256はUTF-8化したtextそのものを対象とする。圧縮結果を原文のSSOTとして保存しない。
 
@@ -73,7 +75,7 @@ wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
 - Gateway upstream timeout: 50 seconds
 - Provider retry: 初期版は自動retryなし
 
-1,000,000 code pointsは公開APIの構造上限であり、Geminiのtoken上限を保証する値ではない。code point数とtoken数は一致せず、system instruction分もcontextを消費するため、初期版は200,000 code pointsを保守的な事前上限とする。tokenizerによる厳密な `countTokens` 外部呼出は追加せず、入力超過をProvider側の502へ変換しない。
+1,000,000 code pointsは公開APIの構造上限であり、Geminiのtoken上限を保証する値ではない。code point数とtoken数は一致せず、system instruction分もcontextを消費するため、初期版は200,000 code pointsを保守的な事前上限とする。Production requestごとに `countTokens` を呼び出すことはせず、入力超過をProvider側の502へ変換しない。
 
 ## Live testとsmoke
 
@@ -140,6 +142,8 @@ Geminiのrate limitはproject/model/tierごとに異なり、RPM・input TPM・R
 
 Interactions API responseのusageはProduction responseへ安全な数値として含める。`system-only` は共通prefixを持たない短いsynthetic文4件、`shared-input-prefix` は長い共通prefixを持つsynthetic文4件を送るopt-in測定も利用できる。`input_tokens` はsystem instruction等を含むProvider側usageであり、本文長の `input_chars` とは別の値である。
 
+固定Prompt token metadataはprofileごとに保持する。現在の実測値は `compact-v1 = 266`、`semantic-dense-v1 = 1549`（model: `gemini-3.5-flash-lite`）である。対応PromptのSHA-256も `src/semantic-compression/prompt-metadata.js` に併記し、Promptとtoken metadataの不一致はtestで検出する。これはPrompt文字列を `countTokens` の公式 `contents` 形状で単独測定した値であり、Providerのsystem role framingを含む厳密なrequest全体内訳ではない。
+
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_COMPRESSION_USAGE_MEASURE = "true"
@@ -160,6 +164,19 @@ Remove-Item Env:COMPRESSION_USAGE_INTERVAL_MS
 出力するのはscenario、request数、status、文字数、model、request間隔、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。Production responseでは同じ値をsnake_caseで返す。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
 
 usage測定も同じ既定15秒間隔でrequestを送る。429発生時は自動再送しない。rate limitの詳細は [Gemini API rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)、usage fieldの定義は [Interactions API](https://ai.google.dev/api/interactions-api)、implicit cachingの観測条件は [Context caching](https://ai.google.dev/gemini-api/docs/caching) を参照する。
+
+Promptまたはmodelを変更した場合だけ、専用credentialと明示flagで固定Prompt token metadataを再測定する。Production requestごとの追加呼出しは行わない。
+
+```powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
+$env:RUN_COMPRESSION_PROMPT_TOKEN_MEASURE = "true"
+# 任意: 既定15秒。短縮する場合も1秒未満にはできない。
+$env:COMPRESSION_PROMPT_TOKEN_MEASURE_INTERVAL_MS = "15000"
+npm run measure:compression:prompt-tokens
+Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
+Remove-Item Env:RUN_COMPRESSION_PROMPT_TOKEN_MEASURE
+Remove-Item Env:COMPRESSION_PROMPT_TOKEN_MEASURE_INTERVAL_MS
+```
 
 ## Deployとrollback
 
