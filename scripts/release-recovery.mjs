@@ -24,6 +24,24 @@ export function parseActiveVersionId(jsonText, workerName = "Worker") {
   return versionId;
 }
 
+export function parseOptionalActiveVersionId(jsonText, workerName = "Worker") {
+  let status;
+  try {
+    status = JSON.parse(jsonText);
+  } catch (error) {
+    throw new Error(`Could not parse Wrangler deployment status: ${error.message}`);
+  }
+  if (Array.isArray(status?.versions) && status.versions.length === 0) return null;
+  return parseActiveVersionId(jsonText, workerName);
+}
+
+export function isMissingWorkerDeploymentError(message) {
+  const normalized = String(message ?? "").toLowerCase();
+  return /\b404\b/.test(normalized) ||
+    /(?:worker|script|deployment).*(?:not found|does not exist|could not find|not deployed)/.test(normalized) ||
+    /(?:not found|does not exist|could not find|not deployed).*(?:worker|script|deployment)/.test(normalized);
+}
+
 export function createWorkerRollbackArgs(versionId, message, { workerName, config }) {
   assertVersionId(versionId, workerName);
   if (typeof message !== "string" || message.trim() === "") {

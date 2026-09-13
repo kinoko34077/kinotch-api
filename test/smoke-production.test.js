@@ -7,6 +7,9 @@ import {
   validateMoonPayload,
   validateRokuyoPayload,
   validateWeatherPayload,
+  checkDirectCompressionWorker,
+  COMPRESSION_SMOKE_TIMEOUT_MS,
+  runCompressionGatewayReadiness,
   runCompressionSmoke,
 } from "../scripts/smoke-production.mjs";
 import { buildCompressionResponse } from "../src/semantic-compression/contract.js";
@@ -100,6 +103,37 @@ test("compression smoke refuses to run without an explicit caller token", async 
     () => runCompressionSmoke({ fetchImpl: async () => { throw new Error("network must not be called"); } }),
     /COMPRESSION_SMOKE_TOKEN/,
   );
+});
+
+test("compression smoke uses a client timeout longer than the Gateway timeout", () => {
+  assert.equal(COMPRESSION_SMOKE_TIMEOUT_MS, 60_000);
+});
+
+test("compression Gateway readiness checks method propagation without invoking Gemini", async () => {
+  const result = await runCompressionGatewayReadiness({
+    fetchImpl: async (input, init) => {
+      assert.match(input, /\/v1\/compress$/);
+      assert.equal(init.method, "GET");
+      return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+        status: 405,
+        headers: { Allow: "POST", "X-Request-ID": "compression-readiness" },
+      });
+    },
+  });
+
+  assert.equal(result.status, 405);
+  assert.equal(result.requestId, "compression-readiness");
+});
+
+test("direct Compression Worker check records an unreachable private endpoint", async () => {
+  const result = await checkDirectCompressionWorker({
+    fetchImpl: async (input) => {
+      assert.equal(input, "https://semantic-compression.kinotch.workers.dev/health");
+      return new Response(null, { status: 404 });
+    },
+  });
+
+  assert.deepEqual(result, { status: 404, reachable: false, statuses: [404] });
 });
 
 test("compression smoke validator rejects changed model, prompt, counts, hashes, and warnings", async () => {

@@ -4,6 +4,8 @@ import {
   createRollbackArgs,
   createWorkerRollbackArgs,
   parseActiveVersionId,
+  parseOptionalActiveVersionId,
+  isMissingWorkerDeploymentError,
   rollbackAfterSmokeFailure,
 } from "../scripts/release-recovery.mjs";
 
@@ -35,6 +37,27 @@ test("active version parser rejects malformed version IDs", () => {
     () => parseActiveVersionId(JSON.stringify({ versions: [{ version_id: "bad", percentage: 100 }] })),
     /version.*id/i,
   );
+});
+
+test("optional active version parser accepts a Worker with no deployment", () => {
+  assert.equal(parseOptionalActiveVersionId(JSON.stringify({ versions: [] }), "Compression Worker"), null);
+});
+
+test("optional active version parser still requires one valid active version", () => {
+  assert.equal(
+    parseOptionalActiveVersionId(JSON.stringify({ versions: [{ version_id: activeVersionId, percentage: 100 }] }), "Compression Worker"),
+    activeVersionId,
+  );
+  assert.throws(
+    () => parseOptionalActiveVersionId(JSON.stringify({ versions: [{ version_id: activeVersionId, percentage: 50 }] }), "Compression Worker"),
+    /100%.*active|active.*100%/i,
+  );
+});
+
+test("missing Worker diagnostics are bootstrap-only and auth errors remain fatal", () => {
+  assert.equal(isMissingWorkerDeploymentError("Worker semantic-compression not found (404)"), true);
+  assert.equal(isMissingWorkerDeploymentError("Authentication failed with status 401"), false);
+  assert.equal(isMissingWorkerDeploymentError("network request timed out"), false);
 });
 
 test("rollback args target the saved Text Worker version", () => {

@@ -38,3 +38,10 @@ test("production release fails closed before deployment without Compression smok
   assert.match(source, /compressionDeployed/);
   assert.match(source, /compressionSmokeCompleted/);
 });
+
+test("production release retries only non-billable Compression readiness", () => {
+  assert.doesNotMatch(source, /runCompressionSmokeWithRetry/);
+  assert.match(source, /runCompressionGatewayReadinessWithRetry/);
+  assert.match(source, /runCompressionSmoke\(/);
+  assert.match(source, /checkCompression:\s*false/);
+});

@@ -9,11 +9,13 @@ import {
 
 const API_BASE_URL = (process.env.API_BASE_URL ?? "https://api.kinotch.workers.dev").replace(/\/+$/, "");
 const TEXT_DIRECT_URL = (process.env.TEXT_DIRECT_URL ?? "https://text-transform.kinotch.workers.dev").replace(/\/+$/, "");
+const COMPRESSION_DIRECT_URL = (process.env.COMPRESSION_DIRECT_URL ?? "https://semantic-compression.kinotch.workers.dev").replace(/\/+$/, "");
+export const COMPRESSION_SMOKE_TIMEOUT_MS = 60_000;
 
-async function request(path, init = {}, fetchImpl = globalThis.fetch) {
+async function request(path, init = {}, fetchImpl = globalThis.fetch, timeoutMs = 15_000) {
   const startedAt = performance.now();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetchImpl(`${API_BASE_URL}${path}`, { ...init, signal: controller.signal });
     let payload = null;
@@ -26,6 +28,7 @@ async function request(path, init = {}, fetchImpl = globalThis.fetch) {
       status: response.status,
       payload,
       requestId: response.headers.get("X-Request-ID"),
+      allow: response.headers.get("Allow"),
       allowHeaders: response.headers.get("Access-Control-Allow-Headers"),
       exposeHeaders: response.headers.get("Access-Control-Expose-Headers"),
       retryAfter: response.headers.get("Retry-After"),
@@ -39,14 +42,14 @@ async function request(path, init = {}, fetchImpl = globalThis.fetch) {
   }
 }
 
-export async function checkDirectTextWorker({ fetchImpl = globalThis.fetch } = {}) {
+async function checkDirectWorker(url, fetchImpl) {
   const statuses = [];
   const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     let status = null;
     try {
-      const response = await fetchImpl(`${TEXT_DIRECT_URL}/health`, {
+      const response = await fetchImpl(`${url}/health`, {
         signal: AbortSignal.timeout(10_000),
       });
       status = response.status;
@@ -59,6 +62,14 @@ export async function checkDirectTextWorker({ fetchImpl = globalThis.fetch } = {
   }
 
   return { status: statuses.at(-1), reachable: true, statuses };
+}
+
+export async function checkDirectTextWorker({ fetchImpl = globalThis.fetch } = {}) {
+  return checkDirectWorker(TEXT_DIRECT_URL, fetchImpl);
+}
+
+export async function checkDirectCompressionWorker({ fetchImpl = globalThis.fetch } = {}) {
+  return checkDirectWorker(COMPRESSION_DIRECT_URL, fetchImpl);
 }
 
 export function validateCapabilitiesPayload(payload, expectedSourceRevision) {
@@ -130,6 +141,7 @@ export async function runCompressionSmoke({
   fetchImpl = globalThis.fetch,
   token,
   path = "/v1/compress",
+  timeoutMs = COMPRESSION_SMOKE_TIMEOUT_MS,
 } = {}) {
   if (typeof token !== "string" || token.length === 0) {
     throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
@@ -144,7 +156,7 @@ export async function runCompressionSmoke({
       "X-Request-ID": "smoke-compression",
     },
     body: JSON.stringify({ text: inputText, profile: COMPRESSION_PROFILE }),
-  }, fetchImpl);
+  }, fetchImpl, timeoutMs);
   const validationError = result.status === 200
     ? await validateCompressionPayload(result.payload, inputText)
     : "compression request failed";
@@ -162,6 +174,24 @@ export async function runCompressionSmoke({
     promptVersion: result.payload.prompt_version,
     inputSha256: result.payload.input_sha256,
     outputSha256: result.payload.output_sha256,
+  };
+}
+
+export async function runCompressionGatewayReadiness({
+  fetchImpl = globalThis.fetch,
+  path = "/v1/compress",
+} = {}) {
+  const result = await request(path, {
+    method: "GET",
+    headers: { "X-Request-ID": "smoke-compression-readiness" },
+  }, fetchImpl);
+  if (result.status !== 405 || !/\bPOST\b/i.test(result.allow ?? "")) {
+    throw new Error(`compression Gateway readiness failed with status ${result.status}`);
+  }
+  return {
+    status: result.status,
+    durationMs: result.durationMs,
+    requestId: result.requestId,
   };
 }
 
@@ -303,6 +333,10 @@ export async function runProductionSmoke({
   if (directTextWorker?.reachable) {
     throw new Error("text-transform direct workers.dev endpoint is still reachable");
   }
+  const directCompressionWorker = checkDirect ? await checkDirectCompressionWorker({ fetchImpl }) : null;
+  if (directCompressionWorker?.reachable) {
+    throw new Error("semantic-compression direct workers.dev endpoint is still reachable");
+  }
 
   return {
     baseUrl: API_BASE_URL,
@@ -341,6 +375,7 @@ export async function runProductionSmoke({
       moon: moon.requestId,
     },
     directTextWorker,
+    directCompressionWorker,
   };
 }
 

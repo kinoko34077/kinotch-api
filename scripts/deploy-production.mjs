@@ -7,35 +7,54 @@ import { assertPrivateTextWorkerConfig, assertPrivateWorkerConfig } from "./depl
 import {
   createRollbackArgs,
   createWorkerRollbackArgs,
+  isMissingWorkerDeploymentError,
   parseActiveVersionId,
+  parseOptionalActiveVersionId,
   rollbackAfterSmokeFailure,
 } from "./release-recovery.mjs";
-import { runCompressionSmoke, runProductionSmoke } from "./smoke-production.mjs";
+import {
+  runCompressionGatewayReadiness,
+  runCompressionSmoke,
+  runProductionSmoke,
+} from "./smoke-production.mjs";
 import { COMPRESSION_MODEL, COMPRESSION_PROMPT_VERSION } from "../src/semantic-compression/contract.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
-function run(command, args, { capture = false } = {}) {
+function run(command, args, { capture = false, allowFailure = false } = {}) {
   return new Promise((resolve, reject) => {
     let output = "";
+    let errorOutput = "";
+    const collectOutput = capture || allowFailure;
     const child = spawn(command, args, {
       cwd: projectRoot,
       env: process.env,
-      stdio: capture ? ["inherit", "pipe", "inherit"] : "inherit",
+      stdio: collectOutput ? ["inherit", "pipe", allowFailure ? "pipe" : "inherit"] : "inherit",
       shell: process.platform === "win32",
     });
-    if (capture) {
+    if (collectOutput) {
       child.stdout.on("data", (chunk) => {
         output += chunk;
         process.stdout.write(chunk);
       });
     }
+    if (allowFailure) {
+      child.stderr.on("data", (chunk) => {
+        errorOutput += chunk;
+        process.stderr.write(chunk);
+      });
+    }
     child.once("error", reject);
     child.once("exit", (code, signal) => {
-      if (code === 0) resolve(capture ? output : undefined);
-      else reject(new Error(`${command} ${args.join(" ")} exited with ${signal ?? code}`));
+      if (allowFailure) {
+        resolve({ output, errorOutput, code, signal });
+      } else if (code === 0) {
+        resolve(capture ? output : undefined);
+      } else {
+        reject(new Error(`${command} ${args.join(" ")} exited with ${signal ?? code}`));
+      }
     });
   });
 }
@@ -75,7 +94,7 @@ async function getActiveGatewayVersionId() {
 }
 
 async function getActiveCompressionVersionId() {
-  const output = await run(npxCommand, [
+  const result = await run(npxCommand, [
     "wrangler",
     "deployments",
     "status",
@@ -84,8 +103,13 @@ async function getActiveCompressionVersionId() {
     "--json",
     "--config",
     "wrangler.semantic-compression.jsonc",
-  ], { capture: true });
-  return parseActiveVersionId(output, "Compression Worker");
+  ], { capture: true, allowFailure: true });
+  if (result.code !== 0) {
+    const diagnostic = `${result.output}\n${result.errorOutput}`;
+    if (isMissingWorkerDeploymentError(diagnostic)) return null;
+    throw new Error(`Could not read the Compression Worker deployment status (exit ${result.signal ?? result.code})`);
+  }
+  return parseOptionalActiveVersionId(result.output, "Compression Worker");
 }
 
 async function assertCleanWorktree() {
@@ -131,15 +155,15 @@ async function runSmokeWithRetry(options, attempts = 12) {
   throw lastError;
 }
 
-async function runCompressionSmokeWithRetry(options, attempts = 12) {
+async function runCompressionGatewayReadinessWithRetry(options, attempts = 12) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      return await runCompressionSmoke(options);
+      return await runCompressionGatewayReadiness(options);
     } catch (error) {
       lastError = error;
       if (attempt < attempts) {
-        console.warn(`Compression smoke attempt ${attempt}/${attempts} failed; retrying after propagation wait`);
+        console.warn(`Compression Gateway readiness attempt ${attempt}/${attempts} failed; retrying after propagation wait`);
         await wait(5_000);
       }
     }
@@ -324,8 +348,11 @@ async function main() {
     state.gatewayDeployed = true;
     state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
 
+    state.stage = "Compression Gateway readiness";
+    await runCompressionGatewayReadinessWithRetry();
+
     state.stage = "Compression smoke";
-    state.compressionSmoke = await runCompressionSmokeWithRetry({
+    state.compressionSmoke = await runCompressionSmoke({
       token: process.env.COMPRESSION_SMOKE_TOKEN,
     });
     state.compressionSmokeCompleted = true;
@@ -333,7 +360,7 @@ async function main() {
     state.stage = "Gateway smoke";
     state.gatewaySmoke = await runSmokeWithRetry({
       checkDirect: true,
-      compressionToken: process.env.COMPRESSION_SMOKE_TOKEN,
+      checkCompression: false,
       expectedSourceRevision: state.gitRevision,
     });
     state.gatewaySmokeCompleted = true;
