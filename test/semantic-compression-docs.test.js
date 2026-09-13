@@ -15,6 +15,7 @@ test("semantic compression operations are documented independently", () => {
     "/v1/compress",
     "semantic-dense-v1",
     "gemini-3.5-flash-lite",
+    "thinking_level",
     "GEMINI_API_KEY",
     "KINOTCH_COMPRESSION_GEMINI_API_KEY",
     "COMPRESSION_API_TOKEN",
@@ -31,6 +32,12 @@ test("semantic compression operations are documented independently", () => {
     "provider_context_limit",
     "200,000",
     "token",
+    "RUN_COMPRESSION_QUALITY_EVAL",
+    "evaluate:compression",
+    "RUN_COMPRESSION_USAGE_MEASURE",
+    "measure:compression:usage",
+    "cachedTokens",
+    "Explicit Context Cache",
   ]) {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);
   }

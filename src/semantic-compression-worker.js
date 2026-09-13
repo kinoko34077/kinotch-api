@@ -76,7 +76,7 @@ function logSafeMetrics(c, status, inputChars, outputChars, startedAt) {
   }));
 }
 
-export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onProviderDiagnostic } = {}) {
+export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onProviderDiagnostic, onUsage } = {}) {
   const app = new Hono();
 
   app.use("*", requestIdMiddleware());
@@ -121,6 +121,7 @@ export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onPro
         apiKey: c.env?.GEMINI_API_KEY,
         fetchImpl,
         timeoutMs: c.env?.GEMINI_TIMEOUT_MS,
+        onUsage,
       });
       outputChars = countUnicodeCodePoints(compressedText);
       const response = await buildCompressionResponse({

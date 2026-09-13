@@ -105,6 +105,20 @@ Remove-Item Env:COMPRESSION_QUALITY_OUTPUT
 
 `COMPRESSION_QUALITY_OUTPUT` を指定した場合だけ、synthetic入力、実際の圧縮結果、機械的marker確認を人手レビュー用JSONへ保存する。通常の `npm test` はこのscriptを呼ばず、外部Geminiへ接続しない。出力は現行 `semantic-dense-v1` のbaselineであり、因果・否定範囲・不確実性・事実／推測境界を自動判定せず、合格thresholdも定義しない。
 
+## Token usage の実測
+
+Interactions API responseのusageを、opt-inの測定scriptから数値だけ観測できる。共通prefixを持つsyntheticな4 requestを送るため、外部通信・課金の可能性を理解した上で実行する。
+
+```powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
+$env:RUN_COMPRESSION_USAGE_MEASURE = "true"
+npm run measure:compression:usage
+Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
+Remove-Item Env:RUN_COMPRESSION_USAGE_MEASURE
+```
+
+出力するのはrequest数、status、文字数、model、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
+
 ## Deployとrollback
 
 `npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → 非課金のCompression Gateway readiness確認（反映待ち時のみ再試行）→ Gateway経由Compression smoke（Gemini生成は1回）→ Compressionを再実行しない完全Gateway smoke → release metadata の順に実行する。

@@ -82,7 +82,7 @@
 
   Update the fixed Provider section to state that `gemini-3.5-flash-lite` uses `generation_config.thinking_level = "minimal"` internally, while the public contract has no thinking field. Keep the existing no-tools, stateless, and `store:false` statements.
 
-- [ ] **Step 8: Commit the isolated change**
+- [x] **Step 8: Commit the isolated change**
 
   Run `git diff --check`, confirm `src/text-core` is unchanged, and commit as `feat: pin compression thinking level to minimal`.
 
@@ -131,7 +131,7 @@
 
   Run the fixture contract test and `npm test`; confirm no Gemini request occurs during normal tests.
 
-- [ ] **Step 8: Commit the evaluation tooling**
+- [x] **Step 8: Commit the evaluation tooling**
 
   Run `git diff --check`, confirm production source and `src/text-core` are unchanged except Task 1 files, and commit as `test: add semantic compression quality evaluation corpus`.
 
@@ -153,35 +153,35 @@
 - `createCompressionWorkerApp({ onUsage })` passes the callback only for tests/evaluation. The production app is created without it and does not expose usage in the API response or logs.
 - `npm run measure:compression:usage` requires `RUN_COMPRESSION_USAGE_MEASURE=true` and `KINOTCH_COMPRESSION_GEMINI_API_KEY`; it sends four synthetic same-prefix requests and prints numeric observations only.
 
-- [ ] **Step 1: Add failing usage normalization tests**
+- [x] **Step 1: Add failing usage normalization tests**
 
   Test a fake completed Interactions payload with all five documented usage fields, missing optional fields, malformed/non-numeric values, and a response body that contains no usage data in the public Worker response.
 
-- [ ] **Step 2: Run the focused usage test and observe failure**
+- [x] **Step 2: Run the focused usage test and observe failure**
 
   Run `npm test -- test/semantic-compression-usage.test.js` and confirm the callback/normalizer is not yet present.
 
-- [ ] **Step 3: Implement bounded usage normalization**
+- [x] **Step 3: Implement bounded usage normalization**
 
   Read only `payload.usage`. Convert non-negative integer fields to the five camelCase numeric keys and use `null` for absent/invalid fields. Never pass the raw payload to the callback.
 
-- [ ] **Step 4: Thread the optional callback through the Worker**
+- [x] **Step 4: Thread the optional callback through the Worker**
 
   Add `onUsage` to the existing test/evaluation injection options and pass it to the Gemini adapter. Keep the production app construction unchanged and keep public response keys exactly as before.
 
-- [ ] **Step 5: Implement the explicit usage measurement script**
+- [x] **Step 5: Implement the explicit usage measurement script**
 
   Build a synthetic common prefix in memory, send four varying suffixes through the Worker app, collect only status and normalized usage numbers, and print JSON records containing no input/output text. Do not encode a cache threshold; report `cachedTokens` as observed, including zero/null.
 
-- [ ] **Step 6: Add package script and operations guidance**
+- [x] **Step 6: Add package script and operations guidance**
 
   Add `"measure:compression:usage": "node scripts/measure-compression-usage.mjs"`. Document that it is external and potentially billable, requires both explicit flag and dedicated key, measures stateless Interactions only, and does not enable explicit cache or `generateContent`.
 
-- [ ] **Step 7: Run focused and full non-live tests**
+- [x] **Step 7: Run focused and full non-live tests**
 
   Run the usage-focused test and `npm test`; confirm normal tests do not call Gemini and the public contract is unchanged.
 
-- [ ] **Step 8: Commit the safe usage tooling**
+- [x] **Step 8: Commit the safe usage tooling**
 
   Run `git diff --check`, confirm no raw text/secret logging path was added, and commit as `test: expose safe compression usage measurements`.
 

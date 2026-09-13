@@ -61,6 +61,21 @@ function buildProviderDiagnostic({ upstreamStatus, payload }) {
   };
 }
 
+function normalizeUsageCount(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+export function normalizeInteractionUsage(usage) {
+  const source = usage && typeof usage === "object" && !Array.isArray(usage) ? usage : {};
+  return {
+    inputTokens: normalizeUsageCount(source.total_input_tokens),
+    outputTokens: normalizeUsageCount(source.total_output_tokens),
+    thoughtTokens: normalizeUsageCount(source.total_thought_tokens),
+    cachedTokens: normalizeUsageCount(source.total_cached_tokens),
+    totalTokens: normalizeUsageCount(source.total_tokens),
+  };
+}
+
 async function parseProviderErrorPayload(response) {
   try {
     const payload = await response.json();
@@ -99,7 +114,12 @@ function timeoutValue(timeoutMs) {
 
 export async function requestGeminiCompression(
   text,
-  { apiKey, fetchImpl = globalThis.fetch, timeoutMs = DEFAULT_GEMINI_TIMEOUT_MS } = {},
+  {
+    apiKey,
+    fetchImpl = globalThis.fetch,
+    timeoutMs = DEFAULT_GEMINI_TIMEOUT_MS,
+    onUsage,
+  } = {},
 ) {
   if (typeof apiKey !== "string" || apiKey.length === 0) {
     throw new CompressionProviderError("provider_unavailable", 503);
@@ -151,7 +171,15 @@ export async function requestGeminiCompression(
     } catch {
       throw invalidProviderResponse();
     }
-    return extractInteractionText(payload);
+    const compressedText = extractInteractionText(payload);
+    if (typeof onUsage === "function") {
+      try {
+        onUsage(normalizeInteractionUsage(payload.usage));
+      } catch {
+        // Usage observers are test/evaluation-only and must not affect the response contract.
+      }
+    }
+    return compressedText;
   } finally {
     clearTimeout(timer);
   }

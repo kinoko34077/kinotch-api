@@ -36,6 +36,12 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 smokeから自動実行しない。人手レビュー用出力を保存する場合もsynthetic corpusだけを使い、
 本文・Prompt・secret・raw provider responseをログや本番metadataへ残さない。
 
+Token usageの実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
+`KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とする別のopt-in scriptで行う。
+共通prefixを持つ4件のsynthetic requestについて、input/output/thought/cached/total tokenの
+数値だけを出力する。Implicit Cachingの効果は観測値として扱い、Explicit Context Cache、
+`generateContent`、未合意のthresholdは導入しない。
+
 ## 遅延の見方
 
 - 初回のTokenizer利用リクエストは辞書初期化のため遅くなる。現在の目安は約1.8〜3.3秒。

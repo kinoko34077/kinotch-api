@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import {
   COMPRESSION_PROFILE,
@@ -102,7 +102,9 @@ async function evaluate() {
   };
   const outputPath = process.env.COMPRESSION_QUALITY_OUTPUT;
   if (typeof outputPath === "string" && outputPath.length > 0) {
-    await writeFile(resolve(outputPath), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    const resolvedOutputPath = resolve(outputPath);
+    await mkdir(dirname(resolvedOutputPath), { recursive: true });
+    await writeFile(resolvedOutputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   }
 
   console.log(JSON.stringify({
