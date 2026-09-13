@@ -13,6 +13,7 @@ import {
   CompressionProviderError,
   requestGeminiCompression,
 } from "./semantic-compression/gemini.js";
+import { COMPRESSION_SYSTEM_INSTRUCTION } from "./semantic-compression/prompt.js";
 
 const SERVICE_VERSION = "v1";
 const ALLOWED_REQUEST_FIELDS = new Set(["text", "profile"]);
@@ -76,7 +77,12 @@ function logSafeMetrics(c, status, inputChars, outputChars, startedAt) {
   }));
 }
 
-export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onProviderDiagnostic, onUsage } = {}) {
+export function createCompressionWorkerApp({
+  fetchImpl = globalThis.fetch,
+  onProviderDiagnostic,
+  onUsage,
+  systemInstruction = COMPRESSION_SYSTEM_INSTRUCTION,
+} = {}) {
   const app = new Hono();
 
   app.use("*", requestIdMiddleware());
@@ -122,6 +128,7 @@ export function createCompressionWorkerApp({ fetchImpl = globalThis.fetch, onPro
         fetchImpl,
         timeoutMs: c.env?.GEMINI_TIMEOUT_MS,
         onUsage,
+        systemInstruction,
       });
       outputChars = countUnicodeCodePoints(compressedText);
       const response = await buildCompressionResponse({

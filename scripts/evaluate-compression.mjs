@@ -6,6 +6,11 @@ import {
   COMPRESSION_PROMPT_VERSION,
   COMPRESSION_MODEL,
 } from "../src/semantic-compression/contract.js";
+import { COMPRESSION_SYSTEM_INSTRUCTION } from "../src/semantic-compression/prompt.js";
+import {
+  CANDIDATE_SYSTEM_INSTRUCTION,
+  COMPRESSION_CANDIDATE_PROMPT_VERSION,
+} from "../src/semantic-compression/prompt-candidate.js";
 import { validateCompressionPayload } from "./smoke-production.mjs";
 import {
   getSafeRetryAfterSeconds,
@@ -13,7 +18,7 @@ import {
   sleep,
 } from "./measurement-pacing.mjs";
 
-const CORPUS_URL = new URL("../test/fixtures/semantic-compression-quality.json", import.meta.url);
+const DEFAULT_CORPUS_URL = new URL("../test/fixtures/semantic-compression-quality.json", import.meta.url);
 const EXPECTED_PUBLIC_KEYS = [
   "compressed_text",
   "input_chars",
@@ -25,6 +30,29 @@ const EXPECTED_PUBLIC_KEYS = [
   "prompt_version",
   "warnings",
 ].sort();
+
+export function resolveQualityVariant(name = "control") {
+  const variantName = name || "control";
+  if (variantName === "control") {
+    return {
+      name: "control",
+      systemInstruction: COMPRESSION_SYSTEM_INSTRUCTION,
+      evaluationPromptVersion: COMPRESSION_PROMPT_VERSION,
+    };
+  }
+  if (variantName === "candidate") {
+    return {
+      name: "candidate",
+      systemInstruction: CANDIDATE_SYSTEM_INSTRUCTION,
+      evaluationPromptVersion: COMPRESSION_CANDIDATE_PROMPT_VERSION,
+    };
+  }
+  throw new Error("COMPRESSION_QUALITY_PROMPT_VARIANT must be control or candidate");
+}
+
+export function composeQualityInput(entry) {
+  return `${entry.input}${entry.suffix ?? ""}`;
+}
 
 function requireOptInConfiguration(env) {
   if (env.RUN_COMPRESSION_QUALITY_EVAL !== "true") {
@@ -44,14 +72,19 @@ function collectMarkerChecks(entry, compressedText) {
   })));
 }
 
-async function evaluate() {
-  const apiKey = requireOptInConfiguration(process.env);
+export async function evaluateQuality({ env = process.env } = {}) {
+  const apiKey = requireOptInConfiguration(env);
+  const variant = resolveQualityVariant(env.COMPRESSION_QUALITY_PROMPT_VARIANT);
   const requestIntervalMs = resolveMeasurementIntervalMs(
-    process.env,
+    env,
     "COMPRESSION_QUALITY_INTERVAL_MS",
   );
-  const corpus = JSON.parse(await readFile(CORPUS_URL, "utf8"));
-  const app = createCompressionWorkerApp();
+  const corpusPath = env.COMPRESSION_QUALITY_INPUT;
+  const corpus = JSON.parse(await readFile(
+    corpusPath ? resolve(corpusPath) : DEFAULT_CORPUS_URL,
+    "utf8",
+  ));
+  const app = createCompressionWorkerApp({ systemInstruction: variant.systemInstruction });
   const records = [];
   let requestsSent = 0;
 
@@ -60,13 +93,14 @@ async function evaluate() {
       await sleep(requestIntervalMs);
     }
     requestsSent += 1;
+    const inputText = composeQualityInput(entry);
     const response = await app.request("https://quality-evaluation.test/v1/compress", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Request-ID": `quality-${entry.id}`,
       },
-      body: JSON.stringify({ text: entry.input, profile: COMPRESSION_PROFILE }),
+      body: JSON.stringify({ text: inputText, profile: COMPRESSION_PROFILE }),
     }, { GEMINI_API_KEY: apiKey });
 
     let payload = null;
@@ -82,7 +116,7 @@ async function evaluate() {
         `quality evaluation failed for ${entry.id} with status ${response.status}${retryAfterNote}; no automatic retry`,
       );
     }
-    const validationError = await validateCompressionPayload(payload, entry.input);
+    const validationError = await validateCompressionPayload(payload, inputText);
     if (validationError) {
       throw new Error(`quality evaluation contract failed for ${entry.id}: ${validationError}`);
     }
@@ -93,7 +127,7 @@ async function evaluate() {
     records.push({
       id: entry.id,
       category: entry.category,
-      input: entry.input,
+      input: inputText,
       compressed_text: payload.compressed_text,
       provenance: {
         profile: payload.profile,
@@ -111,6 +145,8 @@ async function evaluate() {
     schema_version: "semantic-compression-quality-baseline-v1",
     profile: COMPRESSION_PROFILE,
     prompt_version: COMPRESSION_PROMPT_VERSION,
+    prompt_variant: variant.name,
+    evaluation_prompt_version: variant.evaluationPromptVersion,
     model: COMPRESSION_MODEL,
     request_interval_ms: requestIntervalMs,
     case_count: records.length,
@@ -119,14 +155,14 @@ async function evaluate() {
     records,
     note: "Synthetic baseline for human semantic review; no quality threshold is defined.",
   };
-  const outputPath = process.env.COMPRESSION_QUALITY_OUTPUT;
+  const outputPath = env.COMPRESSION_QUALITY_OUTPUT;
   if (typeof outputPath === "string" && outputPath.length > 0) {
     const resolvedOutputPath = resolve(outputPath);
     await mkdir(dirname(resolvedOutputPath), { recursive: true });
     await writeFile(resolvedOutputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   }
 
-  console.log(JSON.stringify({
+  const summary = {
     event: "compression_quality_baseline",
     caseCount: report.case_count,
     markerCheckCount: report.marker_check_count,
@@ -134,13 +170,19 @@ async function evaluate() {
     markerMissingCount: report.marker_check_count - report.marker_present_count,
     requestIntervalMs,
     outputFile: outputPath ? resolve(outputPath) : null,
+    promptVariant: variant.name,
+    evaluationPromptVersion: variant.evaluationPromptVersion,
     threshold: null,
-  }));
+  };
+  if (env === process.env) console.log(JSON.stringify(summary));
+  return report;
 }
 
-try {
-  await evaluate();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : "compression quality evaluation failed");
-  process.exitCode = 1;
+if (process.argv[1]?.endsWith("evaluate-compression.mjs")) {
+  try {
+    await evaluateQuality();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : "compression quality evaluation failed");
+    process.exitCode = 1;
+  }
 }

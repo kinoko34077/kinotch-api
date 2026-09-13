@@ -119,6 +119,7 @@ export async function requestGeminiCompression(
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_GEMINI_TIMEOUT_MS,
     onUsage,
+    systemInstruction = COMPRESSION_SYSTEM_INSTRUCTION,
   } = {},
 ) {
   if (typeof apiKey !== "string" || apiKey.length === 0) {
@@ -140,7 +141,7 @@ export async function requestGeminiCompression(
         body: JSON.stringify({
           model: COMPRESSION_MODEL,
           input: text,
-          system_instruction: COMPRESSION_SYSTEM_INSTRUCTION,
+          system_instruction: systemInstruction,
           generation_config: { thinking_level: COMPRESSION_THINKING_LEVEL },
           store: false,
         }),
