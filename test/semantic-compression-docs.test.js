@@ -16,6 +16,7 @@ test("semantic compression operations are documented independently", () => {
     "semantic-dense-v1",
     "gemini-2.5-flash-lite",
     "GEMINI_API_KEY",
+    "KINOTCH_COMPRESSION_GEMINI_API_KEY",
     "COMPRESSION_API_TOKEN",
     "COMPRESSION_SMOKE_TOKEN",
     "workers_dev",
@@ -34,6 +35,7 @@ test("semantic compression operations are documented independently", () => {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);
   }
   assert.match(documentText, /Gateway[\s\S]*Compression[\s\S]*Text/);
+  assert.doesNotMatch(documentText, /\$env:GEMINI_API_KEY/);
 });
 
 test("documentation contains placeholders only, never secret-looking values", () => {

@@ -69,10 +69,14 @@ wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
 通常の `npm test` と `npm run test:compression:live` の実行だけではGeminiへ接続しない。live testは次の2条件をoperatorが明示した場合だけ有効になる。
 
 ```powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_GEMINI_LIVE_TEST = "true"
-$env:GEMINI_API_KEY = "<operator-provided key>"
 npm run test:compression:live
+Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
+Remove-Item Env:RUN_GEMINI_LIVE_TEST
 ```
+
+`KINOTCH_COMPRESSION_GEMINI_API_KEY` はkinotch-apiのローカルlive test専用である。`GEMINI_API_KEY` はsemantic-compression Cloudflare WorkerのSecret binding専用であり、ローカルlive testの入力credentialとしては参照しない。`RUN_GEMINI_LIVE_TEST=true` を指定して専用credentialが未設定の場合、live testはskipせずfail-fastする。
 
 本番release smokeはGateway経由でCompressionを確認するため、Worker secretとは別に、operatorが一時的な `COMPRESSION_SMOKE_TOKEN` を環境変数へ設定する。
 

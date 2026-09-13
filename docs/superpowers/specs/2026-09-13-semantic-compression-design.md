@@ -137,7 +137,7 @@ Tests are divided into independent layers:
 - Worker integration tests using an injected fake Gemini fetch implementation. They assert the fixed request shape, `store:false`, prompt boundary, no tools/history, secret header behavior, injection-as-data behavior, malformed response handling, and timeout mapping.
 - Gateway integration tests asserting Policy registration, authentication before external work, dedicated body limit, dedicated rate limiter, Service Binding forwarding, request ID propagation, response status mapping, and preservation of existing routes.
 - Golden fixtures covering numbers, percentages, dates, URLs, commit SHAs, file paths, explicit negation, condition/consequence, rule/exception, fact versus speculation, comparison baselines/differences, and prompt-injection text. The fake provider response is contract-tested; live LLM output is not required to be byte-for-byte stable.
-- An opt-in live test that runs only when an explicit flag and `GEMINI_API_KEY` are present. Normal `npm test` never calls Gemini.
+- An opt-in live test that runs only when an explicit flag and the dedicated local `KINOTCH_COMPRESSION_GEMINI_API_KEY` are present. Normal `npm test` never calls Gemini. The Worker test binding remains `GEMINI_API_KEY` after the local credential is resolved.
 - The complete existing regression suite.
 
 ## Deployment and rollback
@@ -162,4 +162,3 @@ Any post-deploy smoke failure rolls back the already-deployed Workers to their c
 ## Prompt versioning
 
 `semantic-dense-v1` is immutable once released. A meaningfully changed prompt is introduced as a new profile/version such as `semantic-dense-v2` in a future, separately scoped change. The initial implementation does not add v2.
-

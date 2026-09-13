@@ -188,7 +188,7 @@ git push origin main
 
 ## Verification gaps that remain intentionally external
 
-- `RUN_GEMINI_LIVE_TEST=true` plus an operator-provided `GEMINI_API_KEY` is required for a real Gemini call.
+- `RUN_GEMINI_LIVE_TEST=true` plus an operator-provided `KINOTCH_COMPRESSION_GEMINI_API_KEY` is required for a real Gemini call.
 - Production Worker secrets, caller smoke token, Cloudflare deploy, Gateway→Service Binding→Gemini smoke, and rollback behavior require operator credentials and production access; local tests and dry-runs do not prove them.
 
 ## Evidence recorded 2026-09-13 JST

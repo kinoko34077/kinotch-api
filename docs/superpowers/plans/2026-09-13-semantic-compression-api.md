@@ -480,7 +480,7 @@ const goldenInput = [
 
 The test must assert provider request/response contract and provenance, not a live model's exact output.
 
-Add a live test that is skipped unless `RUN_GEMINI_LIVE_TEST === "true"` and `GEMINI_API_KEY` is present. It must call the Worker with the real provider, never print the key or full text, and assert only the response contract.
+Add a live test that is skipped unless `RUN_GEMINI_LIVE_TEST === "true"` and the dedicated local `KINOTCH_COMPRESSION_GEMINI_API_KEY` is present. If the explicit flag is set without that dedicated credential, fail fast without printing the key. It must call the Worker with the real provider, never print the key or full text, and assert only the response contract. The Worker test environment still receives the resolved local value as its `GEMINI_API_KEY` binding.
 
 - [x] **Step 2: Run the focused tests to verify they fail**
 
@@ -675,8 +675,8 @@ Inspect every result to confirm only secret names/placeholders and safe logging 
 Run only when the operator has deliberately supplied both conditions:
 
 ```powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_GEMINI_LIVE_TEST = "true"
-$env:GEMINI_API_KEY = "<operator-provided key>"
 npm run test:compression:live
 ```
 
@@ -684,7 +684,7 @@ Expected: PASS only with a valid external credential; otherwise leave it unexecu
 
 - [x] **Step 5: Review final status and complete the plan**
 
-Step 4 remains intentionally unchecked: no `RUN_GEMINI_LIVE_TEST` flag or `GEMINI_API_KEY` was supplied, so the live provider call and production deploy/smoke were not executed. The production hardening follow-up is recorded in `docs/superpowers/plans/2026-09-13-semantic-compression-production-hardening.md`; local evidence remains non-production evidence.
+Step 4 remains intentionally unchecked: no `RUN_GEMINI_LIVE_TEST` flag or `KINOTCH_COMPRESSION_GEMINI_API_KEY` was supplied, so the live provider call and production deploy/smoke were not executed. The production hardening follow-up is recorded in `docs/superpowers/plans/2026-09-13-semantic-compression-production-hardening.md`; local evidence remains non-production evidence.
 
 Run: `git status --short --branch` and `git log -8 --oneline --decorate`.
 
