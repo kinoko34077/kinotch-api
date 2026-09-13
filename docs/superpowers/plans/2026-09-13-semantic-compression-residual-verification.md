@@ -151,7 +151,7 @@
 **Interfaces:**
 - `requestGeminiCompression(text, { onUsage })` invokes the optional callback with only numeric `inputTokens`, `outputTokens`, `thoughtTokens`, `cachedTokens`, and `totalTokens`; absent provider fields are `null`.
 - `createCompressionWorkerApp({ onUsage })` passes the callback only for tests/evaluation. The production app is created without it and does not expose usage in the API response or logs.
-- `npm run measure:compression:usage` requires `RUN_COMPRESSION_USAGE_MEASURE=true` and `KINOTCH_COMPRESSION_GEMINI_API_KEY`; it sends four synthetic same-prefix requests and prints numeric observations only.
+- `npm run measure:compression:usage` requires `RUN_COMPRESSION_USAGE_MEASURE=true` and `KINOTCH_COMPRESSION_GEMINI_API_KEY`; it sends four short `system-only` requests and four synthetic `shared-input-prefix` requests, then prints numeric observations only.
 
 - [x] **Step 1: Add failing usage normalization tests**
 
@@ -171,7 +171,7 @@
 
 - [x] **Step 5: Implement the explicit usage measurement script**
 
-  Build a synthetic common prefix in memory, send four varying suffixes through the Worker app, collect only status and normalized usage numbers, and print JSON records containing no input/output text. Do not encode a cache threshold; report `cachedTokens` as observed, including zero/null.
+  Build a short no-common-prefix `system-only` set and a synthetic common prefix in memory for `shared-input-prefix`, send four requests per scenario through the Worker app, collect only status and normalized usage numbers, and print JSON records containing no input/output text. Do not encode a cache threshold; report `cachedTokens` as observed, including zero/null.
 
 - [x] **Step 6: Add package script and operations guidance**
 

@@ -4,6 +4,10 @@ import {
   normalizeInteractionUsage,
 } from "../src/semantic-compression/gemini.js";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
+import {
+  USAGE_MEASUREMENT_SCENARIOS,
+  buildUsageMeasurementOutput,
+} from "../scripts/measure-compression-usage.mjs";
 
 const API_KEY = "<fixture-gemini-key>";
 
@@ -107,4 +111,40 @@ test("Worker sends usage only to an injected observer, never to the public respo
     "prompt_version",
     "warnings",
   ].sort());
+});
+
+test("usage measurement separates system-only and shared-input-prefix scenarios", () => {
+  assert.deepEqual(USAGE_MEASUREMENT_SCENARIOS.map((scenario) => scenario.name), [
+    "system-only",
+    "shared-input-prefix",
+  ]);
+
+  const output = buildUsageMeasurementOutput([
+    {
+      scenario: "system-only",
+      index: 1,
+      status: 200,
+      inputChars: 10,
+      outputChars: 5,
+      usage: { inputTokens: 20, outputTokens: 5, thoughtTokens: 0, cachedTokens: 3, totalTokens: 25 },
+      inputText: "synthetic secret text",
+      compressedText: "synthetic compressed text",
+    },
+    {
+      scenario: "shared-input-prefix",
+      index: 1,
+      status: 200,
+      inputChars: 100,
+      outputChars: 40,
+      usage: { inputTokens: 120, outputTokens: 10, thoughtTokens: 2, cachedTokens: 80, totalTokens: 132 },
+      inputText: "another synthetic secret text",
+      compressedText: "another synthetic compressed text",
+    },
+  ]);
+
+  assert.equal(output.scenarioSummary[0].cachedTokens.values[0], 3);
+  assert.equal(output.scenarioSummary[1].cachedTokens.values[0], 80);
+  assert.equal(output.records[0].scenario, "system-only");
+  assert.equal(output.records[1].scenario, "shared-input-prefix");
+  assert.doesNotMatch(JSON.stringify(output), /synthetic secret text|compressed text/);
 });

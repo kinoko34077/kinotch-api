@@ -38,8 +38,8 @@ smokeから自動実行しない。人手レビュー用出力を保存する場
 
 Token usageの実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とする別のopt-in scriptで行う。
-共通prefixを持つ4件のsynthetic requestについて、input/output/thought/cached/total tokenの
-数値だけを出力する。Implicit Cachingの効果は観測値として扱い、Explicit Context Cache、
+共通prefixなしの `system-only` 4件と、共通prefixありの `shared-input-prefix` 4件について、
+scenario別にinput/output/thought/cached/total tokenの数値だけを出力する。Implicit Cachingの効果は観測値として扱い、Explicit Context Cache、
 `generateContent`、未合意のthresholdは導入しない。
 
 ## 遅延の見方

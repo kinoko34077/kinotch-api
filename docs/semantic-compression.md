@@ -107,7 +107,7 @@ Remove-Item Env:COMPRESSION_QUALITY_OUTPUT
 
 ## Token usage の実測
 
-Interactions API responseのusageを、opt-inの測定scriptから数値だけ観測できる。共通prefixを持つsyntheticな4 requestを送るため、外部通信・課金の可能性を理解した上で実行する。
+Interactions API responseのusageを、opt-inの測定scriptから数値だけ観測できる。`system-only` は共通prefixを持たない短いsynthetic文4件、`shared-input-prefix` は長い共通prefixを持つsynthetic文4件を送る。外部通信・課金の可能性を理解した上で実行する。
 
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
@@ -117,7 +117,7 @@ Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
 Remove-Item Env:RUN_COMPRESSION_USAGE_MEASURE
 ```
 
-出力するのはrequest数、status、文字数、model、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
+出力するのはscenario、request数、status、文字数、model、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
 
 ## Deployとrollback
 
