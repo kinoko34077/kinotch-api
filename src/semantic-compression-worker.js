@@ -6,6 +6,7 @@ import {
   COMPRESSION_MODEL,
   COMPRESSION_PROMPT_VERSION,
   countUnicodeCodePoints,
+  MAX_GEMINI_INPUT_CODE_POINTS,
   MAX_COMPRESSION_TEXT_LENGTH,
 } from "./semantic-compression/contract.js";
 import {
@@ -48,6 +49,9 @@ function validateCompressionBody(body) {
   const textChars = countUnicodeCodePoints(body.text);
   if (textChars > MAX_COMPRESSION_TEXT_LENGTH) {
     return { status: 413, code: "payload_too_large", message: "text exceeds the maximum length" };
+  }
+  if (textChars > MAX_GEMINI_INPUT_CODE_POINTS) {
+    return { status: 413, code: "provider_context_limit", message: "text exceeds the provider context safety limit" };
   }
   return null;
 }

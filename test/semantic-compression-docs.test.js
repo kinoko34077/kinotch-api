@@ -27,6 +27,9 @@ test("semantic compression operations are documented independently", () => {
     "Compression",
     "Text",
     "本文をログへ残さない",
+    "provider_context_limit",
+    "200,000",
+    "token",
   ]) {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);
   }
@@ -39,4 +42,3 @@ test("documentation contains placeholders only, never secret-looking values", ()
     assert.doesNotMatch(documentText, valuePattern, secretName);
   }
 });
-

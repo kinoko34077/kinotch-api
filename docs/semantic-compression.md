@@ -35,7 +35,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 
 `input_chars` と `output_chars` はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。SHA-256はUTF-8化したtextそのものを対象とする。圧縮結果を原文のSSOTとして保存しない。
 
-主な正規化errorは `invalid_json`、`invalid_body`、`invalid_profile`、`empty_text`、`payload_too_large`、`authentication_failed`、`authentication_unavailable`、`rate_limited`、`provider_rate_limited`、`provider_invalid_response`、`provider_error`、`provider_timeout` である。Googleのraw error bodyは返さない。
+主な正規化errorは `invalid_json`、`invalid_body`、`invalid_profile`、`empty_text`、`payload_too_large`、`provider_context_limit`、`authentication_failed`、`authentication_unavailable`、`rate_limited`、`provider_rate_limited`、`provider_invalid_response`、`provider_error`、`provider_timeout` である。Googleのraw error bodyは返さない。
 
 ## 固定ProviderとPrompt
 
@@ -55,11 +55,14 @@ wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
 `GEMINI_API_KEY` はCompression Workerだけが使うProvider credentialであり、`COMPRESSION_API_TOKEN` はGateway caller credentialである。同じ値を使わない。未設定のcaller secretはfail closedで503、欠落・不正tokenは401とする。tokenはSHA-256 fingerprintの固定長比較を行い、ログや下流Workerへ転送しない。
 
 - 本文の上限: 1,000,000 Unicode code points
+- Provider context安全上限: 200,000 Unicode code points（超過時は外部Providerへ送らず `provider_context_limit` で413）
 - Gateway body limit: 8 MiB（byte limitと文字数limitを混同しない）
 - Compression専用rate limit: 5 requests / 60 seconds / client IP
 - Worker timeout: 45 seconds
 - Gateway upstream timeout: 50 seconds
 - Provider retry: 初期版は自動retryなし
+
+1,000,000 code pointsは公開APIの構造上限であり、Geminiのtoken上限を保証する値ではない。code point数とtoken数は一致せず、system instruction分もcontextを消費するため、初期版は200,000 code pointsを保守的な事前上限とする。tokenizerによる厳密な `countTokens` 外部呼出は追加せず、入力超過をProvider側の502へ変換しない。
 
 ## Live testとsmoke
 
@@ -82,13 +85,12 @@ npm run deploy:production
 
 ## Deployとrollback
 
-`npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → Gateway経由Compression smoke → 完全Gateway smoke → release metadata の順に実行する。
+`npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → 非課金のCompression Gateway readiness確認（反映待ち時のみ再試行）→ Gateway経由Compression smoke（Gemini生成は1回）→ Compressionを再実行しない完全Gateway smoke → release metadata の順に実行する。
 
-Compression smokeは新しいGateway Service Binding経路を実際に検証する必要があるため、Compression Worker deploy直後ではなくGateway deploy後に実行する。Provider受理不明の通信失敗を無条件再送しない。
+Compression smokeは新しいGateway Service Binding経路を実際に検証する必要があるため、Compression Worker deploy直後ではなくGateway deploy後に実行する。反映待ちのGET readiness確認は再試行するが、Provider受理不明の通信失敗やGemini生成自体は無条件再送しない。production smokeのdirect checkでは `https://semantic-compression.kinotch.workers.dev/health` も確認し、HTTP 200で直接到達できる場合は失敗とする。
 
 smoke失敗時のrollback対象は `Gateway → Compression → Text` の順である。release metadataには `compressionVersionId`、`previousCompressionVersionId`、`compressionSmoke`、`compressionRecovery`、`compressionModel`、`compressionPromptVersion` を含める。既存Text/Gatewayのmetadataとrollback契約は削除しない。
 
 ## Privacy
 
 入力text、`compressed_text`、Authorization token、Gemini key、system prompt全文、Gemini raw response全文を本文ログへ残さない。構造化ログで許可するのはrequest ID、route、status、elapsed time、input/output chars、圧縮率、model、prompt version、rate-limit結果、safe error categoryだけである。input/output hashは通常ログへ出さない。
-

@@ -235,6 +235,21 @@ test("compression route enforces the Unicode text limit and byte body limit befo
   assert.equal(upstreamCalls, 0);
 });
 
+test("compression route rejects provider-context-unsafe text before binding", async () => {
+  let upstreamCalls = 0;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit({ text: "x".repeat(200_001), profile: "semantic-dense-v1" }, { Authorization: `Bearer ${TOKEN}` }),
+    env({
+      COMPRESSION: { fetch() { upstreamCalls += 1; return Promise.resolve(compressionResponse({})); } },
+    }),
+  );
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "provider_context_limit");
+  assert.equal(upstreamCalls, 0);
+});
+
 test("compression route uses its own rate limiter and does not call the binding when blocked", async () => {
   let upstreamCalls = 0;
   const response = await app.request(

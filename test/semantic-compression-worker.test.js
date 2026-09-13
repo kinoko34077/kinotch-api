@@ -116,6 +116,26 @@ test("Worker validates JSON, profile, and non-empty text", async () => {
   assert.equal((await emptyText.json()).error, "empty_text");
 });
 
+test("Worker rejects provider-context-unsafe text before provider access", async () => {
+  let providerCalls = 0;
+  const app = createCompressionWorkerApp({
+    fetchImpl: async () => {
+      providerCalls += 1;
+      return completedResponse("unexpected");
+    },
+  });
+
+  const response = await app.request(
+    "https://internal.test/v1/compress",
+    requestBody({ text: "x".repeat(200_001), profile: "semantic-dense-v1" }),
+    { GEMINI_API_KEY: API_KEY },
+  );
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "provider_context_limit");
+  assert.equal(providerCalls, 0);
+});
+
 test("Worker normalizes malformed provider output without exposing raw payload", async () => {
   const secretPayload = "provider-secret-response";
   const app = createCompressionWorkerApp({

@@ -1,6 +1,7 @@
 import {
   COMPRESSION_PROFILE,
   countUnicodeCodePoints,
+  MAX_GEMINI_INPUT_CODE_POINTS,
   MAX_COMPRESSION_TEXT_LENGTH,
 } from "../semantic-compression/contract.js";
 
@@ -94,6 +95,9 @@ export function validateCompressionBody(body) {
   if (body.profile !== COMPRESSION_PROFILE) return invalid("invalid_profile", "profile is not supported");
   if (countUnicodeCodePoints(body.text) > MAX_COMPRESSION_TEXT_LENGTH) {
     return { status: 413, code: "payload_too_large", message: "text exceeds the maximum length" };
+  }
+  if (countUnicodeCodePoints(body.text) > MAX_GEMINI_INPUT_CODE_POINTS) {
+    return { status: 413, code: "provider_context_limit", message: "text exceeds the provider context safety limit" };
   }
   return null;
 }
