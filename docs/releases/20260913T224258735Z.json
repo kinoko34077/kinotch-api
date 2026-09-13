@@ -1,0 +1,29 @@
+{
+  "recordedAtUtc": "2026-09-13T22:42:58.735Z",
+  "recordedAtJst": "2026-09-14 07:42:58",
+  "status": "failed",
+  "gitRevision": "9787a7dd6870314e5d0b4ac7a8277cac3bb5e43a",
+  "sourceRevision": "9787a7dd6870314e5d0b4ac7a8277cac3bb5e43a",
+  "previousTextVersionId": null,
+  "previousCompressionVersionId": null,
+  "previousGatewayVersionId": null,
+  "textVersionId": null,
+  "compressionVersionId": null,
+  "gatewayVersionId": null,
+  "textSmoke": null,
+  "compressionSmoke": null,
+  "gatewaySmoke": null,
+  "textRecovery": null,
+  "compressionRecovery": null,
+  "gatewayRecovery": null,
+  "compressionModel": "gemini-3.5-flash-lite",
+  "compressionPromptVersion": "semantic-dense-v1",
+  "compressionPromptVersions": {
+    "compact": "compact-v1",
+    "semanticDense": "semantic-dense-v1"
+  },
+  "failure": {
+    "stage": "capture previous Text Worker version",
+    "message": "npx.cmd wrangler deployments status --name text-transform --json --config wrangler.text-transform.jsonc exited with 1"
+  }
+}
