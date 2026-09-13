@@ -144,6 +144,10 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+// A successful Gateway method check does not prove that its Service Binding
+// subrequest path has switched to the newly deployed target Worker yet.
+export const COMPRESSION_BINDING_PROPAGATION_SETTLE_MS = 30_000;
+
 async function runSmokeWithRetry(options, attempts = 12) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -164,7 +168,10 @@ async function runCompressionGatewayReadinessWithRetry(options, attempts = 12) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      return await runCompressionGatewayReadiness(options);
+      const readiness = await runCompressionGatewayReadiness(options);
+      console.log(`Compression Gateway readiness passed; waiting ${COMPRESSION_BINDING_PROPAGATION_SETTLE_MS}ms for Service Binding propagation`);
+      await wait(COMPRESSION_BINDING_PROPAGATION_SETTLE_MS);
+      return readiness;
     } catch (error) {
       lastError = error;
       if (attempt < attempts) {

@@ -45,6 +45,8 @@ test("production release fails closed before deployment without Compression smok
 test("production release retries only non-billable Compression readiness", () => {
   assert.doesNotMatch(source, /runCompressionSmokeWithRetry/);
   assert.match(source, /runCompressionGatewayReadinessWithRetry/);
+  assert.match(source, /COMPRESSION_BINDING_PROPAGATION_SETTLE_MS\s*=\s*30_000/);
+  assert.match(source, /await wait\(COMPRESSION_BINDING_PROPAGATION_SETTLE_MS\)/);
   assert.match(source, /runCompressionSmoke\(/);
   assert.match(source, /profile: COMPRESSION_PROFILE_COMPACT/);
   assert.match(source, /profile: COMPRESSION_PROFILE_SEMANTIC_DENSE/);
