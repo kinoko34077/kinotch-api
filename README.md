@@ -33,6 +33,10 @@ POST /v1/transform/batch
 
 このリポジトリは`standby-display`とは別責任で管理します。API変更はテストと
 dry-run、`npm run deploy:production`の本番疎通確認を行ったうえでデプロイしてください。
+Production deploy authorityは`npm run deploy:production`だけです。`main`へのpushはGitHub Actionsの
+`test`を実行しますが、Production deployを直接起動しません。Cloudflare Workers Builds / Git integrationの
+Production auto-deployは無効化し、GitHub `main`のrequired check `test`、force push禁止、branch deletion禁止を
+operator設定として維持します。詳細は[`docs/OPERATIONS.md`](docs/OPERATIONS.md)を正本とします。
 `text-transform`はworkers.devの直接公開を無効化し、GatewayのService Bindingからだけ
 到達させます。Gatewayにはroute policy、JSON schema、byte body limit、Cloudflare
 Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用しています。

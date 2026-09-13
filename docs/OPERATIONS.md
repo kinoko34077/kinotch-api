@@ -1,5 +1,14 @@
 # Text API 運用確認手順
 
+## Production deploy authority
+
+Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、両Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
+
+- `main`へのpushはGitHub Actionsのrequired status check `test`だけを起動し、Production deployを直接起動しない。
+- Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
+- GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
+- GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
+
 ## 本番の基本確認
 
 対象はGateway `https://api.kinotch.workers.dev`。本文そのものはログへ保存せず、ステータス、件数、profile、engineVersion、ruleSetHash、処理時間だけを確認する。
@@ -77,7 +86,7 @@ npx wrangler tail text-transform --format json
 
 `npm run deploy:production`を使い、clean worktree検査 → build後のgenerated差分検査 → check／test／dry-run →
 Text Worker → 境界smoke → Gateway → 全smokeの順で実行する。成功時は両WorkerのVersion ID、commit、engine／rule／snapshot
-metadata、JST時刻を`docs/releases/`へ記録する。手動で個別deployする場合もこの順序を守る。
+metadata、JST時刻を`docs/releases/`へ記録する。個別Workerの手動deployやCloudflare Git連携による自動deployは正式経路としない。
 
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
 一致しなければならない。release gateは同じ40文字SHAをWranglerのruntime variableとしてText

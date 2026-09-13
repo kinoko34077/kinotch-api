@@ -4,6 +4,8 @@
 
 `kinotch-api/src/text-core`を変換仕様の唯一の正本とし、ルビ解析・表記変換・辞書処理を共通化する。`kinotch-api` は公開Gateway、変換処理は別WorkerのService Bindingで配信する。Reader、`standby-display`、Chrome拡張は表示・DOM・設定を保持し、変換仕様だけcore/APIへ寄せる。
 
+Production deploy authorityは`npm run deploy:production`に一本化する。`main` pushからProduction deployを直接起動せず、Cloudflare Workers Builds / Git integrationのauto-deployは無効化する。GitHub `main`のrequired checkは`test`、force pushとbranch deletionは禁止とし、外部設定の確認手順は[`docs/OPERATIONS.md`](OPERATIONS.md)に集約する。
+
 ## 対象
 
 - 最優先：変換engine、matcher、なろう式ルビparser、旧字体rule
@@ -103,7 +105,7 @@ deploy順を「build／metadata生成 → text-transform → smoke test → Gate
 - [x] Text Worker直URLとGateway経由を確認するsmoke checkを追加
 - [x] Gatewayの直前100% Versionを保存し、最終smoke失敗時にGatewayとText Workerを自動rollback
 - [x] production smokeでtime／weather／rokuyo／moonの正常系Service Binding経路を検査
-- [ ] 手動実行とCloudflare側の自動デプロイで同じ手順を参照する
+- [x] `npm run deploy:production`をProduction deploy authorityとし、Cloudflare側の単独auto-deployを無効化する
 
 ### 5. P1：クライアント配布とプライバシー境界を整備
 
