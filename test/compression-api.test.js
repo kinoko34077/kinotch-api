@@ -183,7 +183,12 @@ test("Gateway to Service Binding to Worker reaches the fake Gemini boundary", as
   assert.equal(payload.output_chars, 7);
   assert.equal(response.headers.get("X-Request-ID"), "e2e-compression");
   assert.equal(geminiRequest.body.input, "原文");
+  assert.deepEqual(geminiRequest.body.generation_config, { thinking_level: "minimal" });
   assert.equal(geminiRequest.body.store, false);
+  assert.equal(geminiRequest.body.temperature, undefined);
+  assert.equal(geminiRequest.body.top_p, undefined);
+  assert.equal(geminiRequest.body.top_k, undefined);
+  assert.equal(geminiRequest.body.thinking_budget, undefined);
   assert.equal(new Headers(geminiRequest.init.headers).get("x-goog-api-key"), "<fixture-gemini-key>");
 });
 

@@ -1,5 +1,6 @@
 import {
   COMPRESSION_MODEL,
+  COMPRESSION_THINKING_LEVEL,
 } from "./contract.js";
 import { COMPRESSION_SYSTEM_INSTRUCTION } from "./prompt.js";
 
@@ -120,6 +121,7 @@ export async function requestGeminiCompression(
           model: COMPRESSION_MODEL,
           input: text,
           system_instruction: COMPRESSION_SYSTEM_INSTRUCTION,
+          generation_config: { thinking_level: COMPRESSION_THINKING_LEVEL },
           store: false,
         }),
         signal: controller.signal,

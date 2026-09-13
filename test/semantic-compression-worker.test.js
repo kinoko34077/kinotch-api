@@ -48,7 +48,12 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(new Headers(request.init.headers).get("x-goog-api-key"), API_KEY);
   assert.equal(request.body.model, "gemini-3.5-flash-lite");
   assert.equal(request.body.input, "原文");
+  assert.deepEqual(request.body.generation_config, { thinking_level: "minimal" });
   assert.equal(request.body.store, false);
+  assert.equal(request.body.temperature, undefined);
+  assert.equal(request.body.top_p, undefined);
+  assert.equal(request.body.top_k, undefined);
+  assert.equal(request.body.thinking_budget, undefined);
   assert.equal(request.body.previous_interaction_id, undefined);
   assert.equal(request.body.background, undefined);
   assert.equal(request.body.tools, undefined);

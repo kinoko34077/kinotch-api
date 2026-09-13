@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   COMPRESSION_MODEL,
+  COMPRESSION_THINKING_LEVEL,
   COMPRESSION_PROFILE,
   COMPRESSION_PROMPT_VERSION,
   MAX_GEMINI_INPUT_CODE_POINTS,
@@ -16,6 +17,7 @@ test("compression contract fixes profile, prompt version, and model", () => {
   assert.equal(COMPRESSION_PROFILE, "semantic-dense-v1");
   assert.equal(COMPRESSION_PROMPT_VERSION, "semantic-dense-v1");
   assert.equal(COMPRESSION_MODEL, "gemini-3.5-flash-lite");
+  assert.equal(COMPRESSION_THINKING_LEVEL, "minimal");
   assert.equal(MAX_COMPRESSION_TEXT_LENGTH, 1_000_000);
   assert.equal(MAX_GEMINI_INPUT_CODE_POINTS, 200_000);
   assert.match(COMPRESSION_SYSTEM_INSTRUCTION, /入力本文.*圧縮対象データ/s);
