@@ -1,0 +1,117 @@
+{
+  "recordedAtUtc": "2026-09-13T11:20:35.207Z",
+  "recordedAtJst": "2026-09-13 20:20:35",
+  "status": "failed",
+  "gitRevision": "965a621ebc80c69dc045c9c66d6152476c54882b",
+  "sourceRevision": "965a621ebc80c69dc045c9c66d6152476c54882b",
+  "previousTextVersionId": "6c08d383-bc09-4175-adc3-4a83efec7e5f",
+  "previousCompressionVersionId": "86367f00-ddbb-4649-91ce-cb31750ddaf2",
+  "previousGatewayVersionId": "d5ec50d7-5cee-4cfa-9de1-ee1128608c08",
+  "textVersionId": "6c1aad06-08b2-453f-b683-f2d9d54ccfd8",
+  "compressionVersionId": "610e7abd-2a31-4334-9ed8-04d0bc766b90",
+  "gatewayVersionId": "65d1c358-2769-4da7-8aaa-f5678763d9c7",
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 394.04
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 92.31,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "965a621ebc80c69dc045c9c66d6152476c54882b"
+    },
+    "services": {
+      "time": {
+        "status": 200,
+        "durationMs": 29.62,
+        "serverTime": 1789298167854
+      },
+      "weather": {
+        "status": 200,
+        "durationMs": 357.83,
+        "temp": 24.61,
+        "weather": "Clouds"
+      },
+      "rokuyo": {
+        "status": 200,
+        "durationMs": 221.29,
+        "rokuyo": "仏滅"
+      },
+      "moon": {
+        "status": 200,
+        "durationMs": 99.17,
+        "age": 2.3260300925925925
+      }
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Authorization,Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 97.85,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "oversizedBody": null,
+    "compression": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch",
+      "time": "smoke-time",
+      "weather": "smoke-weather",
+      "rokuyo": "smoke-rokuyo",
+      "moon": "smoke-moon"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    },
+    "directCompressionWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "compressionSmoke": null,
+  "gatewaySmoke": null,
+  "textRecovery": {
+    "status": "rolled_back",
+    "targetVersionId": "6c08d383-bc09-4175-adc3-4a83efec7e5f"
+  },
+  "compressionRecovery": {
+    "status": "rolled_back",
+    "targetVersionId": "86367f00-ddbb-4649-91ce-cb31750ddaf2"
+  },
+  "gatewayRecovery": {
+    "status": "rolled_back",
+    "targetVersionId": "d5ec50d7-5cee-4cfa-9de1-ee1128608c08"
+  },
+  "compressionModel": "gemini-3.5-flash-lite",
+  "compressionPromptVersion": "semantic-dense-v1",
+  "compressionPromptVersions": {
+    "compact": "compact-v1",
+    "semanticDense": "semantic-dense-v1"
+  },
+  "failure": {
+    "stage": "Compression smoke",
+    "message": "compression smoke failed with status 400: compression request failed"
+  }
+}
