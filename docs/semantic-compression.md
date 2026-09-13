@@ -97,13 +97,18 @@ npm run deploy:production
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_COMPRESSION_QUALITY_EVAL = "true"
 $env:COMPRESSION_QUALITY_OUTPUT = ".\artifacts\compression-quality-baseline.json"
+# 任意: 既定15秒。短縮する場合も1秒未満にはできない。
+$env:COMPRESSION_QUALITY_INTERVAL_MS = "15000"
 npm run evaluate:compression
 Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
 Remove-Item Env:RUN_COMPRESSION_QUALITY_EVAL
 Remove-Item Env:COMPRESSION_QUALITY_OUTPUT
+Remove-Item Env:COMPRESSION_QUALITY_INTERVAL_MS
 ```
 
 `COMPRESSION_QUALITY_OUTPUT` を指定した場合だけ、synthetic入力、実際の圧縮結果、機械的marker確認を人手レビュー用JSONへ保存する。通常の `npm test` はこのscriptを呼ばず、外部Geminiへ接続しない。出力は現行 `semantic-dense-v1` のbaselineであり、因果・否定範囲・不確実性・事実／推測境界を自動判定せず、合格thresholdも定義しない。
+
+Geminiのrate limitはproject/model/tierごとに異なり、RPM・input TPM・RPD等で管理されるため、固定の許容値として扱わない。評価scriptは既定15秒（約4 request/minute）の間隔を入れ、429発生時は自動再送せず停止する。レスポンスに安全な数値形式の `Retry-After` がある場合だけ、待機目安をエラーへ表示する。間隔は `COMPRESSION_QUALITY_INTERVAL_MS` で調整できるが、quotaを保証する値ではない。
 
 ## Token usage の実測
 
@@ -112,12 +117,17 @@ Interactions API responseのusageを、opt-inの測定scriptから数値だけ�
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
 $env:RUN_COMPRESSION_USAGE_MEASURE = "true"
+# 任意: 既定15秒。短縮する場合も1秒未満にはできない。
+$env:COMPRESSION_USAGE_INTERVAL_MS = "15000"
 npm run measure:compression:usage
 Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
 Remove-Item Env:RUN_COMPRESSION_USAGE_MEASURE
+Remove-Item Env:COMPRESSION_USAGE_INTERVAL_MS
 ```
 
-出力するのはscenario、request数、status、文字数、model、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
+出力するのはscenario、request数、status、文字数、model、request間隔、`inputTokens`、`outputTokens`、`thoughtTokens`、`cachedTokens`、`totalTokens`だけで、本文・圧縮結果・Prompt・secret・raw provider responseは含めない。`cachedTokens` が0またはnullでも失敗とは扱わず、観測値として記録する。stateless Interactions、`store:false`、Explicit Context Cacheなし、`generateContent`移行なしを維持し、cache効果のthresholdは定義しない。
+
+usage測定も同じ既定15秒間隔でrequestを送る。429発生時は自動再送しない。rate limitの詳細は [Gemini API rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)、usage fieldの定義は [Interactions API](https://ai.google.dev/api/interactions-api)、implicit cachingの観測条件は [Context caching](https://ai.google.dev/gemini-api/docs/caching) を参照する。
 
 ## Deployとrollback
 

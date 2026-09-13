@@ -4,6 +4,11 @@ import {
   COMPRESSION_MODEL,
 } from "../src/semantic-compression/contract.js";
 import { validateCompressionPayload } from "./smoke-production.mjs";
+import {
+  getSafeRetryAfterSeconds,
+  resolveMeasurementIntervalMs,
+  sleep,
+} from "./measurement-pacing.mjs";
 
 function requireOptInConfiguration(env) {
   if (env.RUN_COMPRESSION_USAGE_MEASURE !== "true") {
@@ -52,7 +57,7 @@ function summarizeNumbers(values) {
   };
 }
 
-export function buildUsageMeasurementOutput(records) {
+export function buildUsageMeasurementOutput(records, { requestIntervalMs = null } = {}) {
   const safeRecords = records.map((record) => ({
     scenario: record.scenario,
     index: record.index,
@@ -80,6 +85,7 @@ export function buildUsageMeasurementOutput(records) {
   return {
     event: "compression_usage_measurement",
     model: COMPRESSION_MODEL,
+    requestIntervalMs,
     stateless: true,
     explicitCache: false,
     scenarioSummary: summary,
@@ -89,14 +95,23 @@ export function buildUsageMeasurementOutput(records) {
 
 async function measure() {
   const apiKey = requireOptInConfiguration(process.env);
+  const requestIntervalMs = resolveMeasurementIntervalMs(
+    process.env,
+    "COMPRESSION_USAGE_INTERVAL_MS",
+  );
   let currentUsage = null;
   const app = createCompressionWorkerApp({
     onUsage: (usage) => { currentUsage = usage; },
   });
 
   const records = [];
+  let requestsSent = 0;
   for (const scenario of USAGE_MEASUREMENT_SCENARIOS) {
     for (let index = 0; index < scenario.cases.length; index += 1) {
+      if (requestsSent > 0) {
+        await sleep(requestIntervalMs);
+      }
+      requestsSent += 1;
       const inputText = scenario.cases[index];
       currentUsage = null;
       const response = await app.request("https://usage-measurement.test/v1/compress", {
@@ -115,7 +130,11 @@ async function measure() {
         // Status-only failure below avoids exposing any provider response body.
       }
       if (response.status !== 200) {
-        throw new Error(`usage measurement ${scenario.name} request ${index + 1} failed with status ${response.status}`);
+        const retryAfterSeconds = getSafeRetryAfterSeconds(response);
+        const retryAfterNote = retryAfterSeconds === null ? "" : `; retry_after_seconds=${retryAfterSeconds}`;
+        throw new Error(
+          `usage measurement ${scenario.name} request ${index + 1} failed with status ${response.status}${retryAfterNote}; no automatic retry`,
+        );
       }
       const validationError = await validateCompressionPayload(payload, inputText);
       if (validationError) {
@@ -137,7 +156,7 @@ async function measure() {
     }
   }
 
-  console.log(JSON.stringify(buildUsageMeasurementOutput(records)));
+  console.log(JSON.stringify(buildUsageMeasurementOutput(records, { requestIntervalMs })));
 }
 
 if (process.argv[1]?.endsWith("measure-compression-usage.mjs")) {

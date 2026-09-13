@@ -42,6 +42,8 @@ Token usageの実測は `RUN_COMPRESSION_USAGE_MEASURE=true` と
 scenario別にinput/output/thought/cached/total tokenの数値だけを出力する。Implicit Cachingの効果は観測値として扱い、Explicit Context Cache、
 `generateContent`、未合意のthresholdは導入しない。
 
+外部Geminiのrate limitはproject/model/tier依存でRPM・input TPM・RPD等により変動するため、測定scriptは既定15秒間隔（約4 request/minute）で送信する。品質評価は `COMPRESSION_QUALITY_INTERVAL_MS`、usage測定は `COMPRESSION_USAGE_INTERVAL_MS` で調整できる。いずれも1秒未満は許可せず、429時の自動再送は行わない。安全な数値形式の `Retry-After` が応答にある場合だけ、測定停止時のエラーへ秒数を表示する。
+
 ## 遅延の見方
 
 - 初回のTokenizer利用リクエストは辞書初期化のため遅くなる。現在の目安は約1.8〜3.3秒。

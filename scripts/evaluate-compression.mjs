@@ -7,6 +7,11 @@ import {
   COMPRESSION_MODEL,
 } from "../src/semantic-compression/contract.js";
 import { validateCompressionPayload } from "./smoke-production.mjs";
+import {
+  getSafeRetryAfterSeconds,
+  resolveMeasurementIntervalMs,
+  sleep,
+} from "./measurement-pacing.mjs";
 
 const CORPUS_URL = new URL("../test/fixtures/semantic-compression-quality.json", import.meta.url);
 const EXPECTED_PUBLIC_KEYS = [
@@ -41,11 +46,20 @@ function collectMarkerChecks(entry, compressedText) {
 
 async function evaluate() {
   const apiKey = requireOptInConfiguration(process.env);
+  const requestIntervalMs = resolveMeasurementIntervalMs(
+    process.env,
+    "COMPRESSION_QUALITY_INTERVAL_MS",
+  );
   const corpus = JSON.parse(await readFile(CORPUS_URL, "utf8"));
   const app = createCompressionWorkerApp();
   const records = [];
+  let requestsSent = 0;
 
   for (const entry of corpus) {
+    if (requestsSent > 0) {
+      await sleep(requestIntervalMs);
+    }
+    requestsSent += 1;
     const response = await app.request("https://quality-evaluation.test/v1/compress", {
       method: "POST",
       headers: {
@@ -62,7 +76,11 @@ async function evaluate() {
       // The safe status record below is sufficient for a malformed response.
     }
     if (response.status !== 200) {
-      throw new Error(`quality evaluation failed for ${entry.id} with status ${response.status}`);
+      const retryAfterSeconds = getSafeRetryAfterSeconds(response);
+      const retryAfterNote = retryAfterSeconds === null ? "" : `; retry_after_seconds=${retryAfterSeconds}`;
+      throw new Error(
+        `quality evaluation failed for ${entry.id} with status ${response.status}${retryAfterNote}; no automatic retry`,
+      );
     }
     const validationError = await validateCompressionPayload(payload, entry.input);
     if (validationError) {
@@ -94,6 +112,7 @@ async function evaluate() {
     profile: COMPRESSION_PROFILE,
     prompt_version: COMPRESSION_PROMPT_VERSION,
     model: COMPRESSION_MODEL,
+    request_interval_ms: requestIntervalMs,
     case_count: records.length,
     marker_check_count: markerChecks.length,
     marker_present_count: markerChecks.filter((check) => check.present).length,
@@ -113,6 +132,7 @@ async function evaluate() {
     markerCheckCount: report.marker_check_count,
     markerPresentCount: report.marker_present_count,
     markerMissingCount: report.marker_check_count - report.marker_present_count,
+    requestIntervalMs,
     outputFile: outputPath ? resolve(outputPath) : null,
     threshold: null,
   }));

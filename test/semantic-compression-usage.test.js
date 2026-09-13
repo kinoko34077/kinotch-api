@@ -144,6 +144,7 @@ test("usage measurement separates system-only and shared-input-prefix scenarios"
 
   assert.equal(output.scenarioSummary[0].cachedTokens.values[0], 3);
   assert.equal(output.scenarioSummary[1].cachedTokens.values[0], 80);
+  assert.equal(output.requestIntervalMs, null);
   assert.equal(output.records[0].scenario, "system-only");
   assert.equal(output.records[1].scenario, "shared-input-prefix");
   assert.doesNotMatch(JSON.stringify(output), /synthetic secret text|compressed text/);

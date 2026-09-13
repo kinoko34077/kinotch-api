@@ -20,6 +20,7 @@
 - Production authority remains `npm run deploy:production`; do not run it before Cloudflare auto-deploy is confirmed disabled and required operator credentials are available.
 - Never log or persist input text, compressed text, Prompt, API keys, caller tokens, or raw provider responses in production or usage measurement output.
 - Do not invent quality or cache thresholds; record baseline observations only.
+- Quality and usage measurement requests use a conservative script-only interval (default 15 seconds); a 429 stops the run without automatic provider retry.
 
 ---
 
@@ -217,6 +218,31 @@
 - [ ] **Step 5: Run production release only when all prerequisites are evidenced**
 
   If Cloudflare is disconnected, worktree is clean, tests pass, and `COMPRESSION_SMOKE_TOKEN` is present, run `npm run deploy:production` exactly once and capture its release metadata, smoke, and rollback evidence. Otherwise do not deploy and report the exact remaining operator-only prerequisite.
+
+---
+
+### Task 5: Pace opt-in real-model measurements after provider rate limiting
+
+**Files:**
+- Create: `scripts/measurement-pacing.mjs`
+- Create: `test/measurement-pacing.test.js`
+- Modify: `scripts/evaluate-compression.mjs`
+- Modify: `scripts/measure-compression-usage.mjs`
+- Modify: `test/semantic-compression-usage.test.js`
+- Modify: `test/semantic-compression-docs.test.js`
+- Modify: `docs/semantic-compression.md`
+- Modify: `docs/OPERATIONS.md`
+
+**Interfaces:**
+- Both opt-in measurement scripts default to a 15-second inter-request interval and accept their own environment override.
+- A numeric `Retry-After` header is surfaced only as a bounded wait hint; neither script retries a failed provider request.
+- Production Worker, Gateway, Provider adapter, public contract, Prompt, and release retry policy remain unchanged.
+
+- [x] **Step 1: Add interval and safe retry-hint tests first**
+- [x] **Step 2: Add shared measurement-only pacing helper**
+- [x] **Step 3: Apply pacing to quality and usage scripts**
+- [x] **Step 4: Document project/model/tier-dependent quotas and no automatic retry**
+- [ ] **Step 5: Run focused tests, full suite, then rerun opt-in baseline after quota recovery**
 
 - [ ] **Step 6: Final verification**
 
