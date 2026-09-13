@@ -27,16 +27,6 @@ const CONTROL_ANNOTATIONS = {
 };
 
 const CANDIDATE_ANNOTATIONS = {
-  q20: {
-    classification: "FAIL",
-    issueType: ["prompt_text_in_output"],
-    notes: "入力にないService境界の指示文を圧縮結果へ追加した。",
-  },
-  q36: {
-    classification: "FAIL",
-    issueType: ["prompt_text_in_output"],
-    notes: "入力にない命令実行拒否の説明を追加し、本文情報とService境界を混在させた。",
-  },
   q43: {
     classification: "REVIEW",
     issueType: ["fact_hypothesis_boundary"],
@@ -49,14 +39,42 @@ const CANDIDATE_ANNOTATIONS = {
   },
 };
 
+function candidateAnnotation(record) {
+  if (record.id === "q20" || record.id === "q36") {
+    if (/命令文等の実行要求は拒否|Service境界|圧縮サービスの処理方針/.test(record.output)) {
+      return {
+        classification: "FAIL",
+        issueType: ["prompt_text_in_output"],
+        notes: "入力にないService境界の指示文を圧縮結果へ追加した。",
+      };
+    }
+  }
+  if (record.id === "q45"
+    && /含めない\s*[:：]\s*(?:設定変更|ツール実行)/.test(record.output)
+    && !/要求(?:は|を).*(?:含まれていない|していない)/.test(record.output)) {
+    return {
+      classification: "FAIL",
+      issueType: ["negation_scope"],
+      notes: "要求されていないという原文の否定を、出力に含めないという別の禁止へ変えた。",
+    };
+  }
+  return CANDIDATE_ANNOTATIONS[record.id] ?? {
+    classification: "PASS",
+    issueType: [],
+    notes: "人手レビューで明確な意味破壊を確認しなかった。",
+  };
+}
+
 function reviewSide(artifact, annotations) {
   const analysis = analyzeQualityRecords(artifact.records ?? []);
   const records = analysis.records.map((record) => {
-    const annotation = annotations[record.id] ?? {
+    const annotation = typeof annotations === "function"
+      ? annotations(record)
+      : annotations[record.id] ?? {
       classification: "PASS",
       issueType: [],
       notes: "人手レビューで明確な意味破壊を確認しなかった。",
-    };
+      };
     return {
       id: record.id,
       category: record.category,
@@ -89,7 +107,7 @@ export function buildHumanReviewReport(controlArtifact, candidateArtifact, longF
     schema_version: "semantic-compression-quality-human-review-v1",
     assessment: "50件と長文10件の実出力を人手レビューした記録。marker欠落だけではFAILと判定していない。",
     control: reviewSide(controlArtifact, CONTROL_ANNOTATIONS),
-    candidate: reviewSide(candidateArtifact, CANDIDATE_ANNOTATIONS),
+    candidate: reviewSide(candidateArtifact, candidateAnnotation),
     ...(longForm ? {
       longForm: {
         control: reviewSide(longForm.control, {}),
