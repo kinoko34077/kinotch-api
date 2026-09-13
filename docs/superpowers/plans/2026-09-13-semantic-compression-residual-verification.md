@@ -199,25 +199,25 @@
 - Cloudflare `api` Worker Settings must show Git integration disconnected / Connect available; no production deploy is triggered for this verification.
 - Production release may run only if Cloudflare auto-deploy is confirmed disabled, the dedicated Worker secret and caller smoke token are present, and the operator has accepted the external cost/deploy boundary.
 
-- [ ] **Step 1: Verify GitHub protection after authentication**
+- [x] **Step 1: Verify GitHub protection after authentication**
 
-  Confirm the saved rule for `main` shows required `test`, `allows_force_pushes = false`, and `allows_deletions = false`. Record any unavailable API/UI evidence as operator-only rather than guessing.
+  `gh api` confirmed required `test`, `allows_force_pushes = false`, and `allows_deletions = false` after the final push.
 
-- [ ] **Step 2: Verify Cloudflare Workers Builds state**
+- [x] **Step 2: Verify Cloudflare Workers Builds state**
 
-  In the authenticated Cloudflare dashboard, confirm `api` no longer shows the connected Git repository and shows `接続`/Connect. Do not click deploy or reconnect.
+  The authenticated Dashboard previously showed `Git リポジトリ` with `接続`/Connect for `api`; the final GitHub push produced only the `test` check, with no `Workers Builds: api`. A later dashboard reload rendered blank content, so no stronger current UI claim is made.
 
-- [ ] **Step 3: Check local credential presence without printing values**
+- [x] **Step 3: Check local credential presence without printing values**
 
-  Check only whether `KINOTCH_COMPRESSION_GEMINI_API_KEY`, `RUN_GEMINI_LIVE_TEST`, and `COMPRESSION_SMOKE_TOKEN` are non-empty in the current process. Never echo values.
+  Dedicated key presence was true; the smoke token was absent. Values were never printed.
 
-- [ ] **Step 4: Run the opt-in live test only when explicitly enabled and credentialed**
+- [x] **Step 4: Run the opt-in live test only when explicitly enabled and credentialed**
 
-  If both dedicated live flag and key are present, run `npm run test:compression:live` and record its actual result. Otherwise record `live test: not run — credential unavailable in execution environment`.
+  `npm run test:compression:live` passed at the final source commit with one live test and no skip.
 
 - [ ] **Step 5: Run production release only when all prerequisites are evidenced**
 
-  If Cloudflare is disconnected, worktree is clean, tests pass, and `COMPRESSION_SMOKE_TOKEN` is present, run `npm run deploy:production` exactly once and capture its release metadata, smoke, and rollback evidence. Otherwise do not deploy and report the exact remaining operator-only prerequisite.
+  Not run: `COMPRESSION_SMOKE_TOKEN` was absent, and the quality baseline contained two explicit semantic FAIL cases. No production deploy was attempted.
 
 ---
 
@@ -242,10 +242,12 @@
 - [x] **Step 2: Add shared measurement-only pacing helper**
 - [x] **Step 3: Apply pacing to quality and usage scripts**
 - [x] **Step 4: Document project/model/tier-dependent quotas and no automatic retry**
-- [ ] **Step 5: Run focused tests, full suite, then rerun opt-in baseline after quota recovery**
+- [x] **Step 5: Run focused tests, full suite, then rerun opt-in baseline after quota recovery**
 
-- [ ] **Step 6: Final verification**
+  Focused/full tests passed; the paced 50-case baseline completed with 42 missing exact markers and two semantic FAIL cases; the paced 8-request usage measurement completed successfully.
 
-  Run `npm test`, `git diff --check`, `git status`, and `git diff --stat`; verify no `src/text-core` changes, no public API field changes, and no untracked live output is included.
+- [x] **Step 6: Final verification**
+
+  `npm test` and `git diff --check` passed; final `git status` is clean, `artifacts/` is ignored, and the changes contain no `src/text-core` or production runtime modifications.
 
 ---
