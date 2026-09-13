@@ -39,6 +39,7 @@ test("candidate prompt explicitly treats quoted instructions as data and preserv
   assert.match(requestBody.system_instruction, /入力なし.*判断しない/s);
   assert.match(requestBody.system_instruction, /引用.*内容.*保持/s);
   assert.match(requestBody.system_instruction, /未知.*値.*補完しない/s);
+  assert.match(requestBody.system_instruction, /field名.*単独|値.*ない.*field名.*まま/s);
   assert.match(requestBody.system_instruction, /否定.*禁止.*保持/s);
   assert.match(requestBody.system_instruction, /禁止対象.*保持/s);
   assert.match(requestBody.system_instruction, /短文.*構造化しない/s);
