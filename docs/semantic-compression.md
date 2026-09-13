@@ -89,6 +89,22 @@ npm run deploy:production
 
 `COMPRESSION_SMOKE_TOKEN` がない場合、release gateはWorker deploy前に停止する。`GEMINI_API_KEY` が本番Workerへ登録されていない場合はCompression smokeが失敗し、成功releaseとして記録せずrollbackへ進む。smokeではstatus、duration、counts、model、prompt version、hashesだけを検証し、本文全文を表示しない。
 
+## 実モデル品質評価
+
+`test/fixtures/semantic-compression-quality.json` に、private本文とsecretを含まないsynthetic 50件の評価corpusを置く。実モデルのbaselineを取得する場合だけ、外部通信・課金の可能性を理解した上で、専用環境変数と明示flagを同時に設定して実行する。
+
+```powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
+$env:RUN_COMPRESSION_QUALITY_EVAL = "true"
+$env:COMPRESSION_QUALITY_OUTPUT = ".\artifacts\compression-quality-baseline.json"
+npm run evaluate:compression
+Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY
+Remove-Item Env:RUN_COMPRESSION_QUALITY_EVAL
+Remove-Item Env:COMPRESSION_QUALITY_OUTPUT
+```
+
+`COMPRESSION_QUALITY_OUTPUT` を指定した場合だけ、synthetic入力、実際の圧縮結果、機械的marker確認を人手レビュー用JSONへ保存する。通常の `npm test` はこのscriptを呼ばず、外部Geminiへ接続しない。出力は現行 `semantic-dense-v1` のbaselineであり、因果・否定範囲・不確実性・事実／推測境界を自動判定せず、合格thresholdも定義しない。
+
 ## Deployとrollback
 
 `npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → 非課金のCompression Gateway readiness確認（反映待ち時のみ再試行）→ Gateway経由Compression smoke（Gemini生成は1回）→ Compressionを再実行しない完全Gateway smoke → release metadata の順に実行する。

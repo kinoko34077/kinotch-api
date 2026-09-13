@@ -14,6 +14,7 @@
     "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
+    "evaluate:compression": "node scripts/evaluate-compression.mjs",
     "deploy:production": "node scripts/deploy-production.mjs",
     "check:text-rules": "node scripts/check-text-rules.mjs",
     "check:text-metadata": "node scripts/check-text-metadata.mjs",

@@ -103,31 +103,31 @@
 - `npm run evaluate:compression` requires `RUN_COMPRESSION_QUALITY_EVAL=true` and `KINOTCH_COMPRESSION_GEMINI_API_KEY`; without both it exits before any external request.
 - The evaluator calls `createCompressionWorkerApp()` with the dedicated local key, validates every response with `validateCompressionPayload()`, and writes optional human-review records only when `COMPRESSION_QUALITY_OUTPUT` is explicitly supplied.
 
-- [ ] **Step 1: Add the fixture contract test first**
+- [x] **Step 1: Add the fixture contract test first**
 
   Assert the fixture has exactly 50 entries, unique IDs, all required categories, and mandatory synthetic markers for numbers, dates, URLs, SHA, paths, negation, conditions, exceptions, comparisons, uncertainty, fact/speculation, chronology, and prompt-injection-as-data.
 
-- [ ] **Step 2: Run the fixture test to verify it fails**
+- [x] **Step 2: Run the fixture contract test** (the fixture was added in the same patch, so an isolated missing-fixture RED run was not performed)
 
   Run `npm test -- test/semantic-compression-quality-evaluation.test.js` and confirm it fails because the fixture does not exist.
 
-- [ ] **Step 3: Add 50 synthetic corpus entries**
+- [x] **Step 3: Add 50 synthetic corpus entries**
 
   Include representative Japanese inputs only. Use public-looking placeholders such as `https://example.test/...`, a non-secret 40-character hexadecimal commit marker, and paths under `src/`. Do not use real repository content or credentials.
 
-- [ ] **Step 4: Implement evaluator guards and response validation**
+- [x] **Step 4: Implement evaluator guards and response validation**
 
   Before constructing the Worker app, require the explicit flag and dedicated key. For each fixture, call the existing Worker app, validate status 200 and the existing response contract, and collect only the synthetic `input`, returned `compressed_text`, provenance, and machine-checkable marker results for the optional review file.
 
-- [ ] **Step 5: Implement marker-preservation checks without semantic overclaiming**
+- [x] **Step 5: Implement marker-preservation checks without semantic overclaiming**
 
   Check exact presence of fixture-declared numeric/date/URL/SHA/path/required-token markers in `compressed_text`. Record failures as observations; do not assign an overall semantic pass threshold. Do not auto-judge causality, negation scope, uncertainty, or fact/speculation boundaries.
 
-- [ ] **Step 6: Add the opt-in package script and documentation**
+- [x] **Step 6: Add the opt-in package script and documentation**
 
   Add `"evaluate:compression": "node scripts/evaluate-compression.mjs"`. Document the explicit flag/key command, synthetic-only corpus, optional output file, no automatic `npm test` execution, and the fact that the result is a baseline for human review rather than a quality guarantee.
 
-- [ ] **Step 7: Run non-live tests**
+- [x] **Step 7: Run non-live tests**
 
   Run the fixture contract test and `npm test`; confirm no Gemini request occurs during normal tests.
 

@@ -28,8 +28,13 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 `POST /v1/compress` の契約、`semantic-dense-v1` の固定prompt、
 `gemini-3.5-flash-lite`、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
 `COMPRESSION_SMOKE_TOKEN` を使うlive smoke、8 MiB body limit、5 requests/60 secondsの
-専用rate limit、本文をログへ残さない方針、deployとGateway → Compression → Textのrollbackは
+専用rate limit、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → Textのrollbackは
 [`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
+
+品質baselineは `RUN_COMPRESSION_QUALITY_EVAL=true` と
+`KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とし、通常の `npm test` やProduction
+smokeから自動実行しない。人手レビュー用出力を保存する場合もsynthetic corpusだけを使い、
+本文・Prompt・secret・raw provider responseをログや本番metadataへ残さない。
 
 ## 遅延の見方
 
