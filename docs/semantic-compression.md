@@ -73,7 +73,7 @@ wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
 
 - 本文の上限: 1,000,000 Unicode code points
 - Provider context安全上限: 200,000 Unicode code points（超過時は外部Providerへ送らず `provider_context_limit` で413）
-- Gateway body limit: 2 MiB（wire byte limitと文字数limitを混同しない。200,000 code pointsの最大JSON wire size約1.2 MiBを収容する）
+- Gateway body limit: 2.5 MiB（wire byte limitと文字数limitを混同しない。200,000 code pointsを各々JSONのsurrogate-pair escapeで表した約2.4 MiBの合法wire bodyを収容する）
 - Compression pre-auth rate limit: 5 requests / 60 seconds / client IP（Bearer認証前の総当たり抑制）
 - Compression authenticated IP rate limit: 5 requests / 60 seconds / client IP
 - Compression token fingerprint rate limit: 5 requests / 60 seconds / authenticated token fingerprint

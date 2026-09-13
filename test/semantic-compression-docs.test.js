@@ -24,7 +24,7 @@ test("semantic compression operations are documented independently", () => {
     "COMPRESSION_SMOKE_TOKEN",
     "workers_dev",
     "store:false",
-    "2 MiB",
+    "2.5 MiB",
     "5 requests",
     "npm run test:compression:live",
     "Gateway",

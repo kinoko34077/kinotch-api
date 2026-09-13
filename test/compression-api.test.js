@@ -44,11 +44,11 @@ function env(overrides = {}) {
   };
 }
 
-test("compression policy is isolated with a 2 MiB body limit and dedicated 5/60 limiter", () => {
+test("compression policy is isolated with a 2.5 MiB body limit and dedicated 5/60 limiter", () => {
   assert.equal(routePolicies.compression.id, "semantic-compression");
   assert.equal(routePolicies.compression.path, "/v1/compress");
   assert.equal(routePolicies.compression.method, "POST");
-  assert.equal(routePolicies.compression.bodyLimitBytes, 2 * 1024 * 1024);
+  assert.equal(routePolicies.compression.bodyLimitBytes, 2.5 * 1024 * 1024);
   assert.deepEqual(routePolicies.compression.rateLimit, {
     binding: "COMPRESSION_RATE_LIMITER",
     limit: 5,
@@ -391,7 +391,7 @@ test("compression route enforces the Unicode text limit and byte body limit befo
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${TOKEN}`,
-        "Content-Length": String(2 * 1024 * 1024 + 1),
+        "Content-Length": String(2.5 * 1024 * 1024 + 1),
       },
     },
     env(),
@@ -404,10 +404,27 @@ test("compression route enforces the Unicode text limit and byte body limit befo
 test("compression body limit admits 200,000-code-point JSON and rejects the next wire byte", async () => {
   const controlBody = JSON.stringify({ text: "\u0000".repeat(200_000), profile: "semantic-dense-v1" });
   const astralBody = JSON.stringify({ text: "😀".repeat(200_000), profile: "semantic-dense-v1" });
+  const escapedAstralBody = `{"text":"${"\\ud83d\\ude00".repeat(200_000)}","profile":"semantic-dense-v1"}`;
 
-  assert.equal(routePolicies.compression.bodyLimitBytes, 2 * 1024 * 1024);
+  assert.equal(routePolicies.compression.bodyLimitBytes, 2.5 * 1024 * 1024);
   assert.ok(Buffer.byteLength(controlBody, "utf8") < routePolicies.compression.bodyLimitBytes);
   assert.ok(Buffer.byteLength(astralBody, "utf8") < routePolicies.compression.bodyLimitBytes);
+  assert.equal(Array.from(JSON.parse(escapedAstralBody).text).length, 200_000);
+  assert.ok(Buffer.byteLength(escapedAstralBody, "utf8") < routePolicies.compression.bodyLimitBytes);
+
+  const escapedResponse = await app.request(
+    "http://example.test/v1/compress",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: escapedAstralBody,
+    },
+    env(),
+  );
+  assert.equal(escapedResponse.status, 200);
 
   const response = await app.request(
     "http://example.test/v1/compress",
@@ -416,7 +433,7 @@ test("compression body limit admits 200,000-code-point JSON and rejects the next
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${TOKEN}`,
-        "Content-Length": String(2 * 1024 * 1024 + 1),
+        "Content-Length": String(2.5 * 1024 * 1024 + 1),
       },
     },
     env(),

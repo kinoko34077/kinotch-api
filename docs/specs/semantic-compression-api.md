@@ -241,7 +241,7 @@ content_input_tokens = input_tokens - system_prompt_tokens
 
 | 制限 | 値 |
 |---|---:|
-| Gateway body limit | 2 MiB |
+| Gateway body limit | 2.5 MiB |
 | 公開構造上の本文上限 | 1,000,000 Unicode code points |
 | Provider送信前安全上限 | 200,000 Unicode code points |
 | Compression pre-auth rate limit | 5 requests / 60 seconds / client IP |
@@ -250,7 +250,7 @@ content_input_tokens = input_tokens - system_prompt_tokens
 | Compression Worker timeout | 45 seconds |
 | Gateway upstream timeout | 50 seconds |
 
-1,000,000 code pointsは公開構造上限であり、Provider送信可能量を意味しない。現行では200,000 code pointsを超えた本文はProvider送信前に拒否する。2 MiBはwire byte limitであり、200,000 code pointsの制御文字エスケープを含む最大合法JSON（約1.2 MiB）とUTF-8 multibyte本文を収容するための境界である。
+1,000,000 code pointsは公開構造上限であり、Provider送信可能量を意味しない。現行では200,000 code pointsを超えた本文はProvider送信前に拒否する。2.5 MiBはwire byte limitであり、200,000 code pointsをJSONのsurrogate-pair escapeで表す最大級の合法wire body（約2.4 MiB）とUTF-8 multibyte本文を収容するための境界である。
 
 ## 9. Authentication・Secret
 

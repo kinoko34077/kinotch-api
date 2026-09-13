@@ -109,7 +109,7 @@ export const routePolicies = Object.freeze({
     path: "/v1/compress",
     method: "POST",
     bodyType: "json",
-    bodyLimitBytes: 2 * 1024 * 1024,
+    bodyLimitBytes: 2.5 * 1024 * 1024,
     preAuthRateLimit: COMPRESSION_PREAUTH_RATE_LIMIT,
     rateLimit: COMPRESSION_RATE_LIMIT,
     tokenRateLimit: COMPRESSION_TOKEN_RATE_LIMIT,
