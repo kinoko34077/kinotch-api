@@ -1,3 +1,7 @@
 node_modules/
 .wrangler/
 artifacts/
+.env*
+.dev.vars*
+*.pem
+*.key

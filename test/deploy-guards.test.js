@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import JSON5 from "json5";
 import {
   assertPrivateTextWorkerConfig,
   assertPrivateWorkerConfig,
@@ -70,4 +72,14 @@ test("generic deploy guard names the protected Worker and violated field", () =>
     () => assertPrivateWorkerConfig({ ...validCompressionConfig, routes: [{ pattern: "example.test/*" }] }, "semantic-compression"),
     /semantic-compression.*routes.*not be configured/i,
   );
+});
+
+test("Gateway and Compression invocation logs are disabled to avoid automatic header capture", async () => {
+  const [gateway, compression] = await Promise.all([
+    readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8").then((source) => JSON5.parse(source)),
+    readFile(new URL("../wrangler.semantic-compression.jsonc", import.meta.url), "utf8").then((source) => JSON5.parse(source)),
+  ]);
+
+  assert.equal(gateway.observability.logs.invocation_logs, false);
+  assert.equal(compression.observability.logs.invocation_logs, false);
 });

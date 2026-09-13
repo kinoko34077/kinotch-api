@@ -163,7 +163,7 @@ callerが変更できるのは `text` と固定profile `compact-v1` / `semantic-
 
 - [x] 固定Compression contract、Unicode code point count、UTF-8 SHA-256、provenance response
 - [x] Service側固定promptとprompt injection境界
-- [x] Gatewayの専用認証、8 MiB byte limit、5 requests/60 seconds rate limit、COMPRESSION binding
+- [x] Gatewayの専用認証、2 MiB byte limit、pre-auth/authenticated IP/token fingerprint rate limit、COMPRESSION binding
 - [x] private Worker config、dry-run、fake-provider Worker/Gateway integration、golden test
 - [x] Text → Compression → Gateway release gate、Compression smoke、rollback metadata
 - [x] Secret、live test、本文非ログ、prompt version更新手順の単独文書化

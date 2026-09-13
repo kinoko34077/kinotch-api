@@ -69,12 +69,14 @@ wrangler secret put GEMINI_API_KEY --config wrangler.semantic-compression.jsonc
 wrangler secret put COMPRESSION_API_TOKEN --config wrangler.jsonc
 ```
 
-`GEMINI_API_KEY` はCompression Workerだけが使うProvider credentialであり、`COMPRESSION_API_TOKEN` はGateway caller credentialである。同じ値を使わない。未設定のcaller secretはfail closedで503、欠落・不正tokenは401とする。tokenはSHA-256 fingerprintの固定長比較を行い、ログや下流Workerへ転送しない。
+`GEMINI_API_KEY` はCompression Workerだけが使うProvider credentialであり、`COMPRESSION_API_TOKEN` はGateway caller credentialである。同じ値を使わない。`COMPRESSION_API_TOKEN` は256-bit以上の暗号学的にランダムな値（cryptographically random）をoperatorが生成し、人間が考えたpasswordや短いtokenを使わない。既存Production tokenはコード側から勝手にrotationしない。未設定のcaller secretはfail closedで503、欠落・不正tokenは401とする。tokenはSHA-256 fingerprintの固定長比較を行い、ログや下流Workerへ転送しない。
 
 - 本文の上限: 1,000,000 Unicode code points
 - Provider context安全上限: 200,000 Unicode code points（超過時は外部Providerへ送らず `provider_context_limit` で413）
-- Gateway body limit: 8 MiB（byte limitと文字数limitを混同しない）
-- Compression専用rate limit: 5 requests / 60 seconds / client IP
+- Gateway body limit: 2 MiB（wire byte limitと文字数limitを混同しない。200,000 code pointsの最大JSON wire size約1.2 MiBを収容する）
+- Compression pre-auth rate limit: 5 requests / 60 seconds / client IP（Bearer認証前の総当たり抑制）
+- Compression authenticated IP rate limit: 5 requests / 60 seconds / client IP
+- Compression token fingerprint rate limit: 5 requests / 60 seconds / authenticated token fingerprint
 - Worker timeout: 45 seconds
 - Gateway upstream timeout: 50 seconds
 - Provider retry: 初期版は自動retryなし
@@ -190,6 +192,12 @@ Compression smokeは新しいGateway Service Binding経路を実際に検証す�
 
 smoke失敗時のrollback対象は `Gateway → Compression → Text` の順である。release metadataには `compressionVersionId`、`previousCompressionVersionId`、`compressionSmoke`、`compressionRecovery`、`compressionModel`、`compressionPromptVersion` を含める。既存Text/Gatewayのmetadataとrollback契約は削除しない。
 
+## 出力の安全な表示
+
+`compressed_text` はモデル出力であり、入力由来のMarkdown、HTML、URL等を含み得る untrusted display data として扱う。JSON値をHTMLとして直接DOMへ挿入せず、HTMLとしてrenderする場合は sanitize し、raw HTMLを無効化し、`javascript:`等のdangerous URL schemeを拒否する。Compression APIをPrompt Injection sanitizerや安全性判定器として扱わない。
+
 ## Privacy
 
 入力text、`compressed_text`、Authorization token、Gemini key、system prompt全文、Gemini raw response全文を本文ログへ残さない。構造化ログで許可するのはrequest ID、route、status、elapsed time、input/output chars、圧縮率、model、prompt version、rate-limit結果、safe error categoryだけである。input/output hashは通常ログへ出さない。
+
+Cloudflareのautomatic Invocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、GatewayとCompression WorkerのWrangler設定では`observability.logs.invocation_logs`を`false`にする。Cloudflare側の既存Worker設定がrepo設定と一致することはoperatorがDashboard/APIで確認する。`console.log`によるcustom structured logsは維持するが、本文・Authorization・secret・system prompt全文を含めない。

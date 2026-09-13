@@ -24,7 +24,7 @@ test("semantic compression operations are documented independently", () => {
     "COMPRESSION_SMOKE_TOKEN",
     "workers_dev",
     "store:false",
-    "8 MiB",
+    "2 MiB",
     "5 requests",
     "npm run test:compression:live",
     "Gateway",
@@ -55,6 +55,13 @@ test("semantic compression operations are documented independently", () => {
     "countTokens",
     "output_tokens",
     "Explicit Context Cache",
+    "256-bit",
+    "cryptographically random",
+    "pre-auth",
+    "token fingerprint",
+    "untrusted display data",
+    "sanitize",
+    "dangerous URL",
   ]) {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);
   }

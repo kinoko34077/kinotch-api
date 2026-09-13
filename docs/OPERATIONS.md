@@ -27,9 +27,11 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 
 `POST /v1/compress` の契約、`compact-v1` / `semantic-dense-v1` の固定prompt、
 `gemini-3.5-flash-lite`、公開usage、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
-`COMPRESSION_SMOKE_TOKEN` を使うlive smoke、8 MiB body limit、5 requests/60 secondsの
-専用rate limit、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → Textのrollbackは
+`COMPRESSION_SMOKE_TOKEN` を使うlive smoke、2 MiB body limit、5 requests/60 secondsの
+専用rate limit（pre-auth IP、authenticated IP、authenticated token fingerprintの三段）、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → Textのrollbackは
 [`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
+
+`COMPRESSION_API_TOKEN` は256-bit以上の暗号学的にランダムな値（cryptographically random）を使い、人間が考えたpasswordや短いtokenを登録しない。`compressed_text` は untrusted display data であり、HTML表示時は sanitize し、raw HTMLとdangerous URL schemeを許可しない。
 
 品質baselineは `RUN_COMPRESSION_QUALITY_EVAL=true` と
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` の両方を必要とし、通常の `npm test` やProduction
@@ -91,7 +93,7 @@ Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認�
 
 ## Cloudflareログ
 
-`wrangler.jsonc` と `wrangler.text-transform.jsonc` はObservabilityを有効化済み。tailを使う場合も本文・request body・response bodyを出力せず、ステータス、パス、処理時間、エラー種別だけを対象にする。
+`wrangler.jsonc` と `wrangler.semantic-compression.jsonc` はObservabilityのcustom logsを有効化し、automatic Invocation Logsは無効化している。CloudflareのInvocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、Authorizationを受けるGatewayとCompression Workerでは`invocation_logs: false`を固定する。custom logsでも本文、request body、response body、Authorization、secretを出力せず、ステータス、パス、処理時間、エラー種別だけを対象にする。
 
 ```sh
 npx wrangler tail api --format json

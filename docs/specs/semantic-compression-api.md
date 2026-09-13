@@ -241,14 +241,16 @@ content_input_tokens = input_tokens - system_prompt_tokens
 
 | 制限 | 値 |
 |---|---:|
-| Gateway body limit | 8 MiB |
+| Gateway body limit | 2 MiB |
 | 公開構造上の本文上限 | 1,000,000 Unicode code points |
 | Provider送信前安全上限 | 200,000 Unicode code points |
-| Compression rate limit | 5 requests / 60 seconds / client IP |
+| Compression pre-auth rate limit | 5 requests / 60 seconds / client IP |
+| Compression authenticated IP rate limit | 5 requests / 60 seconds / client IP |
+| Compression token fingerprint rate limit | 5 requests / 60 seconds / authenticated token fingerprint |
 | Compression Worker timeout | 45 seconds |
 | Gateway upstream timeout | 50 seconds |
 
-1,000,000 code pointsは公開構造上限であり、Provider送信可能量を意味しない。現行では200,000 code pointsを超えた本文はProvider送信前に拒否する。
+1,000,000 code pointsは公開構造上限であり、Provider送信可能量を意味しない。現行では200,000 code pointsを超えた本文はProvider送信前に拒否する。2 MiBはwire byte limitであり、200,000 code pointsの制御文字エスケープを含む最大合法JSON（約1.2 MiB）とUTF-8 multibyte本文を収容するための境界である。
 
 ## 9. Authentication・Secret
 
@@ -263,7 +265,9 @@ Authorization: Bearer <COMPRESSION_API_TOKEN>
 - `COMPRESSION_API_TOKEN`: caller認証用
 - `GEMINI_API_KEY`: Compression WorkerがGeminiを呼ぶProvider credential
 
-両者は別secretとし、同じ値を使用しない。caller tokenはGatewayで消費し、Compression Workerへ転送しない。
+両者は別secretとし、同じ値を使用しない。`COMPRESSION_API_TOKEN` は256-bit以上のcryptographically randomな値とし、人間が考えたpasswordや短いtokenを使用しない。caller tokenはGatewayで消費し、Compression Workerへ転送しない。
+
+Compression Gatewayのrate limitは、Bearer認証前のIP limiter、認証後のIP limiter、認証成功tokenの非可逆SHA-256 fingerprint limiterの三段で適用する。raw tokenはrate-limit key、log、responseへ出さない。いずれかのconfigured limiterが欠落・障害の場合はfail closedで503とする。
 
 ### SEC-COMP-002: Secret handling
 
@@ -304,6 +308,10 @@ Authorization: Bearer <COMPRESSION_API_TOKEN>
 - safe error category
 
 input/output hashは通常logへ出力しない。
+
+`compressed_text` はモデル出力であり untrusted display data として扱う。HTMLとしてrenderするclientは sanitize を行い、raw HTMLを無効化し、`javascript:`等のdangerous URL schemeを拒否する。Compression APIはPrompt Injection sanitizerではない。
+
+Gatewayが受け取るAuthorization header等の自動収集を避けるため、GatewayとCompression Workerの`observability.logs.invocation_logs`は`false`に固定する。安全なcustom structured logsだけを使用し、Cloudflare側の実設定はoperatorが確認する。
 
 ## 11. Error契約
 
