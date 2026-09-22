@@ -108,7 +108,9 @@ export async function runMcpSmoke({
   }
 
   return {
-    status: 200,
+    status: "passed",
+    httpStatus: 200,
+    authMode: "access_session_cookie",
     endpoint: target,
     tool: "compress_text",
     profile: provenance.profile,

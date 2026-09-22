@@ -34,7 +34,9 @@ test("MCP smoke performs one initialize, tools/list, and compress_text call", as
   });
 
   assert.deepEqual(result, {
-    status: 200,
+    status: "passed",
+    httpStatus: 200,
+    authMode: "access_session_cookie",
     endpoint: "https://mcp.example.test/mcp",
     tool: "compress_text",
     profile: "semantic-dense-v1",
@@ -48,7 +50,7 @@ test("MCP smoke performs one initialize, tools/list, and compress_text call", as
   assert.deepEqual(calls[2].body.params.arguments, { text: "MCP smoke text" });
 });
 
-test("MCP smoke fails safely without endpoint or OAuth cookie", async () => {
+test("MCP smoke fails safely without endpoint or Access session cookie", async () => {
   await assert.rejects(
     runMcpSmoke({ endpoint: "", accessCookie: "" }),
     /MCP_ENDPOINT is required/,

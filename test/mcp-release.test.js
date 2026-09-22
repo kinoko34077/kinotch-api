@@ -5,6 +5,9 @@ import {
   MCP_RELEASE_PROTOCOL,
   MCP_RELEASE_TOOL_VERSION,
   buildMcpReleaseMetadata,
+  createMcpDeployArgs,
+  resolveMcpWorkerVars,
+  resolveMcpSmokeInputs,
   resolveMcpSmokeState,
 } from "../scripts/mcp-release.mjs";
 
@@ -27,14 +30,42 @@ test("MCP release metadata uses the dedicated Worker config and protocol", () =>
     mcpProtocol: "streamable-http",
     mcpToolVersion: "compress_text/v1",
     mcpSmoke: { status: "operator_required" },
+    mcpOAuthSmoke: {
+      status: "operator_required",
+      reason: "Codex Managed OAuth client flow must be verified separately",
+    },
     mcpRecovery: null,
   });
 });
 
-test("MCP smoke remains operator-required until endpoint and Access vars exist", () => {
+test("MCP production deploy requires worker vars and authenticated smoke inputs", () => {
+  assert.throws(() => resolveMcpWorkerVars({}), /TEAM_DOMAIN/);
+  assert.throws(() => resolveMcpSmokeInputs({ TEAM_DOMAIN: "team.example.com", POLICY_AUD: "audience-tag" }), /MCP_ENDPOINT/);
+  assert.deepEqual(resolveMcpWorkerVars({ TEAM_DOMAIN: " https://team.example.com/ ", POLICY_AUD: " audience-tag " }), {
+    TEAM_DOMAIN: "https://team.example.com/",
+    POLICY_AUD: "audience-tag",
+  });
+  assert.deepEqual(createMcpDeployArgs({
+    env: { TEAM_DOMAIN: "https://team.example.com", POLICY_AUD: "audience-tag" },
+    dryRun: true,
+  }), [
+    "wrangler",
+    "deploy",
+    "--config",
+    "wrangler.semantic-compression-mcp.jsonc",
+    "--var",
+    "TEAM_DOMAIN:https://team.example.com",
+    "--var",
+    "POLICY_AUD:audience-tag",
+    "--dry-run",
+  ]);
+});
+
+test("MCP smoke remains incomplete until the authenticated session-cookie smoke runs", () => {
   assert.deepEqual(resolveMcpSmokeState({}), {
-    status: "operator_required",
-    reason: "Cloudflare Access setup and authenticated MCP smoke are required",
+    status: "incomplete",
+    reason: "MCP production release requires MCP_ENDPOINT",
+    authMode: "access_session_cookie",
     endpoint: null,
   });
   assert.deepEqual(resolveMcpSmokeState({
@@ -42,8 +73,9 @@ test("MCP smoke remains operator-required until endpoint and Access vars exist",
     TEAM_DOMAIN: "team.example.com",
     POLICY_AUD: "audience-tag",
   }), {
-    status: "operator_required",
-    reason: "Authenticated OAuth smoke must be run by the operator",
+    status: "incomplete",
+    reason: "MCP production release requires MCP_SMOKE_ACCESS_COOKIE",
+    authMode: "access_session_cookie",
     endpoint: "https://mcp.example.test/mcp",
   });
 });

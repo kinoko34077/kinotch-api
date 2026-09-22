@@ -1,4 +1,5 @@
 import { MCP_COMPRESSION_PROFILE } from "./contract.js";
+import { countUnicodeCodePoints } from "../semantic-compression/contract.js";
 
 export class CompressionMcpError extends Error {
   constructor(code, status = 500) {
@@ -13,19 +14,21 @@ function isSafeCount(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 
-function isValidPayload(value) {
+function isValidPayload(value, inputText) {
+  const compressedText = typeof value?.compressed_text === "string" ? value.compressed_text : null;
   return value !== null
     && typeof value === "object"
     && !Array.isArray(value)
-    && typeof value.compressed_text === "string"
-    && value.compressed_text.length > 0
+    && compressedText !== null
+    && compressedText.length > 0
     && value.profile === MCP_COMPRESSION_PROFILE
-    && typeof value.prompt_version === "string"
-    && value.prompt_version.length > 0
+    && value.prompt_version === MCP_COMPRESSION_PROFILE
     && typeof value.model === "string"
     && value.model.length > 0
     && isSafeCount(value.input_chars)
     && isSafeCount(value.output_chars)
+    && value.input_chars === countUnicodeCodePoints(inputText)
+    && value.output_chars === countUnicodeCodePoints(compressedText)
     && Array.isArray(value.warnings);
 }
 
@@ -64,7 +67,7 @@ export async function callCompressionService(env, text, {
     } catch {
       throw new CompressionMcpError("invalid_upstream_response", 502);
     }
-    if (!isValidPayload(payload)) throw new CompressionMcpError("invalid_upstream_response", 502);
+    if (!isValidPayload(payload, text)) throw new CompressionMcpError("invalid_upstream_response", 502);
     return payload;
   } catch (error) {
     if (error instanceof CompressionMcpError) throw error;

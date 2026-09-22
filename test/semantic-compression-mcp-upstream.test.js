@@ -8,7 +8,7 @@ function validPayload(overrides = {}) {
     profile: "semantic-dense-v1",
     prompt_version: "semantic-dense-v1",
     model: "gemini-3.5-flash-lite",
-    input_chars: 4,
+    input_chars: 2,
     output_chars: 4,
     warnings: [],
     ...overrides,
@@ -72,6 +72,9 @@ test("binding adapter rejects malformed or unsafe successful responses", async (
     ["invalid json", "not-json"],
     ["empty text", validPayload({ compressed_text: "" })],
     ["wrong profile", validPayload({ profile: "compact-v1" })],
+    ["wrong prompt version", validPayload({ prompt_version: "other-version" })],
+    ["mismatched input count", validPayload({ input_chars: 4 })],
+    ["mismatched output count", validPayload({ output_chars: 3 })],
     ["invalid count", validPayload({ output_chars: -1 })],
   ]) {
     await t.test(name, async () => {

@@ -13,6 +13,7 @@ This Worker exposes the existing semantic-compression service to MCP clients. It
 - External protection: Cloudflare Access Managed OAuth.
 - Worker-side assertion: `Cf-Access-Jwt-Assertion` is verified with Cloudflare Access JWKS, issuer, audience, signature, and expiration.
 - Required non-secret Worker vars: `TEAM_DOMAIN`, `POLICY_AUD`.
+- Production deploy passes these vars explicitly with Wrangler `--var`; missing values fail before Worker deployment.
 - Missing or invalid configuration fails closed.
 
 The REST `/v1/compress` endpoint and `COMPRESSION_API_TOKEN` are separate interfaces. MCP does not accept or forward that token.
@@ -62,7 +63,7 @@ Input text, compressed text outside the intended tool result, Access JWTs, Autho
 
 `npm run deploy:production` remains the sole production release authority. The MCP Worker is included in dry-run, version capture, deploy, readiness, smoke, metadata, and rollback handling. Access application creation, Managed OAuth policy, `TEAM_DOMAIN`, `POLICY_AUD`, and authenticated MCP smoke are operator-controlled gates and cannot be inferred from repository code.
 
-The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie, never retries an MCP call, and is not part of the ordinary `npm test` suite.
+The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie, never retries an MCP call, and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
 
 Prompt/model/profile changes belong to the REST/compression service change process. This adapter must not copy or mutate those definitions.
 

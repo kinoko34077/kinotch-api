@@ -25,10 +25,13 @@ import {
 } from "../src/semantic-compression/contract.js";
 import {
   buildMcpReleaseMetadata,
+  createMcpDeployArgs,
   MCP_RELEASE_CONFIG,
   MCP_RELEASE_WORKER_NAME,
+  resolveMcpSmokeInputs,
   resolveMcpSmokeState,
 } from "./mcp-release.mjs";
+import { runMcpSmoke } from "./smoke-mcp.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -268,6 +271,10 @@ async function main() {
     textSmoke: null,
     compressionSmoke: null,
     mcpSmoke: null,
+    mcpOAuthSmoke: {
+      status: "operator_required",
+      reason: "Codex Managed OAuth client flow must be verified separately",
+    },
     gatewaySmoke: null,
     textRecovery: null,
     compressionRecovery: null,
@@ -302,6 +309,9 @@ async function main() {
     ));
     assertPrivateWorkerConfig(compressionWorkerConfig, "semantic-compression");
 
+    state.stage = "MCP Access configuration assertion";
+    const mcpSmokeInputs = resolveMcpSmokeInputs(process.env);
+
     if (typeof process.env.COMPRESSION_SMOKE_TOKEN !== "string" || process.env.COMPRESSION_SMOKE_TOKEN.length === 0) {
       throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
     }
@@ -334,11 +344,7 @@ async function main() {
     ]);
     state.stage = "MCP Worker dry-run";
     await run(npxCommand, [
-      "wrangler",
-      "deploy",
-      "--config",
-      MCP_RELEASE_CONFIG,
-      "--dry-run",
+      ...createMcpDeployArgs({ env: process.env, dryRun: true }),
     ]);
     state.stage = "Gateway dry-run";
     await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
@@ -394,12 +400,13 @@ async function main() {
     state.stage = "MCP Worker deploy";
     const mcpDeployOutput = await run(
       npxCommand,
-      ["wrangler", "deploy", "--config", MCP_RELEASE_CONFIG],
+      createMcpDeployArgs({ env: process.env }),
       { capture: true },
     );
     state.mcpDeployed = true;
     state.mcpVersionId = getVersionId(mcpDeployOutput, "semantic-compression-mcp");
-    state.mcpSmoke = resolveMcpSmokeState(process.env);
+    state.stage = "MCP Access session-cookie smoke";
+    state.mcpSmoke = await runMcpSmoke(mcpSmokeInputs);
 
     state.stage = "Gateway deploy";
     const gatewayDeployOutput = await run(
@@ -452,6 +459,7 @@ async function main() {
         previousVersionId: state.previousMcpVersionId,
         endpoint: process.env.MCP_ENDPOINT,
         smoke: state.mcpSmoke,
+        oauthSmoke: state.mcpOAuthSmoke,
         recovery: state.mcpRecovery,
       }),
       compressionModel: COMPRESSION_MODEL,
@@ -556,6 +564,7 @@ async function main() {
           previousVersionId: state.previousMcpVersionId,
           endpoint: process.env.MCP_ENDPOINT,
           smoke: state.mcpSmoke ?? resolveMcpSmokeState(process.env),
+          oauthSmoke: state.mcpOAuthSmoke,
           recovery: state.mcpRecovery,
         }),
         gatewaySmoke: state.gatewaySmoke,

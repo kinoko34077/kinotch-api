@@ -14,6 +14,8 @@ This document covers the operational setup for `semantic-compression-mcp`. The R
    - `TEAM_DOMAIN`: the team hostname, with or without the `https://` prefix; code normalizes it.
    - `POLICY_AUD`: the MCP Access application Audience Tag.
 
+The production release command requires `TEAM_DOMAIN` and `POLICY_AUD` in its operator environment and passes them explicitly as Wrangler `--var` values on both MCP dry-run and deploy. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
+
 Until these values and the Access application exist, the Worker must remain fail-closed and the MCP production gate is not complete.
 
 ## Local checks
@@ -37,7 +39,7 @@ After Access setup, select Streamable HTTP in MCP Inspector and use the deployed
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same three protocol operations once and requires an operator-provided Access session cookie:
+The repository smoke helper performs the same three protocol operations once and requires an operator-provided Access session cookie. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 ```powershell
 $env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
@@ -46,7 +48,7 @@ npm run smoke:mcp
 Remove-Item Env:MCP_ENDPOINT, Env:MCP_SMOKE_ACCESS_COOKIE -ErrorAction SilentlyContinue
 ```
 
-The cookie is temporary operator input only. Never print it, commit it, place it in Codex configuration, or report its value. If the OAuth session expires, authenticate again and rerun the single smoke.
+The cookie is temporary operator input only. Never print it, commit it, place it in Codex configuration, or report its value. If the OAuth session expires, authenticate again and rerun the single smoke. The production release gate requires this smoke to pass and records the authentication mode explicitly; it does not fabricate a Codex OAuth result.
 
 ## Codex registration
 
