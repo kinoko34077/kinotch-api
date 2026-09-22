@@ -23,6 +23,12 @@ import {
   COMPRESSION_PROFILE_SEMANTIC_DENSE,
   COMPRESSION_PROMPT_VERSION,
 } from "../src/semantic-compression/contract.js";
+import {
+  buildMcpReleaseMetadata,
+  MCP_RELEASE_CONFIG,
+  MCP_RELEASE_WORKER_NAME,
+  resolveMcpSmokeState,
+} from "./mcp-release.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -115,6 +121,25 @@ async function getActiveCompressionVersionId() {
     throw new Error(`Could not read the Compression Worker deployment status (exit ${result.signal ?? result.code})`);
   }
   return parseOptionalActiveVersionId(result.output, "Compression Worker");
+}
+
+async function getActiveMcpVersionId() {
+  const result = await run(npxCommand, [
+    "wrangler",
+    "deployments",
+    "status",
+    "--name",
+    MCP_RELEASE_WORKER_NAME,
+    "--json",
+    "--config",
+    MCP_RELEASE_CONFIG,
+  ], { capture: true, allowFailure: true });
+  if (result.code !== 0) {
+    const diagnostic = `${result.output}\n${result.errorOutput}`;
+    if (isMissingWorkerDeploymentError(diagnostic)) return null;
+    throw new Error(`Could not read the MCP Worker deployment status (exit ${result.signal ?? result.code})`);
+  }
+  return parseOptionalActiveVersionId(result.output, "MCP Worker");
 }
 
 async function assertCleanWorktree() {
@@ -234,19 +259,24 @@ async function main() {
     gitRevision: "unknown",
     previousTextVersionId: null,
     previousCompressionVersionId: null,
+    previousMcpVersionId: null,
     previousGatewayVersionId: null,
     textVersionId: null,
     compressionVersionId: null,
+    mcpVersionId: null,
     gatewayVersionId: null,
     textSmoke: null,
     compressionSmoke: null,
+    mcpSmoke: null,
     gatewaySmoke: null,
     textRecovery: null,
     compressionRecovery: null,
+    mcpRecovery: null,
     gatewayRecovery: null,
     textDeployed: false,
     textSmokeCompleted: false,
     compressionDeployed: false,
+    mcpDeployed: false,
     compressionSmokeCompleted: false,
     gatewayDeployed: false,
     gatewaySmokeCompleted: false,
@@ -302,6 +332,14 @@ async function main() {
       "wrangler.semantic-compression.jsonc",
       "--dry-run",
     ]);
+    state.stage = "MCP Worker dry-run";
+    await run(npxCommand, [
+      "wrangler",
+      "deploy",
+      "--config",
+      MCP_RELEASE_CONFIG,
+      "--dry-run",
+    ]);
     state.stage = "Gateway dry-run";
     await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
 
@@ -311,6 +349,8 @@ async function main() {
     state.previousGatewayVersionId = await getActiveGatewayVersionId();
     state.stage = "capture previous Compression Worker version";
     state.previousCompressionVersionId = await getActiveCompressionVersionId();
+    state.stage = "capture previous MCP Worker version";
+    state.previousMcpVersionId = await getActiveMcpVersionId();
 
     state.stage = "Text Worker deploy";
     const textDeployOutput = await run(
@@ -350,6 +390,16 @@ async function main() {
     );
     state.compressionDeployed = true;
     state.compressionVersionId = getVersionId(compressionDeployOutput, "semantic-compression");
+
+    state.stage = "MCP Worker deploy";
+    const mcpDeployOutput = await run(
+      npxCommand,
+      ["wrangler", "deploy", "--config", MCP_RELEASE_CONFIG],
+      { capture: true },
+    );
+    state.mcpDeployed = true;
+    state.mcpVersionId = getVersionId(mcpDeployOutput, "semantic-compression-mcp");
+    state.mcpSmoke = resolveMcpSmokeState(process.env);
 
     state.stage = "Gateway deploy";
     const gatewayDeployOutput = await run(
@@ -397,6 +447,13 @@ async function main() {
       compressionSmoke: state.compressionSmoke,
       gatewaySmoke: state.gatewaySmoke,
       compressionRecovery: state.compressionRecovery,
+      ...buildMcpReleaseMetadata({
+        versionId: state.mcpVersionId,
+        previousVersionId: state.previousMcpVersionId,
+        endpoint: process.env.MCP_ENDPOINT,
+        smoke: state.mcpSmoke,
+        recovery: state.mcpRecovery,
+      }),
       compressionModel: COMPRESSION_MODEL,
       compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
       compressionPromptVersions: {
@@ -444,6 +501,25 @@ async function main() {
       }
     }
 
+    if (state.mcpDeployed && state.previousMcpVersionId && !state.mcpRecovery) {
+      try {
+        state.mcpRecovery = await rollbackAfterSmokeFailure({
+          previousVersionId: state.previousMcpVersionId,
+          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+            versionId,
+            "automatic-mcp-smoke-failure-rollback",
+            { workerName: MCP_RELEASE_WORKER_NAME, config: MCP_RELEASE_CONFIG },
+          )),
+        });
+      } catch (rollbackError) {
+        state.mcpRecovery = {
+          status: "rollback_failed",
+          targetVersionId: state.previousMcpVersionId,
+          error: rollbackError.message,
+        };
+      }
+    }
+
     if (state.textDeployed && state.previousTextVersionId && !state.textRecovery) {
       try {
         state.textRecovery = await rollbackAfterSmokeFailure({
@@ -475,6 +551,13 @@ async function main() {
         gatewayVersionId: state.gatewayVersionId,
         textSmoke: state.textSmoke,
         compressionSmoke: state.compressionSmoke,
+        ...buildMcpReleaseMetadata({
+          versionId: state.mcpVersionId,
+          previousVersionId: state.previousMcpVersionId,
+          endpoint: process.env.MCP_ENDPOINT,
+          smoke: state.mcpSmoke ?? resolveMcpSmokeState(process.env),
+          recovery: state.mcpRecovery,
+        }),
         gatewaySmoke: state.gatewaySmoke,
         textRecovery: state.textRecovery,
         compressionRecovery: state.compressionRecovery,
