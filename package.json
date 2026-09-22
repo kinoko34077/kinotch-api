@@ -14,6 +14,7 @@
     "dev:compression-mcp": "wrangler dev --config wrangler.semantic-compression-mcp.jsonc",
     "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "smoke:mcp": "node scripts/smoke-mcp.mjs",
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
     "test:mcp": "node --test test/semantic-compression-mcp-*.test.js",
     "evaluate:compression": "node scripts/evaluate-compression.mjs",

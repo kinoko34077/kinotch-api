@@ -37,6 +37,17 @@ After Access setup, select Streamable HTTP in MCP Inspector and use the deployed
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
+The repository smoke helper performs the same three protocol operations once and requires an operator-provided Access session cookie:
+
+```powershell
+$env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
+$env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<operator-session-cookie>"
+npm run smoke:mcp
+Remove-Item Env:MCP_ENDPOINT, Env:MCP_SMOKE_ACCESS_COOKIE -ErrorAction SilentlyContinue
+```
+
+The cookie is temporary operator input only. Never print it, commit it, place it in Codex configuration, or report its value. If the OAuth session expires, authenticate again and rerun the single smoke.
+
 ## Codex registration
 
 Use the current Codex config schema and keyring-backed OAuth store. The shape is conceptually:

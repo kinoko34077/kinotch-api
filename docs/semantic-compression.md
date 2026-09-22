@@ -8,6 +8,8 @@
 
 `POST /v1/compress` は、入力本文を `compact-v1` または `semantic-dense-v1` の固定仕様で圧縮する専用APIである。任意prompt、system instruction、model、provider、chat、agent、tools、Search、会話履歴は受け付けない。
 
+Remote MCP adapterの仕様・Access設定は [`docs/specs/semantic-compression-mcp.md`](specs/semantic-compression-mcp.md) と [`docs/semantic-compression-mcp.md`](semantic-compression-mcp.md) を参照する。MCPはREST契約を変更せず、既存Compression WorkerへService Bindingで接続する。
+
 経路は `Gateway → COMPRESSION Service Binding → semantic-compression Worker → Gemini Interactions API` に固定する。Compression Workerは独立し、Worker直URLは公開しない。
 
 ## API契約

@@ -500,3 +500,5 @@ model変更時はPrompt token metadataがmodel依存のため再測定する。
 | 各Production release実績 | `docs/releases/*.json` |
 
 同一情報を複数文書へ無条件に複製せず、本文書は公開契約と変更条件を中心に保持する。
+
+Remote MCP adapterは別契約であり、[`docs/specs/semantic-compression-mcp.md`](semantic-compression-mcp.md) に定義する。

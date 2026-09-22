@@ -62,6 +62,8 @@ Input text, compressed text outside the intended tool result, Access JWTs, Autho
 
 `npm run deploy:production` remains the sole production release authority. The MCP Worker is included in dry-run, version capture, deploy, readiness, smoke, metadata, and rollback handling. Access application creation, Managed OAuth policy, `TEAM_DOMAIN`, `POLICY_AUD`, and authenticated MCP smoke are operator-controlled gates and cannot be inferred from repository code.
 
+The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie, never retries an MCP call, and is not part of the ordinary `npm test` suite.
+
 Prompt/model/profile changes belong to the REST/compression service change process. This adapter must not copy or mutate those definitions.
 
 See [`docs/semantic-compression-mcp.md`](../semantic-compression-mcp.md) for operator setup and client registration.
