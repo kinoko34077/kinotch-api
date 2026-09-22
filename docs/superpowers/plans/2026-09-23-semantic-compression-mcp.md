@@ -265,4 +265,3 @@
 - [ ] **Step 4: Report external blockers without guessing**
 
   Report the implementation commit, endpoint after deployment if known, tool/auth/Service Binding/tests/dry-runs, and separately list whether Cloudflare Access application/Managed OAuth/JWT vars, authenticated MCP Inspector smoke, Codex keyring login, and production release/rollback were actually observed. Never claim those are complete from static code alone.
-
