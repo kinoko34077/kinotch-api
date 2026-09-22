@@ -5,3 +5,4 @@ artifacts/
 .dev.vars*
 *.pem
 *.key
+.superpowers/

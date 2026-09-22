@@ -11,9 +11,11 @@
     "build:browser-client": "node scripts/build-browser-client.mjs",
     "build:text-snapshot": "npm run build:text-rules && npm run build:text-metadata && npm run build:text-client && npm run build:kanji-fallback && npm run build:browser-client",
     "dev:text-transform": "npm run build:text-snapshot && wrangler dev --config wrangler.text-transform.jsonc",
+    "dev:compression-mcp": "wrangler dev --config wrangler.semantic-compression-mcp.jsonc",
     "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
+    "test:mcp": "node --test test/semantic-compression-mcp-*.test.js",
     "evaluate:compression": "node scripts/evaluate-compression.mjs",
     "measure:compression:usage": "node scripts/measure-compression-usage.mjs",
     "measure:compression:prompt-tokens": "node scripts/measure-compression-prompt-tokens.mjs",
@@ -30,7 +32,11 @@
     "deploy:text-transform": "npm run build:text-snapshot && npm run check:text-snapshot && npm test && wrangler deploy --config wrangler.text-transform.jsonc"
   },
   "dependencies": {
-    "hono": "^4.9.7"
+    "@modelcontextprotocol/server": "^2.0.0",
+    "agents": "^0.24.0",
+    "hono": "^4.9.7",
+    "jose": "^6.2.12",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "json5": "^2.2.3",
