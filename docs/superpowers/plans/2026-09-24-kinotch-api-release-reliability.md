@@ -106,7 +106,7 @@
 - [x] Document the 401/403/404/5xx diagnostic fields and cookie-selection troubleshooting.
 - [x] Run focused smoke tests.
 
-### Task 6: Pin Verify checkout and refresh repository state documentation
+### Task 6: Refresh repository state documentation and assess Verify pinning
 
 **Files:**
 - Modify: `.github/workflows/verify.yml`
@@ -115,11 +115,11 @@
 - Test: `test/production-deploy-authority-docs.test.js` or a new focused workflow/docs test
 
 **Interfaces:**
-- Verify uses the already validated official `actions/checkout` commit SHA used by CI.
+- Verify is Base-managed; any checkout SHA pin must be applied through the KiNoTch Base update path rather than a local workflow edit.
 - Documentation records that `test` remains required and `Verify` should also be required when GitHub branch protection is managed externally.
 
-- [x] Add a failing test/assertion that Verify no longer uses `actions/checkout@v4` and that Current State no longer says Base verification is unconfirmed.
-- [x] Pin Verify checkout to the CI-proven SHA without changing workflow behavior.
+- [x] Add a failing assertion that Current State no longer says Base verification is unconfirmed.
+- [x] Confirm that the Verify workflow is Base-managed and do not mutate it locally.
 - [x] Update Current State and operations guidance; do not mutate GitHub branch protection from repository code.
 - [x] Run the focused documentation/workflow tests.
 

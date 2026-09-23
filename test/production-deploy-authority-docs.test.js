@@ -14,12 +14,9 @@ test("operations documentation defines the single production deploy authority", 
   assert.match(operations, /(?:branch )?delet(?:e|ion).*?(?:禁止|不可|無効)/is);
 });
 
-test("Verify workflow is pinned and current state records the Base gate evidence", async () => {
-  const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
+test("Current State records the Base gate evidence without editing the Base-managed workflow", async () => {
   const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
 
-  assert.match(workflow, /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262\s+# v4/);
-  assert.doesNotMatch(workflow, /actions\/checkout@v4/);
   assert.doesNotMatch(currentState, /Confirm the repository-local Base gate on GitHub Actions/);
   assert.match(currentState, /GitHub Actions `Verify`: success/);
 });
