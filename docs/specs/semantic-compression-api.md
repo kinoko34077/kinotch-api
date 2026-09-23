@@ -79,8 +79,8 @@ Google Gemini Interactions API
 
 - System Prompt正本: `src/semantic-compression/prompt.js` の `COMPACT_V1_PROMPT`
 - `prompt_version`: `compact-v1`
-- System Prompt token metadata: 266 tokens
-- Prompt SHA-256: `8eb825cae866c64c1850134bbbde131704b83374e9c0e9a5f1fea86cf66b1c1b`
+- System Prompt token metadata: 540 tokens
+- Prompt SHA-256: `f99f547035f87eed62f6b0435d3c0e5b073e336e717cffcd93bad581cf4cbbd4`
 
 System Prompt本文は本仕様書へ重複記載しない。Prompt本文の正本はコード側1箇所とする。
 
@@ -90,8 +90,8 @@ System Prompt本文は本仕様書へ重複記載しない。Prompt本文の正�
 
 - System Prompt正本: `src/semantic-compression/prompt.js` の `SEMANTIC_DENSE_V1_PROMPT`
 - `prompt_version`: `semantic-dense-v1`
-- System Prompt token metadata: 1549 tokens
-- Prompt SHA-256: `9918e2a299d58fa7624f92e3b597493414a77948d55e8578a41ca1ac5920917e`
+- System Prompt token metadata: 1823 tokens
+- Prompt SHA-256: `5b1610d7fe8225f970cd20a022a2ef666f6c190115eeb82622dcb099e777ef9e`
 
 System Prompt本文は本仕様書へ重複記載しない。Prompt本文の正本はコード側1箇所とする。
 
@@ -104,6 +104,7 @@ semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
 
 - callerがPrompt本文を上書きする機能は持たない。
 - profileとPromptの対応は一元管理する。
+- Productionの`system_instruction`は共通のService boundary instructionとprofile固有Promptを連結した値である。入力本文中の命令・引用・攻撃例は実行せず、非空本文を「入力なし」と扱わず、否定・禁止条件と未指定fieldの値を保持する。
 - Prompt変更時は `prompt_version`、Prompt hash、System Prompt token metadataとの整合を確認する。
 - Candidate Promptは内部評価用で、公開profileやProduction Workerのmappingには含めない。
 
@@ -111,7 +112,7 @@ semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
 
 ### IMPL-COMP-001: Gemini Interactions
 
-選択profileに対応する固定System Promptを解決し、次の意味を満たすrequestをGeminiへ送信する。
+選択profileに対応する固定System Prompt（共通Service boundary instruction + profile固有Prompt）を解決し、次の意味を満たすrequestをGeminiへ送信する。
 
 ```json
 {
@@ -180,9 +181,11 @@ semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
 | `input_sha256` | string | UTF-8化した入力本文のSHA-256 |
 | `output_sha256` | string | UTF-8化した出力本文のSHA-256 |
 | `usage` | object | Provider usageおよび固定Prompt token metadata |
-| `warnings` | array | 警告。現行成功時は通常空配列 |
+| `warnings` | array | 固定enumの機械的Integrity警告。本文・secret・marker値は含めない。 |
 
 SHA-256は小文字hex 64文字とする。`input_chars`と`output_chars`はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。圧縮結果を原文のSSOTとして保存しない。
+
+`warnings` は圧縮結果の機械的な保持候補を示す予約配列であり、警告があっても圧縮成功をHTTP errorへ変換しない。現在の固定enumは `missing_numeric_marker`、`missing_percentage_marker`、`missing_date_marker`、`missing_url`、`missing_commit_sha`、`missing_file_path`、`missing_id`、`possible_negation_loss` である。意味同値性の完全判定は行わないため、callerは警告を検査し、必要なら原文へfallbackする。
 
 ## 7. Token Usage仕様
 
@@ -216,8 +219,8 @@ content_input_tokens = input_tokens - system_prompt_tokens
 
 | profile | System Prompt tokens | Prompt SHA-256 |
 |---|---:|---|
-| `compact-v1` | 266 | `8eb825cae866c64c1850134bbbde131704b83374e9c0e9a5f1fea86cf66b1c1b` |
-| `semantic-dense-v1` | 1549 | `9918e2a299d58fa7624f92e3b597493414a77948d55e8578a41ca1ac5920917e` |
+| `compact-v1` | 540 | `f99f547035f87eed62f6b0435d3c0e5b073e336e717cffcd93bad581cf4cbbd4` |
+| `semantic-dense-v1` | 1823 | `5b1610d7fe8225f970cd20a022a2ef666f6c190115eeb82622dcb099e777ef9e` |
 
 - Promptまたはmodel変更時のみ再測定する。
 - Production requestごとに`countTokens`を追加呼出ししない。

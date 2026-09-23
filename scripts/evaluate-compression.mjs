@@ -3,10 +3,10 @@ import { dirname, resolve } from "node:path";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
 import {
   COMPRESSION_PROFILE,
-  COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROFILE_SEMANTIC_DENSE,
   COMPRESSION_MODEL,
 } from "../src/semantic-compression/contract.js";
-import { COMPRESSION_SYSTEM_INSTRUCTION } from "../src/semantic-compression/prompt.js";
+import { resolveCompressionProfile } from "../src/semantic-compression/prompt.js";
 import {
   CANDIDATE_SYSTEM_INSTRUCTION,
   COMPRESSION_CANDIDATE_PROMPT_VERSION,
@@ -32,18 +32,25 @@ const EXPECTED_PUBLIC_KEYS = [
   "warnings",
 ].sort();
 
-export function resolveQualityVariant(name = "control") {
+export function resolveQualityVariant(name = "control", profile = COMPRESSION_PROFILE_SEMANTIC_DENSE) {
   const variantName = name || "control";
   if (variantName === "control") {
+    const profileConfig = resolveCompressionProfile(profile);
+    if (!profileConfig) throw new Error("COMPRESSION_QUALITY_PROFILE must be compact-v1 or semantic-dense-v1");
     return {
       name: "control",
-      systemInstruction: COMPRESSION_SYSTEM_INSTRUCTION,
-      evaluationPromptVersion: COMPRESSION_PROMPT_VERSION,
+      profile: profileConfig.profile,
+      systemInstruction: profileConfig.systemInstruction,
+      evaluationPromptVersion: profileConfig.promptVersion,
     };
   }
   if (variantName === "candidate") {
+    if (profile !== COMPRESSION_PROFILE_SEMANTIC_DENSE) {
+      throw new Error("candidate quality evaluation is only supported for semantic-dense-v1");
+    }
     return {
       name: "candidate",
+      profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
       systemInstruction: CANDIDATE_SYSTEM_INSTRUCTION,
       evaluationPromptVersion: COMPRESSION_CANDIDATE_PROMPT_VERSION,
     };
@@ -75,7 +82,8 @@ function collectMarkerChecks(entry, compressedText) {
 
 export async function evaluateQuality({ env = process.env } = {}) {
   const apiKey = requireOptInConfiguration(env);
-  const variant = resolveQualityVariant(env.COMPRESSION_QUALITY_PROMPT_VARIANT);
+  const profile = env.COMPRESSION_QUALITY_PROFILE || COMPRESSION_PROFILE;
+  const variant = resolveQualityVariant(env.COMPRESSION_QUALITY_PROMPT_VARIANT, profile);
   const requestIntervalMs = resolveMeasurementIntervalMs(
     env,
     "COMPRESSION_QUALITY_INTERVAL_MS",
@@ -101,7 +109,7 @@ export async function evaluateQuality({ env = process.env } = {}) {
         "Content-Type": "application/json",
         "X-Request-ID": `quality-${entry.id}`,
       },
-      body: JSON.stringify({ text: inputText, profile: COMPRESSION_PROFILE }),
+      body: JSON.stringify({ text: inputText, profile: variant.profile }),
     }, { GEMINI_API_KEY: apiKey });
 
     let payload = null;
@@ -117,7 +125,7 @@ export async function evaluateQuality({ env = process.env } = {}) {
         `quality evaluation failed for ${entry.id} with status ${response.status}${retryAfterNote}; no automatic retry`,
       );
     }
-    const validationError = await validateCompressionPayload(payload, inputText);
+    const validationError = await validateCompressionPayload(payload, inputText, variant.profile);
     if (validationError) {
       throw new Error(`quality evaluation contract failed for ${entry.id}: ${validationError}`);
     }
@@ -144,8 +152,8 @@ export async function evaluateQuality({ env = process.env } = {}) {
   const markerChecks = records.flatMap((record) => record.marker_checks);
   const report = {
     schema_version: "semantic-compression-quality-baseline-v1",
-    profile: COMPRESSION_PROFILE,
-    prompt_version: COMPRESSION_PROMPT_VERSION,
+    profile: variant.profile,
+    prompt_version: variant.evaluationPromptVersion,
     prompt_variant: variant.name,
     evaluation_prompt_version: variant.evaluationPromptVersion,
     model: COMPRESSION_MODEL,

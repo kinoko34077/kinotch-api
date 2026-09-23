@@ -4,13 +4,25 @@ import {
   composeQualityInput,
   resolveQualityVariant,
 } from "../scripts/evaluate-compression.mjs";
-import { COMPRESSION_PROMPT_VERSION } from "../src/semantic-compression/contract.js";
+import {
+  COMPRESSION_PROFILE_COMPACT,
+  COMPRESSION_PROMPT_VERSION,
+} from "../src/semantic-compression/contract.js";
 import { CANDIDATE_SYSTEM_INSTRUCTION, COMPRESSION_CANDIDATE_PROMPT_VERSION } from "../src/semantic-compression/prompt-candidate.js";
 
 test("quality evaluation defaults to the production control prompt", () => {
   const variant = resolveQualityVariant(undefined);
   assert.equal(variant.name, "control");
+  assert.equal(variant.profile, "semantic-dense-v1");
   assert.equal(variant.evaluationPromptVersion, COMPRESSION_PROMPT_VERSION);
+  assert.notEqual(variant.systemInstruction, "");
+});
+
+test("quality evaluation can run the production compact profile", () => {
+  const variant = resolveQualityVariant(undefined, COMPRESSION_PROFILE_COMPACT);
+  assert.equal(variant.name, "control");
+  assert.equal(variant.profile, COMPRESSION_PROFILE_COMPACT);
+  assert.equal(variant.evaluationPromptVersion, COMPRESSION_PROFILE_COMPACT);
   assert.notEqual(variant.systemInstruction, "");
 });
 

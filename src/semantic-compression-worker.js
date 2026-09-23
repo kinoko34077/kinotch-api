@@ -14,6 +14,7 @@ import {
 } from "./semantic-compression/gemini.js";
 import { resolveCompressionProfile } from "./semantic-compression/prompt.js";
 import { getCompressionPromptMetadata } from "./semantic-compression/prompt-metadata.js";
+import { inspectCompressionIntegrity } from "./semantic-compression/integrity.js";
 
 const SERVICE_VERSION = "v1";
 const ALLOWED_REQUEST_FIELDS = new Set(["text", "profile"]);
@@ -149,7 +150,7 @@ export function createCompressionWorkerApp({
         promptVersion: profileConfig.promptVersion,
         usage,
         systemPromptTokens: promptMetadata?.systemPromptTokens,
-        warnings: [],
+        warnings: inspectCompressionIntegrity(body.text, compressedText).warnings,
       });
       status = 200;
       return c.json(response, status);

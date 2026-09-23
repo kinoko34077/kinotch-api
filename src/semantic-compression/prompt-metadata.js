@@ -8,13 +8,13 @@ import {
 const COMPRESSION_PROMPT_METADATA = Object.freeze({
   [COMPRESSION_PROFILE_COMPACT]: Object.freeze({
     profile: COMPRESSION_PROFILE_COMPACT,
-    promptSha256: "8eb825cae866c64c1850134bbbde131704b83374e9c0e9a5f1fea86cf66b1c1b",
-    systemPromptTokens: 266,
+    promptSha256: "f99f547035f87eed62f6b0435d3c0e5b073e336e717cffcd93bad581cf4cbbd4",
+    systemPromptTokens: 540,
   }),
   [COMPRESSION_PROFILE_SEMANTIC_DENSE]: Object.freeze({
     profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
-    promptSha256: "9918e2a299d58fa7624f92e3b597493414a77948d55e8578a41ca1ac5920917e",
-    systemPromptTokens: 1549,
+    promptSha256: "5b1610d7fe8225f970cd20a022a2ef666f6c190115eeb82622dcb099e777ef9e",
+    systemPromptTokens: 1823,
   }),
 });
 

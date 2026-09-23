@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
-import { COMPACT_V1_PROMPT, SEMANTIC_DENSE_V1_PROMPT } from "../src/semantic-compression/prompt.js";
+import { buildProductionSystemInstruction } from "../src/semantic-compression/prompt.js";
 import { deriveContentInputTokens } from "../src/semantic-compression/contract.js";
 import { getCompressionPromptMetadata } from "../src/semantic-compression/prompt-metadata.js";
 
@@ -62,7 +62,7 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   assert.equal(request.body.previous_interaction_id, undefined);
   assert.equal(request.body.background, undefined);
   assert.equal(request.body.tools, undefined);
-  assert.equal(request.body.system_instruction, SEMANTIC_DENSE_V1_PROMPT);
+  assert.equal(request.body.system_instruction, buildProductionSystemInstruction("semantic-dense-v1"));
   const payload = await response.json();
   assert.equal(payload.compressed_text, "題名\n- 圧縮結果");
   const semanticPromptTokens = getCompressionPromptMetadata("semantic-dense-v1").systemPromptTokens;
@@ -100,7 +100,7 @@ test("Worker selects the exact compact-v1 prompt and exposes normalized usage", 
 
   assert.equal(response.status, 200);
   assert.equal(request.body.input, "テスト本文");
-  assert.equal(request.body.system_instruction, COMPACT_V1_PROMPT);
+  assert.equal(request.body.system_instruction, buildProductionSystemInstruction("compact-v1"));
   const payload = await response.json();
   assert.equal(payload.profile, "compact-v1");
   assert.equal(payload.prompt_version, "compact-v1");
@@ -114,6 +114,24 @@ test("Worker selects the exact compact-v1 prompt and exposes normalized usage", 
     cached_tokens: 10,
     total_tokens: 130,
   });
+});
+
+test("Worker returns fixed integrity warning codes without marker values", async () => {
+  const inputUrl = "https://example.test/private-token";
+  const app = createCompressionWorkerApp({
+    fetchImpl: async () => completedResponse("URLは削除された"),
+  });
+
+  const response = await app.request(
+    "https://internal.test/v1/compress",
+    requestBody({ text: `参照先は${inputUrl}。`, profile: "semantic-dense-v1" }),
+    { GEMINI_API_KEY: API_KEY },
+  );
+
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload.warnings, ["missing_url"]);
+  assert.doesNotMatch(JSON.stringify(payload.warnings), /example\.test|private-token/);
 });
 
 test("Worker rejects caller-controlled prompt and model fields before provider access", async () => {

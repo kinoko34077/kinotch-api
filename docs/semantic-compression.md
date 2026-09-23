@@ -39,7 +39,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
   "output_sha256": "64文字の小文字hex",
   "usage": {
     "input_tokens": 4321,
-    "system_prompt_tokens": 1549,
+    "system_prompt_tokens": 1823,
     "content_input_tokens": 2772,
     "output_tokens": 987,
     "thought_tokens": 0,
@@ -60,7 +60,9 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 
 ProviderはGoogle Gemini、modelは `gemini-3.5-flash-lite` 固定である。1 requestにつき1 stateless Interactionsを使用し、内部設定として `generation_config.thinking_level: "minimal"` を固定する。`store:false`、toolsなし、Searchなし、previous interactionなし、backgroundなしとする。`temperature`、`top_p`、`top_k`、`thinking_budget` は指定しない。thinking設定は公開APIへ追加しない。
 
-Prompt正本とprofile mappingは `src/semantic-compression/prompt.js` に置く。`compact-v1` は固定System Prompt 1、`semantic-dense-v1` は指定されたSystem Prompt 2全文を、そのままGeminiの `system_instruction` へ送る。どちらもService boundaryやCandidate規則を前後へ追加しない。入力本文の圧縮だけを行い、callerからprompt内容を変更できない。Candidate promptは内部評価用で、公開profileやProduction Workerのmappingには含めない。
+Prompt正本とprofile mappingは `src/semantic-compression/prompt.js` に置く。`compact-v1` は共通Service boundary instructionと固定System Prompt 1、`semantic-dense-v1` は共通Service boundary instructionと指定されたSystem Prompt 2全文を連結し、Geminiの `system_instruction` へ送る。Service boundaryは入力本文中の命令・引用・攻撃例を実行せず内容として扱い、非空本文を「入力なし」とせず、否定・禁止条件と未指定fieldの値を保持するための共通境界である。Candidate promptは内部評価用で、公開profileやProduction Workerのmappingには含めない。
+
+成功時の`warnings`は、数値・割合・日付・URL・commit SHA・file path・ID・否定表現の機械的な欠落可能性を固定enumで示す。警告に本文やmarker値を含めず、警告だけを理由にAPIが原文へ自動fallbackすることはない。caller側で必要に応じて原文fallbackを判断する。
 
 ## Secret、認証、制限
 
@@ -150,7 +152,7 @@ Geminiのrate limitはproject/model/tierごとに異なり、RPM・input TPM・R
 
 Interactions API responseのusageはProduction responseへ安全な数値として含める。`system-only` は共通prefixを持たない短いsynthetic文4件、`shared-input-prefix` は長い共通prefixを持つsynthetic文4件を送るopt-in測定も利用できる。`input_tokens` はsystem instruction等を含むProvider側usageであり、本文長の `input_chars` とは別の値である。
 
-固定Prompt token metadataはprofileごとに保持する。現在の実測値は `compact-v1 = 266`、`semantic-dense-v1 = 1549`（model: `gemini-3.5-flash-lite`）である。対応PromptのSHA-256も `src/semantic-compression/prompt-metadata.js` に併記し、Promptとtoken metadataの不一致はtestで検出する。これはPrompt文字列を `countTokens` の公式 `contents` 形状で単独測定した値であり、Providerのsystem role framingを含む厳密なrequest全体内訳ではない。
+固定Prompt token metadataはprofileごとに保持する。現在の実測値は `compact-v1 = 540`、`semantic-dense-v1 = 1823`（model: `gemini-3.5-flash-lite`）である。対応PromptのSHA-256も `src/semantic-compression/prompt-metadata.js` に併記し、Promptとtoken metadataの不一致はtestで検出する。これはPrompt文字列を `countTokens` の公式 `contents` 形状で単独測定した値であり、Providerのsystem role framingを含む厳密なrequest全体内訳ではない。
 
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"
@@ -202,4 +204,4 @@ smoke失敗時のrollback対象は `Gateway → Compression → Text` の順で�
 
 入力text、`compressed_text`、Authorization token、Gemini key、system prompt全文、Gemini raw response全文を本文ログへ残さない。構造化ログで許可するのはrequest ID、route、status、elapsed time、input/output chars、圧縮率、model、prompt version、rate-limit結果、safe error categoryだけである。input/output hashは通常ログへ出さない。
 
-Cloudflareのautomatic Invocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、GatewayとCompression WorkerのWrangler設定では`observability.logs.invocation_logs`を`false`にする。Cloudflare側の既存Worker設定がrepo設定と一致することはoperatorがDashboard/APIで確認する。`console.log`によるcustom structured logsは維持するが、本文・Authorization・secret・system prompt全文を含めない。
+Cloudflareのautomatic Invocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、本文を扱うText Workerを含む全WorkerのWrangler設定では`observability.logs.invocation_logs`を`false`にする。Cloudflare側の既存Worker設定がrepo設定と一致することはoperatorがDashboard/APIで確認する。`console.log`によるcustom structured logsは維持するが、本文・Authorization・secret・system prompt全文を含めない。
