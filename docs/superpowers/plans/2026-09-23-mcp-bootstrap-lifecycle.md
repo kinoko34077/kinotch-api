@@ -65,6 +65,6 @@
 
 - [x] Run focused MCP tests, `npm test`, `git diff --check`, and the MCP dry-run if available without external deployment.
 - [x] Confirm Text Core and REST/compression files are unchanged.
-- [ ] Commit the scoped change and push it to `origin/main`.
-- [ ] Verify the pushed SHA and GitHub Actions `test` result.
+- [x] Commit the scoped change and push it to `origin/main`.
+- [x] Verify the pushed SHA and GitHub Actions `test` result.
 - [x] Do not run `npm run deploy:production`; Access bootstrap and authenticated production smoke remain operator-gated.
