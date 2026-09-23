@@ -78,11 +78,36 @@ export async function runMcpSmoke({
     }
   }
 
+  async function notify(method, params) {
+    const controller = new AbortController();
+    const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      const response = await fetchImpl(target, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2025-06-18",
+          Cookie: accessCookie,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", method, params }),
+        signal: controller.signal,
+      });
+      if (![200, 202, 204].includes(response.status)) throw new McpSmokeError();
+    } catch (error) {
+      if (error instanceof McpSmokeError) throw error;
+      throw new McpSmokeError();
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
   await request("initialize", {
     protocolVersion: "2025-06-18",
     capabilities: {},
     clientInfo: { name: "kinotch-mcp-smoke", version: "1" },
   });
+  await notify("notifications/initialized", {});
   const tools = await request("tools/list", {});
   if (!Array.isArray(tools.tools) || tools.tools.length !== 1 || tools.tools[0]?.name !== "compress_text") {
     throw new McpSmokeError();

@@ -4,19 +4,43 @@ This document covers the operational setup for `semantic-compression-mcp`. The R
 
 ## Cloudflare Access bootstrap
 
-1. Deploy the Worker through the repository release gate; do not create a separate production deploy command.
-2. In Cloudflare Zero Trust, create an Access self-hosted application for the deployed `semantic-compression-mcp` Worker hostname.
-3. Restrict the policy to the intended operator identities. Do not put email addresses or policy identity values in this repository.
-4. Enable Managed OAuth for the application.
-5. Record the Cloudflare One team domain and Application Audience Tag as operator configuration values.
-6. Configure Worker vars (not secrets):
+The first deployment has a one-time bootstrap path because the Access application and its Audience Tag do not exist before the Worker exists.
+
+1. Confirm the worktree is clean and on the fetched `origin/main` revision.
+2. Set explicit operator confirmation and deploy only the MCP Worker:
+
+   ```powershell
+   $env:MCP_BOOTSTRAP_CONFIRM = "true"
+   npm run bootstrap:mcp
+   Remove-Item Env:MCP_BOOTSTRAP_CONFIRM -ErrorAction SilentlyContinue
+   ```
+
+   This command runs the tests and MCP dry-run, deploys `semantic-compression-mcp` without Access vars, and reports `bootstrap_deployed`. It does not run an authenticated smoke, does not deploy the Gateway/Text/Compression release, and must not be treated as production availability. It is fail-closed and refuses to run if the MCP Worker already has an active deployment.
+3. In Cloudflare Zero Trust, create an Access self-hosted application for the deployed `semantic-compression-mcp` Worker hostname.
+4. Restrict the policy to the intended operator identities. Do not put email addresses or policy identity values in this repository.
+5. Enable Managed OAuth for the application.
+6. Record the Cloudflare One team domain and Application Audience Tag as operator configuration values.
+7. Configure Worker vars (not secrets):
 
    - `TEAM_DOMAIN`: the team hostname, with or without the `https://` prefix; code normalizes it.
    - `POLICY_AUD`: the MCP Access application Audience Tag.
 
-The production release command requires `TEAM_DOMAIN` and `POLICY_AUD` in its operator environment and passes them explicitly as Wrangler `--var` values on both MCP dry-run and deploy. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
+   Apply these two non-secret vars to the bootstrap-deployed Worker through the operator-controlled Cloudflare Worker settings before the first authenticated cookie smoke. The normal release later passes the same values explicitly with Wrangler, so dashboard state is not the normal release source of truth.
 
-Until these values and the Access application exist, the Worker must remain fail-closed and the MCP production gate is not complete.
+The normal production release command requires `TEAM_DOMAIN`, `POLICY_AUD`, `MCP_ENDPOINT`, and `MCP_SMOKE_ACCESS_COOKIE` in its operator environment. It passes `TEAM_DOMAIN` and `POLICY_AUD` explicitly as Wrangler `--var` values on both MCP dry-run and deploy. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
+
+After Access setup, run the authenticated smoke once, then use the normal release gate:
+
+```powershell
+$env:TEAM_DOMAIN = "https://<team>.cloudflareaccess.com"
+$env:POLICY_AUD = "<application-audience-tag>"
+$env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
+$env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<operator-session-cookie>"
+npm run smoke:mcp
+npm run deploy:production
+```
+
+Remove the temporary operator values after the release. Until Access setup and authenticated smoke exist, the Worker must remain fail-closed and MCP production availability is not complete.
 
 ## Local checks
 
@@ -35,11 +59,11 @@ npx wrangler deploy --config .\wrangler.semantic-compression-mcp.jsonc --dry-run
 
 ## MCP Inspector
 
-After Access setup, select Streamable HTTP in MCP Inspector and use the deployed `/mcp` endpoint. Complete the OAuth login, then verify `initialize`, `tools/list`, and one `tools/call` for `compress_text`. The expected tool input is only `{ "text": "..." }`; do not add a profile or prompt.
+After Access setup, select Streamable HTTP in MCP Inspector and use the deployed `/mcp` endpoint. Complete the OAuth login, then verify `initialize`, `notifications/initialized`, `tools/list`, and one `tools/call` for `compress_text`. The expected tool input is only `{ "text": "..." }`; do not add a profile or prompt.
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same three protocol operations once and requires an operator-provided Access session cookie. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
+The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 ```powershell
 $env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
@@ -69,13 +93,13 @@ Confirm the actual schema supported by the installed Codex version before saving
 
 ## Release and rollback
 
-The only production command is:
+The only normal production release command is:
 
 ```powershell
 npm run deploy:production
 ```
 
-The release gate records MCP version, endpoint, protocol, tool version, smoke, and recovery fields without recording credentials. A failed MCP smoke rolls back the MCP version when a previous version exists. Access bootstrap failures remain an explicit incomplete external operation rather than a fabricated smoke success.
+The one-time `npm run bootstrap:mcp` command is only the pre-Access Worker bootstrap described above; it is not an alternate normal release authority. The normal release gate records MCP version, endpoint, protocol, tool version, smoke, and recovery fields without recording credentials. A failed MCP smoke rolls back the MCP version when a previous version exists. Access bootstrap failures remain an explicit incomplete external operation rather than a fabricated smoke success.
 
 ## Troubleshooting
 

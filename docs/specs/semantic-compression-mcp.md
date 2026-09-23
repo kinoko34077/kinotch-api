@@ -61,9 +61,11 @@ Input text, compressed text outside the intended tool result, Access JWTs, Autho
 
 ## Deployment and change control
 
-`npm run deploy:production` remains the sole production release authority. The MCP Worker is included in dry-run, version capture, deploy, readiness, smoke, metadata, and rollback handling. Access application creation, Managed OAuth policy, `TEAM_DOMAIN`, `POLICY_AUD`, and authenticated MCP smoke are operator-controlled gates and cannot be inferred from repository code.
+`npm run deploy:production` remains the sole normal production release authority. The one-time `npm run bootstrap:mcp` path exists only to deploy a never-before-deployed MCP Worker before its Cloudflare Access application and Audience Tag can exist. Bootstrap requires explicit operator confirmation, clean `origin/main` source, tests, and MCP dry-run; it does not require or invent `MCP_ENDPOINT`/`MCP_SMOKE_ACCESS_COOKIE`, does not perform authenticated smoke, and does not mark production availability complete. It refuses to run when an active MCP deployment already exists.
 
-The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie, never retries an MCP call, and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
+After bootstrap, the operator creates the Access application, enables Managed OAuth, obtains `TEAM_DOMAIN` and `POLICY_AUD`, and completes authenticated smoke. The normal release gate then requires those Access vars plus the endpoint and session cookie, passes the Worker vars explicitly, and includes MCP deploy, smoke, metadata, and rollback. Access application creation, Managed OAuth policy, and authenticated Codex/Inspector smoke are operator-controlled gates and cannot be inferred from repository code.
+
+The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `notifications/initialized` notification, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie, never retries an MCP call, and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
 
 Prompt/model/profile changes belong to the REST/compression service change process. This adapter must not copy or mutate those definitions.
 

@@ -15,6 +15,7 @@
     "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "smoke:mcp": "node scripts/smoke-mcp.mjs",
+    "bootstrap:mcp": "node scripts/mcp-bootstrap.mjs",
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
     "test:mcp": "node --test test/semantic-compression-mcp-*.test.js",
     "evaluate:compression": "node scripts/evaluate-compression.mjs",

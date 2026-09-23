@@ -9,7 +9,7 @@ function rpcResult(id, result) {
   });
 }
 
-test("MCP smoke performs one initialize, tools/list, and compress_text call", async () => {
+test("MCP smoke completes initialize lifecycle before tools/list and compress_text call", async () => {
   const calls = [];
   const result = await runMcpSmoke({
     endpoint: "https://mcp.example.test/mcp",
@@ -18,6 +18,10 @@ test("MCP smoke performs one initialize, tools/list, and compress_text call", as
       calls.push({ url, init, body: JSON.parse(init.body) });
       const body = JSON.parse(init.body);
       if (body.method === "initialize") return rpcResult(body.id, { protocolVersion: "2025-06-18" });
+      if (body.method === "notifications/initialized") {
+        assert.equal(body.id, undefined);
+        return new Response(null, { status: 202 });
+      }
       if (body.method === "tools/list") return rpcResult(body.id, { tools: [{ name: "compress_text" }] });
       return rpcResult(body.id, {
         content: [{ type: "text", text: "圧縮結果" }],
@@ -44,10 +48,15 @@ test("MCP smoke performs one initialize, tools/list, and compress_text call", as
     inputChars: 2,
     outputChars: 4,
   });
-  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map(({ body }) => body.method), [
+    "initialize",
+    "notifications/initialized",
+    "tools/list",
+    "tools/call",
+  ]);
   assert.equal(calls[0].init.headers.Cookie, "CF_Authorization=secret-cookie");
   assert.equal(calls[0].init.headers.Authorization, undefined);
-  assert.deepEqual(calls[2].body.params.arguments, { text: "MCP smoke text" });
+  assert.deepEqual(calls[3].body.params.arguments, { text: "MCP smoke text" });
 });
 
 test("MCP smoke fails safely without endpoint or Access session cookie", async () => {
