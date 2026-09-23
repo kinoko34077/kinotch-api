@@ -6,6 +6,7 @@ import {
   MCP_TOOL_NAME,
   validateCompressTextInput,
 } from "./contract.js";
+import { enforceMcpCompressionRateLimit } from "./rate-limit.js";
 import { callCompressionService, CompressionMcpError } from "./upstream.js";
 
 export const COMPRESS_TEXT_DESCRIPTION = "Meaning-preserving dense compression for long text. Preserves conditions, exceptions, uncertainty, numeric values, proper nouns and logical relationships where possible. Use when reducing long intermediate text before handoff or context reuse. It does not summarize according to caller-supplied instructions.";
@@ -20,6 +21,7 @@ function safeToolError(error) {
 
 export function createCompressionMcpServer(env, {
   callCompressionServiceImpl = callCompressionService,
+  requestInfo,
 } = {}) {
   const server = new McpServer({
     name: "semantic-compression",
@@ -36,6 +38,8 @@ export function createCompressionMcpServer(env, {
       const input = validateCompressTextInput({ text });
       if (!input.ok) return safeToolError(new CompressionMcpError(input.code, input.code === "payload_too_large" ? 413 : 400));
       try {
+        const rateLimitError = await enforceMcpCompressionRateLimit(env, requestInfo);
+        if (rateLimitError) return safeToolError(rateLimitError);
         const payload = await callCompressionServiceImpl(env, input.text);
         return {
           content: [{ type: "text", text: payload.compressed_text }],
@@ -54,7 +58,7 @@ export function createCompressionMcpHandler(env, {
   createMcpHandlerImpl = createMcpHandler,
 } = {}) {
   return createMcpHandlerImpl(
-    () => createCompressionMcpServer(env),
+    ({ requestInfo } = {}) => createCompressionMcpServer(env, { requestInfo }),
     {
       route: "/mcp",
       legacy: "stateless",

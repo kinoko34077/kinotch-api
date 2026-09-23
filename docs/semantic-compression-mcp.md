@@ -29,6 +29,8 @@ The first deployment has a one-time bootstrap path because the Access applicatio
 
 The normal production release command requires `TEAM_DOMAIN`, `POLICY_AUD`, `MCP_ENDPOINT`, and `MCP_SMOKE_ACCESS_COOKIE` in its operator environment. It passes `TEAM_DOMAIN` and `POLICY_AUD` explicitly as Wrangler `--var` values on both MCP dry-run and deploy. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
 
+The MCP Worker has a dedicated `MCP_RATE_LIMITER` binding for `compress_text`: 5 requests per 60 seconds per client IP. Handshake and discovery requests do not consume this limit. If the binding is missing or fails, the tool fails closed with `rate_limiter_unavailable`; a denied call returns `rate_limited`. The REST Gateway rate limits remain independent.
+
 After Access setup, run the authenticated smoke once, then use the normal release gate:
 
 ```powershell
@@ -63,7 +65,7 @@ After Access setup, select Streamable HTTP in MCP Inspector and use the deployed
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
+The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. `MCP_ENDPOINT` must be an HTTPS URL whose path is exactly `/mcp`, without URL credentials, query, or fragment. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 ```powershell
 $env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
@@ -105,6 +107,8 @@ The one-time `npm run bootstrap:mcp` command is only the pre-Access Worker boots
 
 - `authentication_failed`: check the Access application, OAuth login, JWT issuer/audience, and clock; do not disable Worker-side verification.
 - `authentication_unavailable`: check `TEAM_DOMAIN` and `POLICY_AUD` Worker vars.
+- `rate_limiter_unavailable`: check the `MCP_RATE_LIMITER` binding and its Wrangler ratelimit configuration; do not bypass it.
+- `rate_limited`: wait for the 60-second window; do not retry the same tool call in a loop.
 - `compression_unavailable`: check the `COMPRESSION` Service Binding and private compression Worker deployment.
 - `invalid_upstream_response`: inspect safe Worker status/metadata only; raw Gemini and upstream bodies are intentionally unavailable.
 - A direct Worker URL returning an authentication failure is not proof of a completed Access application. Confirm the Access dashboard policy and run an authenticated Inspector/Codex smoke.

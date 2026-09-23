@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import JSON5 from "json5";
 import {
   MCP_TOOL_NAME,
   MCP_COMPRESSION_PROFILE,
@@ -50,4 +52,13 @@ test("MCP provenance keeps only safe public fields", () => {
     output_chars: 4,
     warnings: [],
   });
+});
+
+test("MCP Worker config defines a dedicated 5/60 compression limiter", async () => {
+  const config = JSON5.parse(await readFile(new URL("../wrangler.semantic-compression-mcp.jsonc", import.meta.url), "utf8"));
+  assert.deepEqual(config.ratelimits, [{
+    name: "MCP_RATE_LIMITER",
+    namespace_id: "26090806",
+    simple: { limit: 5, period: 60 },
+  }]);
 });

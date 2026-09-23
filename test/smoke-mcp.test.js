@@ -70,6 +70,26 @@ test("MCP smoke fails safely without endpoint or Access session cookie", async (
   );
 });
 
+test("MCP smoke rejects non-HTTPS or credential-ambiguous endpoints before fetch", async () => {
+  let fetchCalls = 0;
+  const fetchImpl = async () => {
+    fetchCalls += 1;
+    return new Response();
+  };
+  for (const endpoint of [
+    "http://mcp.example.test/mcp",
+    "https://user:pass@mcp.example.test/mcp",
+    "https://mcp.example.test/mcp?debug=true",
+    "https://mcp.example.test/mcp#fragment",
+  ]) {
+    await assert.rejects(
+      runMcpSmoke({ endpoint, accessCookie: "CF_Authorization=secret-cookie", fetchImpl }),
+      /MCP_ENDPOINT must use HTTPS|MCP_ENDPOINT must not include credentials|MCP_ENDPOINT must not include query or fragment/,
+    );
+  }
+  assert.equal(fetchCalls, 0);
+});
+
 test("MCP smoke rejects unsafe protocol results without echoing response bodies", async () => {
   const secret = "raw-mcp-secret";
   await assert.rejects(

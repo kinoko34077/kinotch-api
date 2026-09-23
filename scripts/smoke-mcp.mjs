@@ -18,6 +18,9 @@ function parseEndpoint(endpoint) {
   } catch {
     throw new Error("MCP_ENDPOINT must be a valid URL");
   }
+  if (url.protocol !== "https:") throw new Error("MCP_ENDPOINT must use HTTPS");
+  if (url.username || url.password) throw new Error("MCP_ENDPOINT must not include credentials");
+  if (url.search || url.hash) throw new Error("MCP_ENDPOINT must not include query or fragment");
   if (url.pathname !== "/mcp") throw new Error("MCP_ENDPOINT must point to /mcp");
   return url.toString();
 }

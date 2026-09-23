@@ -6,6 +6,14 @@ function accessApproved() {
   return { ok: true };
 }
 
+function allowRateLimiter() {
+  return {
+    limit() {
+      return Promise.resolve({ success: true });
+    },
+  };
+}
+
 function mcpRequest(body, extraHeaders = {}) {
   return new Request("https://mcp.example.test/mcp", {
     method: "POST",
@@ -46,6 +54,7 @@ test("MCP exposes only compress_text and fixed semantic profile", async () => {
   const calls = [];
   const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
   const env = {
+    MCP_RATE_LIMITER: allowRateLimiter(),
     COMPRESSION: {
       fetch: async (request) => {
         calls.push({ headers: request.headers, body: await request.json() });
@@ -101,6 +110,82 @@ test("MCP exposes only compress_text and fixed semantic profile", async () => {
     body: { text: "本文", profile: "semantic-dense-v1" },
   }]);
   assert.equal(calls[0].headers.get("Authorization"), null);
+});
+
+test("MCP compression rate limit runs before the Service Binding and uses client IP", async () => {
+  const events = [];
+  const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 5,
+    method: "tools/call",
+    params: { name: "compress_text", arguments: { text: "本文" } },
+  }, { "CF-Connecting-IP": "198.51.100.7" }), {
+    MCP_RATE_LIMITER: {
+      limit(input) {
+        events.push({ type: "rate", key: input.key });
+        return Promise.resolve({ success: true });
+      },
+    },
+    COMPRESSION: {
+      fetch: async () => {
+        events.push({ type: "compression" });
+        return new Response(JSON.stringify({
+          compressed_text: "圧縮結果",
+          profile: "semantic-dense-v1",
+          prompt_version: "semantic-dense-v1",
+          model: "gemini-3.5-flash-lite",
+          input_chars: 2,
+          output_chars: 4,
+          warnings: [],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      },
+    },
+  }, {});
+  const payload = await responseJson(response);
+
+  assert.equal(payload.result.isError, undefined);
+  assert.deepEqual(events, [
+    { type: "rate", key: "semantic-compression-mcp:198.51.100.7" },
+    { type: "compression" },
+  ]);
+});
+
+test("MCP compression rate limit blocks without calling the Service Binding", async () => {
+  let bindingCalls = 0;
+  const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 6,
+    method: "tools/call",
+    params: { name: "compress_text", arguments: { text: "本文" } },
+  }), {
+    MCP_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    COMPRESSION: { fetch: async () => { bindingCalls += 1; return new Response(); } },
+  }, {});
+  const payload = await responseJson(response);
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.content[0].text, "rate_limited");
+  assert.equal(bindingCalls, 0);
+});
+
+test("MCP compression rate limit fails closed when the binding is unavailable", async () => {
+  let bindingCalls = 0;
+  const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 7,
+    method: "tools/call",
+    params: { name: "compress_text", arguments: { text: "本文" } },
+  }), {
+    COMPRESSION: { fetch: async () => { bindingCalls += 1; return new Response(); } },
+  }, {});
+  const payload = await responseJson(response);
+
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.content[0].text, "rate_limiter_unavailable");
+  assert.equal(bindingCalls, 0);
 });
 
 test("MCP tool rejects caller profile and prompt fields without binding access", async () => {

@@ -47,6 +47,8 @@ Rate Limit binding、request ID、レスポンスヘッダーallowlistを適用�
 [`docs/semantic-compression.md`](docs/semantic-compression.md) にまとめています。
 公開APIの契約・データ仕様は
 [`docs/specs/semantic-compression-api.md`](docs/specs/semantic-compression-api.md) を参照してください。
+Remote MCPのAccess、bootstrap、Codex接続手順は
+[`docs/semantic-compression-mcp.md`](docs/semantic-compression-mcp.md) を参照してください。
 ローカルlive testのGemini credentialには専用の
 `KINOTCH_COMPRESSION_GEMINI_API_KEY` を使用し、Cloudflare Worker Secretの
 `GEMINI_API_KEY` と分離します。
