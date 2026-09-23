@@ -79,4 +79,4 @@
 - [x] Run `npm test`.
 - [x] Run `git diff --check`.
 - [x] Confirm no runtime, Text Core, generated snapshot, or secret-file changes were introduced.
-- [ ] Commit and push the documentation update, then verify the pushed SHA matches `origin/main` and GitHub checks.
+- [x] Commit and push the documentation update, then verify the pushed SHA matches `origin/main` and GitHub checks.
