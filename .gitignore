@@ -29,6 +29,16 @@ tmp/
 *.log
 .wrangler/
 artifacts/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+.coverage
+htmlcov/
+*.egg-info/
+.audit/
+*.audit.json
+playwright-report/
+test-results/
 
 # OS / editor
 .DS_Store
