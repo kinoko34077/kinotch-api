@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionMcpWorker } from "../src/semantic-compression-mcp-worker.js";
+import { COMPRESSION_BODY_LIMIT_BYTES } from "../src/semantic-compression/contract.js";
 
 function accessApproved() {
   return { ok: true };
@@ -50,6 +51,58 @@ test("MCP route rejects Access failures before handler or binding dispatch", asy
   assert.equal(bindingCalls, 0);
 });
 
+test("MCP route rejects an oversized declared body before framework parsing", async () => {
+  let handlerCalls = 0;
+  let bindingCalls = 0;
+  const worker = createCompressionMcpWorker({
+    verifyAccessJwtImpl: accessApproved,
+    createCompressionMcpHandlerImpl: () => {
+      handlerCalls += 1;
+      return async () => new Response("unexpected");
+    },
+  });
+  const response = await worker.fetch(new Request("https://mcp.example.test/mcp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": String(COMPRESSION_BODY_LIMIT_BYTES + 1),
+    },
+  }), { COMPRESSION: { fetch: async () => { bindingCalls += 1; return new Response(); } } }, {});
+
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: "payload_too_large" });
+  assert.equal(handlerCalls, 0);
+  assert.equal(bindingCalls, 0);
+});
+
+test("MCP route rejects an oversized streamed body before framework parsing", async () => {
+  let handlerCalls = 0;
+  let bindingCalls = 0;
+  const worker = createCompressionMcpWorker({
+    verifyAccessJwtImpl: accessApproved,
+    createCompressionMcpHandlerImpl: () => {
+      handlerCalls += 1;
+      return async () => new Response("unexpected");
+    },
+  });
+  const response = await worker.fetch(new Request("https://mcp.example.test/mcp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(COMPRESSION_BODY_LIMIT_BYTES + 1));
+        controller.close();
+      },
+    }),
+    duplex: "half",
+  }), { COMPRESSION: { fetch: async () => { bindingCalls += 1; return new Response(); } } }, {});
+
+  assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), { error: "payload_too_large" });
+  assert.equal(handlerCalls, 0);
+  assert.equal(bindingCalls, 0);
+});
+
 test("MCP exposes only compress_text and fixed semantic profile", async () => {
   const calls = [];
   const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
@@ -61,7 +114,7 @@ test("MCP exposes only compress_text and fixed semantic profile", async () => {
         return new Response(JSON.stringify({
           compressed_text: "圧縮結果",
           profile: "semantic-dense-v1",
-          prompt_version: "semantic-dense-v1",
+          prompt_version: "semantic-dense-v1.1",
           model: "gemini-3.5-flash-lite",
           input_chars: 2,
           output_chars: 4,
@@ -99,7 +152,7 @@ test("MCP exposes only compress_text and fixed semantic profile", async () => {
   assert.equal(toolPayload.result.content[0].text, "圧縮結果");
   assert.deepEqual(toolPayload.result.structuredContent, {
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 4,
@@ -133,7 +186,7 @@ test("MCP compression rate limit runs before the Service Binding and uses client
         return new Response(JSON.stringify({
           compressed_text: "圧縮結果",
           profile: "semantic-dense-v1",
-          prompt_version: "semantic-dense-v1",
+          prompt_version: "semantic-dense-v1.1",
           model: "gemini-3.5-flash-lite",
           input_chars: 2,
           output_chars: 4,
@@ -170,7 +223,7 @@ test("MCP rate limiting ignores caller-controlled X-Forwarded-For without Cloudf
       fetch: async () => new Response(JSON.stringify({
         compressed_text: "圧縮結果",
         profile: "semantic-dense-v1",
-        prompt_version: "semantic-dense-v1",
+        prompt_version: "semantic-dense-v1.1",
         model: "gemini-3.5-flash-lite",
         input_chars: 2,
         output_chars: 4,

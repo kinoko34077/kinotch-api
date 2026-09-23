@@ -1,6 +1,6 @@
 import {
   COMPRESSION_MODEL,
-  COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
   COMPRESSION_PROFILE_SEMANTIC_DENSE,
   MAX_GEMINI_INPUT_CODE_POINTS,
   countUnicodeCodePoints,
@@ -8,7 +8,7 @@ import {
 
 export const MCP_TOOL_NAME = "compress_text";
 export const MCP_COMPRESSION_PROFILE = COMPRESSION_PROFILE_SEMANTIC_DENSE;
-export const MCP_EXPECTED_PROMPT_VERSION = COMPRESSION_PROMPT_VERSION;
+export const MCP_EXPECTED_PROMPT_VERSION = COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);

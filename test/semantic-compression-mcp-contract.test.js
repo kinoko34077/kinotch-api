@@ -11,14 +11,17 @@ import {
 } from "../src/semantic-compression-mcp/contract.js";
 import {
   COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_BODY_LIMIT_BYTES,
   MAX_GEMINI_INPUT_CODE_POINTS,
 } from "../src/semantic-compression/contract.js";
+import { routePolicies } from "../src/policies/routes.js";
+import { MCP_TRANSPORT_BODY_LIMIT_BYTES } from "../src/semantic-compression-mcp/body-limit.js";
 
 test("MCP contract exposes one fixed tool and profile", () => {
   assert.equal(MCP_TOOL_NAME, "compress_text");
   assert.equal(MCP_COMPRESSION_PROFILE, "semantic-dense-v1");
   assert.equal(MCP_EXPECTED_PROMPT_VERSION, COMPRESSION_PROMPT_VERSION);
-  assert.equal(MCP_EXPECTED_PROMPT_VERSION, "semantic-dense-v1");
+  assert.equal(MCP_EXPECTED_PROMPT_VERSION, "semantic-dense-v1.1");
 });
 
 test("MCP input accepts only a non-empty text field", () => {
@@ -44,7 +47,7 @@ test("MCP input uses the shared provider context code-point limit", () => {
 test("MCP provenance keeps only safe public fields", () => {
   assert.deepEqual(buildMcpProvenance({
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 12,
     output_chars: 4,
@@ -52,7 +55,7 @@ test("MCP provenance keeps only safe public fields", () => {
     input_sha256: "secret-hash-like-value",
   }), {
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 12,
     output_chars: 4,
@@ -67,4 +70,9 @@ test("MCP Worker config defines a dedicated 5/60 compression limiter", async () 
     namespace_id: "26090806",
     simple: { limit: 5, period: 60 },
   }]);
+});
+
+test("MCP transport body guard shares the Compression Gateway byte limit", () => {
+  assert.equal(MCP_TRANSPORT_BODY_LIMIT_BYTES, COMPRESSION_BODY_LIMIT_BYTES);
+  assert.equal(MCP_TRANSPORT_BODY_LIMIT_BYTES, routePolicies.compression.bodyLimitBytes);
 });

@@ -7,11 +7,14 @@ export const COMPRESSION_PROFILES = Object.freeze([
 
 // Backward-compatible aliases for internal evaluation and release tooling.
 export const COMPRESSION_PROFILE = COMPRESSION_PROFILE_SEMANTIC_DENSE;
-export const COMPRESSION_PROMPT_VERSION = COMPRESSION_PROFILE_SEMANTIC_DENSE;
+export const COMPRESSION_PROMPT_VERSION_COMPACT = "compact-v1.1";
+export const COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE = "semantic-dense-v1.1";
+export const COMPRESSION_PROMPT_VERSION = COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE;
 export const COMPRESSION_MODEL = "gemini-3.5-flash-lite";
 export const COMPRESSION_THINKING_LEVEL = "minimal";
 export const MAX_COMPRESSION_TEXT_LENGTH = 1_000_000;
 export const MAX_GEMINI_INPUT_CODE_POINTS = 200_000;
+export const COMPRESSION_BODY_LIMIT_BYTES = 2.5 * 1024 * 1024;
 
 export function countUnicodeCodePoints(value) {
   return Array.from(value).length;
@@ -19,6 +22,12 @@ export function countUnicodeCodePoints(value) {
 
 export function isSupportedCompressionProfile(value) {
   return COMPRESSION_PROFILES.includes(value);
+}
+
+export function getCompressionPromptVersion(profile) {
+  if (profile === COMPRESSION_PROFILE_COMPACT) return COMPRESSION_PROMPT_VERSION_COMPACT;
+  if (profile === COMPRESSION_PROFILE_SEMANTIC_DENSE) return COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE;
+  return null;
 }
 
 export function deriveContentInputTokens(inputTokens, systemPromptTokens) {
@@ -63,7 +72,7 @@ export async function buildCompressionResponse({
   return {
     compressed_text: compressedText,
     profile,
-    prompt_version: promptVersion ?? profile,
+    prompt_version: promptVersion ?? getCompressionPromptVersion(profile) ?? profile,
     model: COMPRESSION_MODEL,
     input_chars: countUnicodeCodePoints(inputText),
     output_chars: countUnicodeCodePoints(compressedText),

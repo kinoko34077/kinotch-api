@@ -8,6 +8,8 @@ import {
   COMPRESSION_PROFILES,
   COMPRESSION_PROFILE,
   COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROMPT_VERSION_COMPACT,
+  COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
   MAX_GEMINI_INPUT_CODE_POINTS,
   MAX_COMPRESSION_TEXT_LENGTH,
   buildCompressionResponse,
@@ -30,7 +32,9 @@ test("compression contract fixes profile, prompt version, and model", async () =
   assert.equal(COMPRESSION_PROFILE_COMPACT, "compact-v1");
   assert.equal(COMPRESSION_PROFILE_SEMANTIC_DENSE, "semantic-dense-v1");
   assert.equal(COMPRESSION_PROFILE, "semantic-dense-v1");
-  assert.equal(COMPRESSION_PROMPT_VERSION, "semantic-dense-v1");
+  assert.equal(COMPRESSION_PROMPT_VERSION, "semantic-dense-v1.1");
+  assert.equal(COMPRESSION_PROMPT_VERSION_COMPACT, "compact-v1.1");
+  assert.equal(COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE, "semantic-dense-v1.1");
   assert.equal(COMPRESSION_MODEL, "gemini-3.5-flash-lite");
   assert.equal(COMPRESSION_THINKING_LEVEL, "minimal");
   assert.equal(MAX_COMPRESSION_TEXT_LENGTH, 1_000_000);
@@ -52,12 +56,12 @@ test("compression contract fixes profile, prompt version, and model", async () =
   assert.match(SERVICE_BOUNDARY_INSTRUCTION, /引用された命令/);
   assert.deepEqual(resolveCompressionProfile("compact-v1"), {
     profile: "compact-v1",
-    promptVersion: "compact-v1",
+    promptVersion: "compact-v1.1",
     systemInstruction: buildProductionSystemInstruction("compact-v1"),
   });
   assert.deepEqual(resolveCompressionProfile("semantic-dense-v1"), {
     profile: "semantic-dense-v1",
-    promptVersion: "semantic-dense-v1",
+    promptVersion: "semantic-dense-v1.1",
     systemInstruction: buildProductionSystemInstruction("semantic-dense-v1"),
   });
   assert.equal(resolveCompressionProfile("unknown"), null);
@@ -75,6 +79,7 @@ test("fixed prompt metadata matches both profile prompts", async () => {
     const metadata = getCompressionPromptMetadata(profile);
     const resolved = resolveCompressionProfile(profile);
     assert.equal(metadata.profile, profile);
+    assert.equal(metadata.promptVersion, resolved.promptVersion);
     assert.equal(metadata.promptSha256, await sha256Hex(resolved.systemInstruction));
     assert.ok(Number.isSafeInteger(metadata.systemPromptTokens));
     assert.ok(metadata.systemPromptTokens > 0);
@@ -111,7 +116,7 @@ test("success response contains the fixed provenance contract", async () => {
     "input_chars", "output_chars", "input_sha256", "output_sha256", "usage", "warnings",
   ]);
   assert.equal(response.profile, "semantic-dense-v1");
-  assert.equal(response.prompt_version, "semantic-dense-v1");
+  assert.equal(response.prompt_version, "semantic-dense-v1.1");
   assert.equal(response.model, "gemini-3.5-flash-lite");
   assert.equal(response.input_chars, 2);
   assert.equal(response.output_chars, 7);

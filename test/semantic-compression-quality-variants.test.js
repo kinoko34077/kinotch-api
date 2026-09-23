@@ -7,6 +7,7 @@ import {
 import {
   COMPRESSION_PROFILE_COMPACT,
   COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROMPT_VERSION_COMPACT,
 } from "../src/semantic-compression/contract.js";
 import { CANDIDATE_SYSTEM_INSTRUCTION, COMPRESSION_CANDIDATE_PROMPT_VERSION } from "../src/semantic-compression/prompt-candidate.js";
 
@@ -22,7 +23,7 @@ test("quality evaluation can run the production compact profile", () => {
   const variant = resolveQualityVariant(undefined, COMPRESSION_PROFILE_COMPACT);
   assert.equal(variant.name, "control");
   assert.equal(variant.profile, COMPRESSION_PROFILE_COMPACT);
-  assert.equal(variant.evaluationPromptVersion, COMPRESSION_PROFILE_COMPACT);
+  assert.equal(variant.evaluationPromptVersion, COMPRESSION_PROMPT_VERSION_COMPACT);
   assert.notEqual(variant.systemInstruction, "");
 });
 

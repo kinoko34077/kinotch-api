@@ -22,6 +22,8 @@ import {
   COMPRESSION_PROFILE_COMPACT,
   COMPRESSION_PROFILE_SEMANTIC_DENSE,
   COMPRESSION_PROMPT_VERSION,
+  COMPRESSION_PROMPT_VERSION_COMPACT,
+  COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
 } from "../src/semantic-compression/contract.js";
 import {
   buildMcpReleaseMetadata,
@@ -33,19 +35,24 @@ import {
 } from "./mcp-release.mjs";
 import { runMcpSmoke } from "./smoke-mcp.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
+import { createReleaseChildEnv } from "./release-child-env.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
-function run(command, args, { capture = false, allowFailure = false } = {}) {
+function run(command, args, {
+  capture = false,
+  allowFailure = false,
+  env = createReleaseChildEnv(),
+} = {}) {
   return new Promise((resolve, reject) => {
     let output = "";
     let errorOutput = "";
     const collectOutput = capture || allowFailure;
     const child = spawn(command, args, {
       cwd: projectRoot,
-      env: process.env,
+      env,
       stdio: collectOutput ? ["inherit", "pipe", allowFailure ? "pipe" : "inherit"] : "inherit",
       shell: process.platform === "win32",
     });
@@ -74,6 +81,14 @@ function run(command, args, { capture = false, allowFailure = false } = {}) {
   });
 }
 
+function runWrangler(args, options = {}) {
+  const normalizedArgs = args[0] === "wrangler" ? args.slice(1) : args;
+  return run(npxCommand, ["wrangler", ...normalizedArgs], {
+    ...options,
+    env: createReleaseChildEnv(process.env, { includeCloudflareCredentials: true }),
+  });
+}
+
 function getVersionId(output, workerName) {
   const versionId = output.match(/Current Version ID:\s*([0-9a-f-]{36})/i)?.[1];
   if (!versionId) throw new Error(`Could not read the ${workerName} Version ID from Wrangler output`);
@@ -81,8 +96,7 @@ function getVersionId(output, workerName) {
 }
 
 async function getActiveTextVersionId() {
-  const output = await run(npxCommand, [
-    "wrangler",
+  const output = await runWrangler([
     "deployments",
     "status",
     "--name",
@@ -95,8 +109,7 @@ async function getActiveTextVersionId() {
 }
 
 async function getActiveGatewayVersionId() {
-  const output = await run(npxCommand, [
-    "wrangler",
+  const output = await runWrangler([
     "deployments",
     "status",
     "--name",
@@ -109,8 +122,7 @@ async function getActiveGatewayVersionId() {
 }
 
 async function getActiveCompressionVersionId() {
-  const result = await run(npxCommand, [
-    "wrangler",
+  const result = await runWrangler([
     "deployments",
     "status",
     "--name",
@@ -128,8 +140,7 @@ async function getActiveCompressionVersionId() {
 }
 
 async function getActiveMcpVersionId() {
-  const result = await run(npxCommand, [
-    "wrangler",
+  const result = await runWrangler([
     "deployments",
     "status",
     "--name",
@@ -318,8 +329,7 @@ async function main() {
     state.stage = "test suite";
     await run(npmCommand, ["test"]);
     state.stage = "Text Worker dry-run";
-    await run(npxCommand, [
-      "wrangler",
+    await runWrangler([
       "deploy",
       "--config",
       "wrangler.text-transform.jsonc",
@@ -328,19 +338,16 @@ async function main() {
       `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
     ]);
     state.stage = "Compression Worker dry-run";
-    await run(npxCommand, [
-      "wrangler",
+    await runWrangler([
       "deploy",
       "--config",
       "wrangler.semantic-compression.jsonc",
       "--dry-run",
     ]);
     state.stage = "MCP Worker dry-run";
-    await run(npxCommand, [
-      ...createMcpDeployArgs({ env: process.env, dryRun: true }),
-    ]);
+    await runWrangler(createMcpDeployArgs({ env: process.env, dryRun: true }));
     state.stage = "Gateway dry-run";
-    await run(npxCommand, ["wrangler", "deploy", "--config", "wrangler.jsonc", "--dry-run"]);
+    await runWrangler(["deploy", "--config", "wrangler.jsonc", "--dry-run"]);
 
     state.stage = "capture previous Text Worker version";
     state.previousTextVersionId = await getActiveTextVersionId();
@@ -352,10 +359,8 @@ async function main() {
     state.previousMcpVersionId = await getActiveMcpVersionId();
 
     state.stage = "Text Worker deploy";
-    const textDeployOutput = await run(
-      npxCommand,
+    const textDeployOutput = await runWrangler(
       [
-        "wrangler",
         "deploy",
         "--config",
         "wrangler.text-transform.jsonc",
@@ -377,10 +382,8 @@ async function main() {
     state.textSmokeCompleted = true;
 
     state.stage = "Compression Worker deploy";
-    const compressionDeployOutput = await run(
-      npxCommand,
+    const compressionDeployOutput = await runWrangler(
       [
-        "wrangler",
         "deploy",
         "--config",
         "wrangler.semantic-compression.jsonc",
@@ -391,8 +394,7 @@ async function main() {
     state.compressionVersionId = getVersionId(compressionDeployOutput, "semantic-compression");
 
     state.stage = "MCP Worker deploy";
-    const mcpDeployOutput = await run(
-      npxCommand,
+    const mcpDeployOutput = await runWrangler(
       createMcpDeployArgs({ env: process.env }),
       { capture: true },
     );
@@ -402,9 +404,8 @@ async function main() {
     state.mcpSmoke = await runMcpSmoke(mcpSmokeInputs);
 
     state.stage = "Gateway deploy";
-    const gatewayDeployOutput = await run(
-      npxCommand,
-      ["wrangler", "deploy", "--config", "wrangler.jsonc"],
+    const gatewayDeployOutput = await runWrangler(
+      ["deploy", "--config", "wrangler.jsonc"],
       { capture: true },
     );
     state.gatewayDeployed = true;
@@ -458,8 +459,8 @@ async function main() {
       compressionModel: COMPRESSION_MODEL,
       compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
       compressionPromptVersions: {
-        compact: COMPRESSION_PROFILE_COMPACT,
-        semanticDense: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+        compact: COMPRESSION_PROMPT_VERSION_COMPACT,
+        semanticDense: COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
       },
     });
     console.log(`Release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
@@ -468,7 +469,7 @@ async function main() {
       try {
         state.gatewayRecovery = await rollbackAfterSmokeFailure({
           previousVersionId: state.previousGatewayVersionId,
-          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+          rollback: async (versionId) => runWrangler(createWorkerRollbackArgs(
             versionId,
             "automatic-gateway-smoke-failure-rollback",
             { workerName: "api", config: "wrangler.jsonc" },
@@ -487,7 +488,7 @@ async function main() {
       try {
         state.compressionRecovery = await rollbackAfterSmokeFailure({
           previousVersionId: state.previousCompressionVersionId,
-          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+          rollback: async (versionId) => runWrangler(createWorkerRollbackArgs(
             versionId,
             "automatic-compression-smoke-failure-rollback",
             { workerName: "semantic-compression", config: "wrangler.semantic-compression.jsonc" },
@@ -506,7 +507,7 @@ async function main() {
       try {
         state.mcpRecovery = await rollbackAfterSmokeFailure({
           previousVersionId: state.previousMcpVersionId,
-          rollback: async (versionId) => run(npxCommand, createWorkerRollbackArgs(
+          rollback: async (versionId) => runWrangler(createWorkerRollbackArgs(
             versionId,
             "automatic-mcp-smoke-failure-rollback",
             { workerName: MCP_RELEASE_WORKER_NAME, config: MCP_RELEASE_CONFIG },
@@ -525,7 +526,7 @@ async function main() {
       try {
         state.textRecovery = await rollbackAfterSmokeFailure({
           previousVersionId: state.previousTextVersionId,
-          rollback: async (versionId) => run(npxCommand, createRollbackArgs(
+          rollback: async (versionId) => runWrangler(createRollbackArgs(
             versionId,
             "automatic-text-smoke-failure-rollback",
           )),
@@ -567,8 +568,8 @@ async function main() {
         compressionModel: COMPRESSION_MODEL,
         compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
         compressionPromptVersions: {
-          compact: COMPRESSION_PROFILE_COMPACT,
-          semanticDense: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+          compact: COMPRESSION_PROMPT_VERSION_COMPACT,
+          semanticDense: COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
         },
         failure: {
           stage: state.stage,

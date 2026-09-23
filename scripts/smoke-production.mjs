@@ -4,6 +4,7 @@ import {
   COMPRESSION_PROFILE_COMPACT,
   COMPRESSION_PROFILE_SEMANTIC_DENSE,
   countUnicodeCodePoints,
+  getCompressionPromptVersion,
   isSupportedCompressionProfile,
   sha256Hex,
 } from "../src/semantic-compression/contract.js";
@@ -130,7 +131,7 @@ export async function validateCompressionPayload(
     return "compressed_text is missing or empty";
   }
   if (payload.profile !== expectedProfile) return "compression profile is invalid";
-  if (payload.prompt_version !== expectedProfile) return "compression prompt version is invalid";
+  if (payload.prompt_version !== getCompressionPromptVersion(expectedProfile)) return "compression prompt version is invalid";
   if (payload.model !== COMPRESSION_MODEL) return "compression model is invalid";
   if (payload.input_chars !== countUnicodeCodePoints(inputText)) return "input_chars is invalid";
   if (payload.output_chars !== countUnicodeCodePoints(payload.compressed_text)) return "output_chars is invalid";

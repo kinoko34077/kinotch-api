@@ -178,7 +178,7 @@ history、thinking levelはcallerから指定できない。未知field、未知
 {
   "compressed_text": "...",
   "profile": "semantic-dense-v1",
-  "prompt_version": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1.1",
   "model": "gemini-3.5-flash-lite",
   "input_chars": 12345,
   "output_chars": 4567,
@@ -406,4 +406,3 @@ GitHub Actions test・Verify、Cloudflare Accessとcredentialの外部設定を�
 - Prompt: src/semantic-compression/prompt.js
 - Profile/model/limits: src/semantic-compression/contract.js
 - Prompt token metadata: src/semantic-compression/prompt-metadata.js
-

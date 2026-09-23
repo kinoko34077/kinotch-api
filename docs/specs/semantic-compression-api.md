@@ -78,7 +78,7 @@ Google Gemini Interactions API
 比較的軽量な固定Promptで圧縮する。
 
 - System Prompt正本: `src/semantic-compression/prompt.js` の `COMPACT_V1_PROMPT`
-- `prompt_version`: `compact-v1`
+- `prompt_version`: `compact-v1.1`
 - System Prompt token metadata: 540 tokens
 - Prompt SHA-256: `f99f547035f87eed62f6b0435d3c0e5b073e336e717cffcd93bad581cf4cbbd4`
 
@@ -89,7 +89,7 @@ System Prompt本文は本仕様書へ重複記載しない。Prompt本文の正�
 意味保存・情報保持・論理関係・不確実性保持を優先した高密度圧縮を行う。
 
 - System Prompt正本: `src/semantic-compression/prompt.js` の `SEMANTIC_DENSE_V1_PROMPT`
-- `prompt_version`: `semantic-dense-v1`
+- `prompt_version`: `semantic-dense-v1.1`
 - System Prompt token metadata: 1823 tokens
 - Prompt SHA-256: `5b1610d7fe8225f970cd20a022a2ef666f6c190115eeb82622dcb099e777ef9e`
 
@@ -100,6 +100,13 @@ System Prompt本文は本仕様書へ重複記載しない。Prompt本文の正�
 ```text
 compact-v1          → COMPACT_V1_PROMPT
 semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
+```
+
+Prompt provenance is versioned independently from the caller-facing profile:
+
+```text
+compact-v1          → prompt_version compact-v1.1
+semantic-dense-v1   → prompt_version semantic-dense-v1.1
 ```
 
 - callerがPrompt本文を上書きする機能は持たない。
@@ -149,7 +156,7 @@ semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
 {
   "compressed_text": "...",
   "profile": "semantic-dense-v1",
-  "prompt_version": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1.1",
   "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,
@@ -174,7 +181,7 @@ semantic-dense-v1   → SEMANTIC_DENSE_V1_PROMPT
 |---|---|---|
 | `compressed_text` | string | Geminiが返した圧縮本文 |
 | `profile` | string | 実際に使用したprofile |
-| `prompt_version` | string | 実際に使用したPrompt version。現行はprofile名と一致 |
+| `prompt_version` | string | 実際に使用したPrompt version。profileとは別にversion管理する |
 | `model` | string | 使用model |
 | `input_chars` | integer | 入力本文のUnicode code point数 |
 | `output_chars` | integer | 出力本文のUnicode code point数 |

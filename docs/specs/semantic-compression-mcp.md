@@ -37,6 +37,8 @@ The Worker always delegates with profile `semantic-dense-v1`. Callers cannot pro
 
 ## Internal path and validation
 
+After Access JWT verification, the adapter applies a 2.5 MiB HTTP body-byte guard before handing the request to the MCP framework parser. It checks the declared `Content-Length` when usable and also inspects a cloned request stream, so a misleading or missing length does not bypass the limit. The upstream response must report prompt version `semantic-dense-v1.1`; its `input_chars` and `output_chars` must match the request and compressed result Unicode code-point counts.
+
 ```text
 MCP client
   -> Cloudflare Access / Managed OAuth

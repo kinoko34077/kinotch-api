@@ -54,6 +54,13 @@ test("production release reinstalls the lockfile dependency tree before build an
   assert.ok(source.indexOf('await run(npmCommand, ["ci"])') < source.indexOf('await run(npmCommand, ["run", "build:text-snapshot"])'));
 });
 
+test("production release sanitizes child environments and scopes Cloudflare credentials to Wrangler", () => {
+  assert.match(source, /createReleaseChildEnv/);
+  assert.match(source, /env = createReleaseChildEnv\(\)/);
+  assert.match(source, /includeCloudflareCredentials:\s*true/);
+  assert.doesNotMatch(source, /env:\s*process\.env\s*,?\s*stdio/);
+});
+
 test("production release fails closed before deployment without Compression smoke token", () => {
   assert.match(source, /Compression smoke requires COMPRESSION_SMOKE_TOKEN/);
   assert.match(source, /compressionDeployed/);

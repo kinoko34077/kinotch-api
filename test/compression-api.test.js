@@ -242,7 +242,7 @@ test("authenticated compression requests use only the Compression binding and fi
           return Promise.resolve(compressionResponse({
             compressed_text: "題名\n- 結果",
             profile: "semantic-dense-v1",
-            prompt_version: "semantic-dense-v1",
+            prompt_version: "semantic-dense-v1.1",
             model: "gemini-3.5-flash-lite",
             input_chars: 2,
             output_chars: 7,
@@ -266,7 +266,7 @@ test("authenticated compression requests use only the Compression binding and fi
   assert.deepEqual(await response.json(), {
     compressed_text: "題名\n- 結果",
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 7,
@@ -307,7 +307,7 @@ test("Gateway accepts compact-v1 and forwards only the public compression reques
           return Promise.resolve(compressionResponse({
             compressed_text: "短縮結果",
             profile: "compact-v1",
-            prompt_version: "compact-v1",
+            prompt_version: "compact-v1.1",
             model: "gemini-3.5-flash-lite",
             input_chars: 2,
             output_chars: 4,

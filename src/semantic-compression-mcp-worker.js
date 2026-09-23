@@ -1,4 +1,5 @@
 import { verifyAccessJwt } from "./semantic-compression-mcp/access-auth.js";
+import { inspectMcpBodyLimit } from "./semantic-compression-mcp/body-limit.js";
 import { createCompressionMcpHandler } from "./semantic-compression-mcp/server.js";
 
 function errorResponse(code, status) {
@@ -20,6 +21,11 @@ export function createCompressionMcpWorker({
       const authentication = await verifyAccessJwtImpl(request, env);
       if (!authentication.ok) {
         return errorResponse(authentication.code, authentication.code === "authentication_unavailable" ? 503 : 401);
+      }
+
+      const bodyLimit = await inspectMcpBodyLimit(request);
+      if (!bodyLimit.ok) {
+        return errorResponse(bodyLimit.code, bodyLimit.code === "payload_too_large" ? 413 : 400);
       }
 
       try {

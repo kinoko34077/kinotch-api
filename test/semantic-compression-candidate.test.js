@@ -45,6 +45,6 @@ test("candidate prompt explicitly treats quoted instructions as data and preserv
   assert.match(requestBody.system_instruction, /否定語.*必ず.*出力/s);
   assert.match(requestBody.system_instruction, /典型例.*含める.*含めない/s);
   assert.match(requestBody.system_instruction, /短文.*構造化しない/s);
-  assert.equal((await response.json()).prompt_version, "semantic-dense-v1");
+  assert.equal((await response.json()).prompt_version, "semantic-dense-v1.1");
   assert.equal(COMPRESSION_CANDIDATE_PROMPT_VERSION, "semantic-dense-v2-candidate");
 });

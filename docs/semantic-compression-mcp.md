@@ -46,6 +46,8 @@ Remove the temporary operator values after the release. Until Access setup and a
 
 ## Local checks
 
+The MCP Worker verifies the Access JWT first, then applies the shared 2.5 MiB HTTP body-byte limit before the MCP framework parses JSON-RPC. Both a usable `Content-Length` and the cloned request stream are checked. The existing 200,000 Unicode code-point limit and the 5 requests / 60 seconds `compress_text` limiter remain separate downstream controls.
+
 Run the deterministic suite without external calls:
 
 ```powershell

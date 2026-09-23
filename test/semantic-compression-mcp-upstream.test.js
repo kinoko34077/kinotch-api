@@ -6,7 +6,7 @@ function validPayload(overrides = {}) {
   return {
     compressed_text: "圧縮結果",
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 4,

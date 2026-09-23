@@ -43,7 +43,7 @@ $body = @{
 Invoke-RestMethod -Method Post -Uri "https://api.kinotch.workers.dev/v1/compress" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
 ~~~
 
-profileは compact-v1 または semantic-dense-v1 のみです。callerからPrompt、model、
+profileは compact-v1 または semantic-dense-v1 のみです。現在のPrompt versionは、compact-v1 が compact-v1.1、semantic-dense-v1 が semantic-dense-v1.1 です。profileとprompt_versionは別fieldで、callerから変更できません。callerからPrompt、model、
 provider、temperature、tools、Search、会話履歴、thinking設定は指定できません。
 
 成功responseには次が含まれます。
@@ -52,7 +52,7 @@ provider、temperature、tools、Search、会話履歴、thinking設定は指定
 {
   "compressed_text": "...",
   "profile": "semantic-dense-v1",
-  "prompt_version": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1.1",
   "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,

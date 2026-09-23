@@ -1,3 +1,5 @@
+import { MCP_EXPECTED_PROMPT_VERSION } from "../src/semantic-compression-mcp/contract.js";
+
 export const MCP_SMOKE_TIMEOUT_MS = 60_000;
 
 export class McpSmokeError extends Error {
@@ -161,7 +163,7 @@ export async function runMcpSmoke({
   const provenance = result.structuredContent;
   if (
     provenance?.profile !== "semantic-dense-v1" ||
-    provenance?.prompt_version !== "semantic-dense-v1" ||
+    provenance?.prompt_version !== MCP_EXPECTED_PROMPT_VERSION ||
     typeof provenance?.model !== "string" ||
     !Number.isSafeInteger(provenance?.input_chars) ||
     !Number.isSafeInteger(provenance?.output_chars) ||

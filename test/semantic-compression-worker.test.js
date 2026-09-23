@@ -103,7 +103,7 @@ test("Worker selects the exact compact-v1 prompt and exposes normalized usage", 
   assert.equal(request.body.system_instruction, buildProductionSystemInstruction("compact-v1"));
   const payload = await response.json();
   assert.equal(payload.profile, "compact-v1");
-  assert.equal(payload.prompt_version, "compact-v1");
+  assert.equal(payload.prompt_version, "compact-v1.1");
   const compactPromptTokens = getCompressionPromptMetadata("compact-v1").systemPromptTokens;
   assert.deepEqual(payload.usage, {
     input_tokens: 100,

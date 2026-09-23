@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionWorkerApp } from "../src/semantic-compression-worker.js";
+import { resolveCompressionProfile } from "../src/semantic-compression/prompt.js";
 import { validateCompressionPayload } from "../scripts/smoke-production.mjs";
 import { resolveLiveGeminiConfig } from "./semantic-compression-live-config.js";
 import { resolveMeasurementIntervalMs, sleep } from "../scripts/measurement-pacing.mjs";
@@ -36,7 +37,7 @@ const liveGemini = resolveLiveGeminiConfig(process.env);
     const payload = await response.json();
     assert.equal(await validateCompressionPayload(payload, inputText, profile), null);
     assert.equal(payload.profile, profile);
-    assert.equal(payload.prompt_version, profile);
+    assert.equal(payload.prompt_version, resolveCompressionProfile(profile).promptVersion);
     assert.ok(Number.isSafeInteger(payload.usage.input_tokens));
     assert.ok(Number.isSafeInteger(payload.usage.system_prompt_tokens));
     assert.ok(payload.usage.content_input_tokens === null || Number.isSafeInteger(payload.usage.content_input_tokens));

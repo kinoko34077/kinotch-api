@@ -56,7 +56,7 @@ test("compression smoke validator checks fixed provenance and exact text hashes"
   const payload = {
     compressed_text: "題名\n- 内容",
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 7,
@@ -103,7 +103,7 @@ test("compression smoke calls the Gateway with a caller token and returns safe p
   assert.equal(JSON.parse(received.init.body).profile, "semantic-dense-v1");
   assert.equal(result.status, 200);
   assert.equal(result.model, "gemini-3.5-flash-lite");
-  assert.equal(result.promptVersion, "semantic-dense-v1");
+  assert.equal(result.promptVersion, "semantic-dense-v1.1");
   assert.equal(result.requestId, "smoke-compression");
   assert.deepEqual(result.usage, {
     input_tokens: null,
@@ -122,7 +122,7 @@ test("compression smoke supports compact-v1 and validates its public mapping", a
     compressedText: "短縮",
     inputText,
     profile: "compact-v1",
-    promptVersion: "compact-v1",
+    promptVersion: "compact-v1.1",
     usage: {
       inputTokens: 100,
       outputTokens: 30,
@@ -146,7 +146,7 @@ test("compression smoke supports compact-v1 and validates its public mapping", a
   });
 
   assert.equal(JSON.parse(received.init.body).profile, "compact-v1");
-  assert.equal(result.promptVersion, "compact-v1");
+  assert.equal(result.promptVersion, "compact-v1.1");
   assert.equal(result.usage.input_tokens, 100);
 });
 
@@ -192,7 +192,7 @@ test("compression smoke validator rejects changed model, prompt, counts, hashes,
   const base = {
     compressed_text: "題名\n- 内容",
     profile: "semantic-dense-v1",
-    prompt_version: "semantic-dense-v1",
+    prompt_version: "semantic-dense-v1.1",
     model: "gemini-3.5-flash-lite",
     input_chars: 2,
     output_chars: 7,

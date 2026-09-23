@@ -7,6 +7,7 @@ import {
   validateTransformBody,
 } from "../middleware/validation.js";
 import { authenticateCompression } from "../middleware/authentication.js";
+import { COMPRESSION_BODY_LIMIT_BYTES } from "../semantic-compression/contract.js";
 
 const GENERAL_RATE_LIMIT = Object.freeze({
   binding: "GENERAL_RATE_LIMITER",
@@ -109,7 +110,7 @@ export const routePolicies = Object.freeze({
     path: "/v1/compress",
     method: "POST",
     bodyType: "json",
-    bodyLimitBytes: 2.5 * 1024 * 1024,
+    bodyLimitBytes: COMPRESSION_BODY_LIMIT_BYTES,
     preAuthRateLimit: COMPRESSION_PREAUTH_RATE_LIMIT,
     rateLimit: COMPRESSION_RATE_LIMIT,
     tokenRateLimit: COMPRESSION_TOKEN_RATE_LIMIT,

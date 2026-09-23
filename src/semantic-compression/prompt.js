@@ -1,5 +1,7 @@
 import {
   COMPRESSION_PROFILE_COMPACT,
+  COMPRESSION_PROMPT_VERSION_COMPACT,
+  COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
   COMPRESSION_PROFILE_SEMANTIC_DENSE,
 } from "./contract.js";
 
@@ -224,14 +226,14 @@ export function resolveCompressionProfile(profile) {
   if (profile === COMPRESSION_PROFILE_COMPACT) {
     return {
       profile,
-      promptVersion: COMPRESSION_PROFILE_COMPACT,
+      promptVersion: COMPRESSION_PROMPT_VERSION_COMPACT,
       systemInstruction: buildProductionSystemInstruction(profile),
     };
   }
   if (profile === COMPRESSION_PROFILE_SEMANTIC_DENSE) {
     return {
       profile,
-      promptVersion: COMPRESSION_PROFILE_SEMANTIC_DENSE,
+      promptVersion: COMPRESSION_PROMPT_VERSION_SEMANTIC_DENSE,
       systemInstruction: buildProductionSystemInstruction(profile),
     };
   }

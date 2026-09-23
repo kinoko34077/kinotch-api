@@ -31,7 +31,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 {
   "compressed_text": "要点\n- 圧縮本文",
   "profile": "semantic-dense-v1",
-  "prompt_version": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1.1",
   "model": "gemini-3.5-flash-lite",
   "input_chars": 0,
   "output_chars": 0,
@@ -50,7 +50,7 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 }
 ```
 
-`usage` はProvider responseの `total_input_tokens`、`total_output_tokens`、`total_thought_tokens`、`total_cached_tokens`、`total_tokens` を正規化した値である。`input_tokens` は本文だけでなくsystem instruction等を含むProvider側のinput usageで、報告されない値は `null` になる。`system_prompt_tokens` は、選択した固定Prompt文字列を同じmodelのGemini `countTokens` で事前測定した固定metadataである。`content_input_tokens` は `input_tokens - system_prompt_tokens` の非負残差で、Provider内部のframing等を含む可能性があるため本文そのものの厳密なtoken数ではない。いずれかの値が欠落・不整合なら `content_input_tokens` は `null` とする。`semantic-dense-v1` の成功responseは `profile` と `prompt_version` がともに `semantic-dense-v1` になる。
+`usage` はProvider responseの `total_input_tokens`、`total_output_tokens`、`total_thought_tokens`、`total_cached_tokens`、`total_tokens` を正規化した値である。`input_tokens` は本文だけでなくsystem instruction等を含むProvider側のinput usageで、報告されない値は `null` になる。`system_prompt_tokens` は、選択した固定Prompt文字列を同じmodelのGemini `countTokens` で事前測定した固定metadataである。`content_input_tokens` は `input_tokens - system_prompt_tokens` の非負残差で、Provider内部のframing等を含む可能性があるため本文そのものの厳密なtoken数ではない。いずれかの値が欠落・不整合なら `content_input_tokens` は `null` とする。profileとprompt_versionは別のprovenance fieldで、現在は `compact-v1 → compact-v1.1`、`semantic-dense-v1 → semantic-dense-v1.1` である。
 
 `input_chars` と `output_chars` はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。SHA-256はUTF-8化したtextそのものを対象とする。圧縮結果を原文のSSOTとして保存しない。
 
@@ -152,7 +152,7 @@ Geminiのrate limitはproject/model/tierごとに異なり、RPM・input TPM・R
 
 Interactions API responseのusageはProduction responseへ安全な数値として含める。`system-only` は共通prefixを持たない短いsynthetic文4件、`shared-input-prefix` は長い共通prefixを持つsynthetic文4件を送るopt-in測定も利用できる。`input_tokens` はsystem instruction等を含むProvider側usageであり、本文長の `input_chars` とは別の値である。
 
-固定Prompt token metadataはprofileごとに保持する。現在の実測値は `compact-v1 = 540`、`semantic-dense-v1 = 1823`（model: `gemini-3.5-flash-lite`）である。対応PromptのSHA-256も `src/semantic-compression/prompt-metadata.js` に併記し、Promptとtoken metadataの不一致はtestで検出する。これはPrompt文字列を `countTokens` の公式 `contents` 形状で単独測定した値であり、Providerのsystem role framingを含む厳密なrequest全体内訳ではない。
+固定Prompt token metadataはprofileとprompt versionごとに保持する。現在の実測値は `compact-v1 / compact-v1.1 = 540`、`semantic-dense-v1 / semantic-dense-v1.1 = 1823`（model: `gemini-3.5-flash-lite`）である。対応PromptのSHA-256も `src/semantic-compression/prompt-metadata.js` に併記し、Promptとtoken metadataの不一致はtestで検出する。これはPrompt文字列を `countTokens` の公式 `contents` 形状で単独測定した値であり、Providerのsystem role framingを含む厳密なrequest全体内訳ではない。
 
 ```powershell
 $env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<operator-provided Gemini key>"

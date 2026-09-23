@@ -27,7 +27,7 @@ test("MCP smoke completes initialize lifecycle before tools/list and compress_te
         content: [{ type: "text", text: "圧縮結果" }],
         structuredContent: {
           profile: "semantic-dense-v1",
-          prompt_version: "semantic-dense-v1",
+          prompt_version: "semantic-dense-v1.1",
           model: "gemini-3.5-flash-lite",
           input_chars: 2,
           output_chars: 4,
