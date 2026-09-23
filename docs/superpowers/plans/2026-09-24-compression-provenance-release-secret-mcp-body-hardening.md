@@ -52,7 +52,7 @@
 - [x] **Step 3: Implement the shared version mapping.** Add the two constants and resolver, return them from `resolveCompressionProfile`, use the semantic-dense version as the default response version, and add the version beside each prompt hash/token metadata record.
 - [x] **Step 4: Update dependent smoke, MCP, release metadata, and documentation paths.** Replace hard-coded prompt-version comparisons with shared constants or profile resolution; keep profile values unchanged and update current docs only.
 - [x] **Step 5: Run focused tests and inspect the public contract.** Confirm both profiles, MCP upstream validation, smoke validation, and response builders pass with distinct profile/version values.
-- [ ] **Step 6: Commit the provenance change.** Use `git commit -m "fix: version compression prompt provenance"` after the focused tests pass.
+- [x] **Step 6: Commit the provenance change.** The combined hardening commit `c15a100` includes the provenance change after the focused tests passed.
 
 ### Task 2: Sanitize Production release child environments
 
@@ -70,7 +70,7 @@
 - [x] **Step 3: Implement the pure sanitizer.** Add explicit secret-name lists and return a copied environment without mutating `process.env`; keep non-secret operational variables intact.
 - [x] **Step 4: Integrate the sanitizer into deploy execution.** Default every child process to the sanitized environment, pass Cloudflare credentials only to Wrangler status/dry-run/deploy/rollback commands, and leave parent-process smoke calls unchanged.
 - [x] **Step 5: Add release-source assertions.** Pin tests to the default sanitized `run()` path, explicit Wrangler credential path, and absence of raw `env: process.env` forwarding.
-- [ ] **Step 6: Run focused release tests and commit.** Run `node --test test/release-child-env.test.js test/deploy-production.test.js test/release-recovery.test.js`, then commit with `fix: isolate production release child secrets`.
+- [x] **Step 6: Run focused release tests and commit.** Focused release tests passed; the combined hardening commit `c15a100` includes the child-environment isolation.
 
 ### Task 3: Add the MCP pre-parse body guard
 
@@ -90,7 +90,7 @@
 - [x] **Step 2: Run the focused worker tests and confirm they fail.** Run `node --test test/semantic-compression-mcp-worker.test.js test/semantic-compression-mcp-contract.test.js` and confirm the oversized request currently reaches the injected handler.
 - [x] **Step 3: Implement the shared byte-limit constant and cloned-stream inspection.** Reject safe oversized `Content-Length` values immediately; otherwise read only a cloned body stream, stop and cancel at the first byte over the limit, and return `invalid_body` on read failure.
 - [x] **Step 4: Insert the guard after Access JWT verification and before `createMcpHandler`.** Map `payload_too_large` to 413 and `invalid_body` to 400 without logging or returning request content.
-- [ ] **Step 5: Run focused REST/MCP tests and commit.** Confirm the REST policy still uses 2.5 MiB, then commit with `fix: guard MCP request bodies before parsing`.
+- [x] **Step 5: Run focused REST/MCP tests and commit.** REST/MCP tests passed with the shared 2.5 MiB policy; the combined hardening commit `c15a100` includes the pre-parse guard.
 
 ### Task 4: Re-run qualification evidence and close the change
 
@@ -101,4 +101,4 @@
 - [x] **Step 2: Run the three Worker dry-runs.** Run the text, Compression, and Gateway Wrangler dry-runs plus the MCP dry-run with operator vars only if available; do not deploy.
 - [x] **Step 3: Run `git diff --check` and scope checks.** Confirm only intended source/tests/docs/plan files changed; Text Core and generated snapshots remain unchanged.
 - [x] **Step 4: Run opt-in live quality evaluation only if the dedicated key exists.** If `KINOTCH_COMPRESSION_GEMINI_API_KEY` is absent, record that the live quality evidence was not run; never use `GEMINI_API_KEY` as fallback and do not invent a PASS.
-- [ ] **Step 5: Commit/push the final changes and verify CI/Verify.** Confirm `HEAD == origin/main`, worktree clean, and GitHub checks complete successfully. Do not run `npm run deploy:production`.
+- [x] **Step 5: Commit/push the final changes and verify CI/Verify.** `c15a100` was pushed; `HEAD == origin/main`, the worktree is clean, and GitHub CI/Verify both completed successfully. `npm run deploy:production` was not run.
