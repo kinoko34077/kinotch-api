@@ -2,6 +2,8 @@ export const MCP_RELEASE_WORKER_NAME = "semantic-compression-mcp";
 export const MCP_RELEASE_CONFIG = "wrangler.semantic-compression-mcp.jsonc";
 export const MCP_RELEASE_PROTOCOL = "streamable-http";
 export const MCP_RELEASE_TOOL_VERSION = "compress_text/v1";
+export const MCP_RELEASE_HOST = "semantic-compression-mcp.kinotch.workers.dev";
+export const MCP_RELEASE_ENDPOINT = `https://${MCP_RELEASE_HOST}/mcp`;
 
 function requiredEnvValue(env, name) {
   const value = env?.[name];
@@ -36,7 +38,24 @@ export function createMcpDeployArgs({ env = process.env, dryRun = false } = {}) 
 export function resolveMcpSmokeInputs(env = process.env) {
   const endpoint = requiredEnvValue(env, "MCP_ENDPOINT");
   const accessCookie = requiredEnvValue(env, "MCP_SMOKE_ACCESS_COOKIE");
-  return { endpoint, accessCookie };
+  let parsed;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new Error("MCP_ENDPOINT must be a valid URL");
+  }
+  if (
+    parsed.protocol !== "https:"
+    || parsed.username
+    || parsed.password
+    || parsed.search
+    || parsed.hash
+    || parsed.pathname !== "/mcp"
+    || parsed.hostname !== MCP_RELEASE_HOST
+  ) {
+    throw new Error(`MCP_ENDPOINT must target ${MCP_RELEASE_ENDPOINT}`);
+  }
+  return { endpoint: parsed.toString(), accessCookie };
 }
 
 export function resolveMcpSmokeState(env = process.env) {

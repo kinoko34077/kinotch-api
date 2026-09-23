@@ -42,6 +42,18 @@ test("production release includes the private Compression Worker gate and proven
   assert.match(source, /COMPRESSION_SMOKE_TOKEN/);
 });
 
+test("production release records the validated MCP endpoint", () => {
+  assert.match(source, /state\.mcpEndpoint\s*=\s*mcpSmokeInputs\.endpoint/);
+  assert.match(source, /endpoint:\s*state\.mcpEndpoint/);
+});
+
+test("production release reinstalls the lockfile dependency tree before build and tests", () => {
+  assert.match(source, /state\.stage = "clean dependency install"/);
+  assert.match(source, /await run\(npmCommand, \["ci"\]\)/);
+  assert.match(source, /await run\(npmCommand, \["run", "build:text-snapshot"\]\)/);
+  assert.ok(source.indexOf('await run(npmCommand, ["ci"])') < source.indexOf('await run(npmCommand, ["run", "build:text-snapshot"])'));
+});
+
 test("production release fails closed before deployment without Compression smoke token", () => {
   assert.match(source, /Compression smoke requires COMPRESSION_SMOKE_TOKEN/);
   assert.match(source, /compressionDeployed/);

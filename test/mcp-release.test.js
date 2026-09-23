@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MCP_RELEASE_CONFIG,
+  MCP_RELEASE_ENDPOINT,
+  MCP_RELEASE_HOST,
   MCP_RELEASE_PROTOCOL,
   MCP_RELEASE_TOOL_VERSION,
   buildMcpReleaseMetadata,
@@ -39,6 +41,8 @@ test("MCP release metadata uses the dedicated Worker config and protocol", () =>
 });
 
 test("MCP production deploy requires worker vars and authenticated smoke inputs", () => {
+  assert.equal(MCP_RELEASE_HOST, "semantic-compression-mcp.kinotch.workers.dev");
+  assert.equal(MCP_RELEASE_ENDPOINT, "https://semantic-compression-mcp.kinotch.workers.dev/mcp");
   assert.throws(() => resolveMcpWorkerVars({}), /TEAM_DOMAIN/);
   assert.throws(() => resolveMcpSmokeInputs({ TEAM_DOMAIN: "team.example.com", POLICY_AUD: "audience-tag" }), /MCP_ENDPOINT/);
   assert.deepEqual(resolveMcpWorkerVars({ TEAM_DOMAIN: " https://team.example.com/ ", POLICY_AUD: " audience-tag " }), {
@@ -61,6 +65,23 @@ test("MCP production deploy requires worker vars and authenticated smoke inputs"
   ]);
 });
 
+test("MCP release smoke rejects an endpoint for another Worker", () => {
+  assert.throws(
+    () => resolveMcpSmokeInputs({
+      MCP_ENDPOINT: "https://other-worker.kinotch.workers.dev/mcp",
+      MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
+    }),
+    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+  );
+  assert.deepEqual(resolveMcpSmokeInputs({
+    MCP_ENDPOINT: MCP_RELEASE_ENDPOINT,
+    MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
+  }), {
+    endpoint: MCP_RELEASE_ENDPOINT,
+    accessCookie: "CF_Authorization=<fixture-cookie>",
+  });
+});
+
 test("MCP smoke remains incomplete until the authenticated session-cookie smoke runs", () => {
   assert.deepEqual(resolveMcpSmokeState({}), {
     status: "incomplete",
@@ -69,13 +90,13 @@ test("MCP smoke remains incomplete until the authenticated session-cookie smoke 
     endpoint: null,
   });
   assert.deepEqual(resolveMcpSmokeState({
-    MCP_ENDPOINT: "https://mcp.example.test/mcp",
+    MCP_ENDPOINT: MCP_RELEASE_ENDPOINT,
     TEAM_DOMAIN: "team.example.com",
     POLICY_AUD: "audience-tag",
   }), {
     status: "incomplete",
     reason: "MCP production release requires MCP_SMOKE_ACCESS_COOKIE",
     authMode: "access_session_cookie",
-    endpoint: "https://mcp.example.test/mcp",
+    endpoint: MCP_RELEASE_ENDPOINT,
   });
 });

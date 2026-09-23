@@ -257,6 +257,7 @@ async function main() {
     textVersionId: null,
     compressionVersionId: null,
     mcpVersionId: null,
+    mcpEndpoint: null,
     gatewayVersionId: null,
     textSmoke: null,
     compressionSmoke: null,
@@ -300,11 +301,14 @@ async function main() {
 
     state.stage = "MCP Access configuration assertion";
     const mcpSmokeInputs = resolveMcpSmokeInputs(process.env);
+    state.mcpEndpoint = mcpSmokeInputs.endpoint;
 
     if (typeof process.env.COMPRESSION_SMOKE_TOKEN !== "string" || process.env.COMPRESSION_SMOKE_TOKEN.length === 0) {
       throw new Error("Compression smoke requires COMPRESSION_SMOKE_TOKEN");
     }
 
+    state.stage = "clean dependency install";
+    await run(npmCommand, ["ci"]);
     state.stage = "build snapshot";
     await run(npmCommand, ["run", "build:text-snapshot"]);
     state.stage = "generated file stability assertion";
@@ -446,7 +450,7 @@ async function main() {
       ...buildMcpReleaseMetadata({
         versionId: state.mcpVersionId,
         previousVersionId: state.previousMcpVersionId,
-        endpoint: process.env.MCP_ENDPOINT,
+        endpoint: state.mcpEndpoint,
         smoke: state.mcpSmoke,
         oauthSmoke: state.mcpOAuthSmoke,
         recovery: state.mcpRecovery,
@@ -551,7 +555,7 @@ async function main() {
         ...buildMcpReleaseMetadata({
           versionId: state.mcpVersionId,
           previousVersionId: state.previousMcpVersionId,
-          endpoint: process.env.MCP_ENDPOINT,
+          endpoint: state.mcpEndpoint,
           smoke: state.mcpSmoke ?? resolveMcpSmokeState(process.env),
           oauthSmoke: state.mcpOAuthSmoke,
           recovery: state.mcpRecovery,

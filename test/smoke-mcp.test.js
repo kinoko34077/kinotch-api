@@ -104,3 +104,44 @@ test("MCP smoke rejects unsafe protocol results without echoing response bodies"
     (error) => error.code === "mcp_smoke_failed" && !error.message.includes(secret),
   );
 });
+
+test("MCP smoke reports safe HTTP diagnostics without echoing an Access error body", async () => {
+  const secret = "raw-access-secret";
+  await assert.rejects(
+    runMcpSmoke({
+      endpoint: "https://mcp.example.test/mcp",
+      accessCookie: "CF_Authorization=secret-cookie",
+      fetchImpl: async () => new Response(JSON.stringify({
+        errors: [{ code: 1003, message: secret }],
+      }), {
+        status: 401,
+        headers: { "Content-Type": "application/json; charset=UTF-8" },
+      }),
+    }),
+    (error) => error.message.includes("status 401")
+      && error.message.includes("content-type application/json")
+      && error.message.includes("code 1003")
+      && !error.message.includes(secret),
+  );
+});
+
+test("MCP smoke reports notification HTTP status and content type safely", async () => {
+  let calls = 0;
+  await assert.rejects(
+    runMcpSmoke({
+      endpoint: "https://mcp.example.test/mcp",
+      accessCookie: "CF_Authorization=secret-cookie",
+      fetchImpl: async () => {
+        calls += 1;
+        if (calls === 1) return rpcResult(1, { protocolVersion: "2025-06-18" });
+        return new Response("access denied", {
+          status: 403,
+          headers: { "Content-Type": "text/plain" },
+        });
+      },
+    }),
+    (error) => error.message.includes("status 403")
+      && error.message.includes("content-type text/plain")
+      && !error.message.includes("access denied"),
+  );
+});

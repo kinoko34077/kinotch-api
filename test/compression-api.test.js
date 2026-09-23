@@ -132,6 +132,28 @@ test("compression route limits successful credentials by a non-reversible token 
   assert.doesNotMatch(tokenKey, new RegExp(TOKEN));
 });
 
+test("compression rate limiting ignores caller-controlled X-Forwarded-For without Cloudflare client IP", async () => {
+  let authenticatedIpKey;
+  const response = await app.request(
+    "http://example.test/v1/compress",
+    requestInit(
+      { text: "原文", profile: "semantic-dense-v1" },
+      { Authorization: `Bearer ${TOKEN}`, "X-Forwarded-For": "203.0.113.9, 198.51.100.4" },
+    ),
+    env({
+      COMPRESSION_RATE_LIMITER: {
+        limit(input) {
+          authenticatedIpKey = input.key;
+          return Promise.resolve({ success: true });
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(authenticatedIpKey, "semantic-compression:unknown");
+});
+
 test("compression route fails closed when the pre-auth limiter is unavailable", async () => {
   let upstreamCalls = 0;
   const response = await app.request(

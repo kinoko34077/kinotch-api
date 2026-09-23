@@ -5,14 +5,20 @@ import JSON5 from "json5";
 import {
   MCP_TOOL_NAME,
   MCP_COMPRESSION_PROFILE,
+  MCP_EXPECTED_PROMPT_VERSION,
   validateCompressTextInput,
   buildMcpProvenance,
 } from "../src/semantic-compression-mcp/contract.js";
-import { MAX_GEMINI_INPUT_CODE_POINTS } from "../src/semantic-compression/contract.js";
+import {
+  COMPRESSION_PROMPT_VERSION,
+  MAX_GEMINI_INPUT_CODE_POINTS,
+} from "../src/semantic-compression/contract.js";
 
 test("MCP contract exposes one fixed tool and profile", () => {
   assert.equal(MCP_TOOL_NAME, "compress_text");
   assert.equal(MCP_COMPRESSION_PROFILE, "semantic-dense-v1");
+  assert.equal(MCP_EXPECTED_PROMPT_VERSION, COMPRESSION_PROMPT_VERSION);
+  assert.equal(MCP_EXPECTED_PROMPT_VERSION, "semantic-dense-v1");
 });
 
 test("MCP input accepts only a non-empty text field", () => {

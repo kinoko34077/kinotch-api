@@ -36,7 +36,7 @@ After Access setup, run the authenticated smoke once, then use the normal releas
 ```powershell
 $env:TEAM_DOMAIN = "https://<team>.cloudflareaccess.com"
 $env:POLICY_AUD = "<application-audience-tag>"
-$env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
+$env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
 $env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<operator-session-cookie>"
 npm run smoke:mcp
 npm run deploy:production
@@ -65,16 +65,18 @@ After Access setup, select Streamable HTTP in MCP Inspector and use the deployed
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. `MCP_ENDPOINT` must be an HTTPS URL whose path is exactly `/mcp`, without URL credentials, query, or fragment. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
+The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. The normal production release accepts only `https://semantic-compression-mcp.kinotch.workers.dev/mcp`; HTTPS, `/mcp`, no credentials, no query, and no fragment are enforced, and another Worker hostname fails before any cookie-bearing request. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 ```powershell
-$env:MCP_ENDPOINT = "https://<actual-worker-host>/mcp"
+$env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
 $env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<operator-session-cookie>"
 npm run smoke:mcp
 Remove-Item Env:MCP_ENDPOINT, Env:MCP_SMOKE_ACCESS_COOKIE -ErrorAction SilentlyContinue
 ```
 
 The cookie is temporary operator input only. Never print it, commit it, place it in Codex configuration, or report its value. If the OAuth session expires, authenticate again and rerun the single smoke. The production release gate requires this smoke to pass and records the authentication mode explicitly; it does not fabricate a Codex OAuth result.
+
+For cookie smoke, select the `CF_Authorization` cookie issued for the MCP Access application and pass it as the complete `CF_Authorization=<value>` header value. Do not substitute a REST API token, a JWT copied from another request, or a cookie from another Access application. The smoke failure message intentionally reports only HTTP status, normalized content type, and an optional bounded error code; it never prints the response body or cookie. For example, `status 401` indicates an Access authentication/session problem, `403` indicates policy denial, and `404`/`5xx` indicates an endpoint or upstream problem that must be investigated separately.
 
 ## Codex registration
 

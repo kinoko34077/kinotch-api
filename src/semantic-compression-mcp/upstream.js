@@ -1,4 +1,7 @@
-import { MCP_COMPRESSION_PROFILE } from "./contract.js";
+import {
+  MCP_COMPRESSION_PROFILE,
+  MCP_EXPECTED_PROMPT_VERSION,
+} from "./contract.js";
 import { countUnicodeCodePoints } from "../semantic-compression/contract.js";
 
 export class CompressionMcpError extends Error {
@@ -22,7 +25,7 @@ function isValidPayload(value, inputText) {
     && compressedText !== null
     && compressedText.length > 0
     && value.profile === MCP_COMPRESSION_PROFILE
-    && value.prompt_version === MCP_COMPRESSION_PROFILE
+    && value.prompt_version === MCP_EXPECTED_PROMPT_VERSION
     && typeof value.model === "string"
     && value.model.length > 0
     && isSafeCount(value.input_chars)

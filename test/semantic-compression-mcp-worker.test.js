@@ -151,6 +151,38 @@ test("MCP compression rate limit runs before the Service Binding and uses client
   ]);
 });
 
+test("MCP rate limiting ignores caller-controlled X-Forwarded-For without Cloudflare client IP", async () => {
+  let rateKey;
+  const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 8,
+    method: "tools/call",
+    params: { name: "compress_text", arguments: { text: "本文" } },
+  }, { "X-Forwarded-For": "203.0.113.9" }), {
+    MCP_RATE_LIMITER: {
+      limit(input) {
+        rateKey = input.key;
+        return Promise.resolve({ success: true });
+      },
+    },
+    COMPRESSION: {
+      fetch: async () => new Response(JSON.stringify({
+        compressed_text: "圧縮結果",
+        profile: "semantic-dense-v1",
+        prompt_version: "semantic-dense-v1",
+        model: "gemini-3.5-flash-lite",
+        input_chars: 2,
+        output_chars: 4,
+        warnings: [],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    },
+  }, {});
+
+  assert.equal(response.status, 200);
+  assert.equal(rateKey, "semantic-compression-mcp:unknown");
+});
+
 test("MCP compression rate limit blocks without calling the Service Binding", async () => {
   let bindingCalls = 0;
   const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });

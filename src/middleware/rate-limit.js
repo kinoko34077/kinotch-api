@@ -10,8 +10,7 @@ function errorResponse(c, status, code, message) {
 function getClientKey(c) {
   const connectingIp = c.req.header("cf-connecting-ip");
   if (connectingIp) return connectingIp;
-  const forwarded = c.req.header("x-forwarded-for")?.split(",", 1)[0]?.trim();
-  return forwarded || "anonymous";
+  return "unknown";
 }
 
 function getRateLimitKey(c, policy, config) {

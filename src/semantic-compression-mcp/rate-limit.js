@@ -10,8 +10,7 @@ export const MCP_COMPRESSION_RATE_LIMIT = Object.freeze({
 function getClientKey(request) {
   const connectingIp = request?.headers?.get("cf-connecting-ip")?.trim();
   if (connectingIp) return connectingIp;
-  const forwarded = request?.headers?.get("x-forwarded-for")?.split(",", 1)[0]?.trim();
-  return forwarded || "unknown";
+  return "unknown";
 }
 
 export async function enforceMcpCompressionRateLimit(env, request) {

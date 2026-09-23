@@ -8,6 +8,41 @@ export class McpSmokeError extends Error {
   }
 }
 
+function safeContentType(response) {
+  const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  return contentType && /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(contentType)
+    ? contentType
+    : "unknown";
+}
+
+function safeErrorCode(value) {
+  const candidates = [
+    value?.code,
+    value?.error?.code,
+    Array.isArray(value?.errors) ? value.errors[0]?.code : null,
+  ];
+  for (const candidate of candidates) {
+    if (Number.isSafeInteger(candidate)) return String(candidate);
+    if (typeof candidate === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(candidate)) return candidate;
+  }
+  return null;
+}
+
+async function throwSafeHttpFailure(response) {
+  const contentType = safeContentType(response);
+  let code = null;
+  if (contentType === "application/json") {
+    try {
+      code = safeErrorCode(await response.clone().json());
+    } catch {
+      code = null;
+    }
+  }
+  const details = [`status ${response.status}`, `content-type ${contentType}`];
+  if (code !== null) details.push(`code ${code}`);
+  throw new McpSmokeError(`MCP smoke failed: ${details.join(", ")}`);
+}
+
 function parseEndpoint(endpoint) {
   if (typeof endpoint !== "string" || endpoint.length === 0) {
     throw new Error("MCP_ENDPOINT is required");
@@ -26,7 +61,7 @@ function parseEndpoint(endpoint) {
 }
 
 async function readRpcResponse(response) {
-  if (response.status !== 200) throw new McpSmokeError();
+  if (response.status !== 200) await throwSafeHttpFailure(response);
   const body = await response.text();
   try {
     if (response.headers.get("content-type")?.includes("text/event-stream")) {
@@ -96,7 +131,7 @@ export async function runMcpSmoke({
         body: JSON.stringify({ jsonrpc: "2.0", method, params }),
         signal: controller.signal,
       });
-      if (![200, 202, 204].includes(response.status)) throw new McpSmokeError();
+      if (![200, 202, 204].includes(response.status)) await throwSafeHttpFailure(response);
     } catch (error) {
       if (error instanceof McpSmokeError) throw error;
       throw new McpSmokeError();
