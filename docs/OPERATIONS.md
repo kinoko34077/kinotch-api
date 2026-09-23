@@ -5,9 +5,11 @@
 Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、両Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
 
 - `main`へのpushはGitHub Actionsのrequired status check `test`だけを起動し、Production deployを直接起動しない。
+- Production release開始時に`git fetch origin main`を実行し、現在branchが`main`かつlocal `HEAD == origin/main`であることを確認する。一致しない場合はdeployを開始しない。
 - Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
 - GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
+- 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
 
 ## 本番の基本確認
 
@@ -47,7 +49,7 @@ scenario別にinput/output/thought/cached/total tokenの数値だけを出力す
 
 外部Geminiのrate limitはproject/model/tier依存でRPM・input TPM・RPD等により変動するため、測定scriptは既定15秒間隔（約4 request/minute）で送信する。品質評価は `COMPRESSION_QUALITY_INTERVAL_MS`、usage測定は `COMPRESSION_USAGE_INTERVAL_MS` で調整できる。いずれも1秒未満は許可せず、429時の自動再送は行わない。安全な数値形式の `Retry-After` が応答にある場合だけ、測定停止時のエラーへ秒数を表示する。
 
-Prompt token metadataの再測定はPromptまたはmodel変更時だけ行う。`RUN_COMPRESSION_PROMPT_TOKEN_MEASURE=true` と専用credentialを設定し、`npm run measure:compression:prompt-tokens` を実行する。現在値は`compact-v1: 266`、`semantic-dense-v1: 1549`で、対応Prompt SHA-256とともにtestでstale検出する。
+Prompt token metadataの再測定はPromptまたはmodel変更時だけ行う。`RUN_COMPRESSION_PROMPT_TOKEN_MEASURE=true` と専用credentialを設定し、`npm run measure:compression:prompt-tokens` を実行する。現在値は`compact-v1: 540`、`semantic-dense-v1: 1823`で、対応Prompt SHA-256とともにtestでstale検出する。
 
 ## 遅延の見方
 
@@ -93,7 +95,7 @@ Cloudflare Rate Limitingは厳密な会計用途ではなく、公開・未認�
 
 ## Cloudflareログ
 
-`wrangler.jsonc` と `wrangler.semantic-compression.jsonc` はObservabilityのcustom logsを有効化し、automatic Invocation Logsは無効化している。CloudflareのInvocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、Authorizationを受けるGatewayとCompression Workerでは`invocation_logs: false`を固定する。custom logsでも本文、request body、response body、Authorization、secretを出力せず、ステータス、パス、処理時間、エラー種別だけを対象にする。
+`wrangler.jsonc`、`wrangler.text-transform.jsonc`、`wrangler.semantic-compression.jsonc`はObservabilityのcustom logsを有効化し、automatic Invocation Logsは無効化している。CloudflareのInvocation LogsはRequest/Response関連metadataとheadersを自動収集し得るため、本文を扱うText WorkerとAuthorizationを受けるGateway／Compression Workerでは`invocation_logs: false`を固定する。custom logsでも本文、request body、response body、Authorization、secretを出力せず、ステータス、パス、処理時間、エラー種別だけを対象にする。
 
 ```sh
 npx wrangler tail api --format json

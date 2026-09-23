@@ -32,6 +32,7 @@ import {
   resolveMcpSmokeState,
 } from "./mcp-release.mjs";
 import { runMcpSmoke } from "./smoke-mcp.mjs";
+import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -146,9 +147,7 @@ async function getActiveMcpVersionId() {
 }
 
 async function assertCleanWorktree() {
-  const output = await run("git", [
-    "-c",
-    `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
+  const output = await runGit([
     "status",
     "--porcelain",
   ], { capture: true });
@@ -158,14 +157,20 @@ async function assertCleanWorktree() {
 }
 
 async function assertBuildDidNotChangeTrackedFiles() {
-  await run("git", [
-    "-c",
-    `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
+  await runGit([
     "diff",
     "--exit-code",
     "--",
   ]);
   await assertCleanWorktree();
+}
+
+function runGit(args, options = {}) {
+  return run("git", [
+    "-c",
+    `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
+    ...args,
+  ], options);
 }
 
 function wait(milliseconds) {
@@ -209,21 +214,6 @@ async function runCompressionGatewayReadinessWithRetry(options, attempts = 12) {
     }
   }
   throw lastError;
-}
-
-async function gitRevision() {
-  return new Promise((resolve) => {
-    const child = spawn("git", [
-      "-c",
-      `safe.directory=${projectRoot.replaceAll("\\", "/")}`,
-      "rev-parse",
-      "HEAD",
-    ], { cwd: projectRoot });
-    let output = "";
-    child.stdout.on("data", (chunk) => { output += chunk; });
-    child.once("close", (code) => resolve(code === 0 ? output.trim() : "unknown"));
-    child.once("error", () => resolve("unknown"));
-  });
 }
 
 function releaseTimestamp() {
@@ -292,10 +282,9 @@ async function main() {
   try {
     state.stage = "clean worktree assertion";
     await assertCleanWorktree();
-    state.gitRevision = await gitRevision();
-    if (!/^[a-f0-9]{40}$/.test(state.gitRevision)) {
-      throw new Error("Could not determine a 40-character Git source revision for production release");
-    }
+    state.stage = "production source revision assertion";
+    const sourceRevision = await assertProductionSourceRevision({ runGit });
+    state.gitRevision = sourceRevision.head;
 
     state.stage = "private Worker config assertion";
     const textWorkerConfig = JSON5.parse(await readFile(

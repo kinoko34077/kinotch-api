@@ -11,6 +11,12 @@ test("production release rejects dirty worktrees and generated drift", () => {
   assert.match(source, /generated file stability assertion/);
 });
 
+test("production release is bound to a fetched origin/main revision", () => {
+  assert.match(source, /assertProductionSourceRevision/);
+  assert.match(source, /production source revision assertion/);
+  assert.match(source, /runGit/);
+});
+
 test("production release captures and recovers the Gateway version", () => {
   assert.match(source, /getActiveGatewayVersionId/);
   assert.match(source, /previousGatewayVersionId/);

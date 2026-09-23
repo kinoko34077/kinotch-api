@@ -29,8 +29,7 @@
     "check:text-snapshot": "npm run check:text-rules && npm run check:text-metadata && npm run check:text-client && npm run check:kanji-fallback && npm run check:browser-client",
     "pretest": "npm run check:text-snapshot",
     "test": "node --test test/*.test.js",
-    "deploy": "npm run deploy:production",
-    "deploy:text-transform": "npm run build:text-snapshot && npm run check:text-snapshot && npm test && wrangler deploy --config wrangler.text-transform.jsonc"
+    "deploy": "npm run deploy:production"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
