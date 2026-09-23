@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-23 — KiNoTch Base v0.3.8 Canary adoption
+Last verified: 2026-09-24 — KiNoTch Base v0.3.8 release hardening
 
 ## Implemented
 
@@ -27,7 +27,7 @@ Last verified: 2026-09-23 — KiNoTch Base v0.3.8 Canary adoption
 
 ## Next work
 
-1. Confirm the repository-local Base gate on GitHub Actions.
+1. Keep GitHub Actions `test` and `Verify` successful; make both required checks in branch protection when operator-managed settings are updated.
 2. Keep API and generated snapshot policy Project-owned.
 3. Consider further Default adoption only where it removes a real duplicate.
 
@@ -38,3 +38,5 @@ Last verified: 2026-09-23 — KiNoTch Base v0.3.8 Canary adoption
 - `knt setup`
 - `knt verify`
 - `npm test`
+- GitHub Actions `test`: success
+- GitHub Actions `Verify`: success

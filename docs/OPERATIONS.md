@@ -4,7 +4,8 @@
 
 Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、両Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
 
-- `main`へのpushはGitHub Actionsのrequired status check `test`だけを起動し、Production deployを直接起動しない。
+- `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。
+- Repository Baseの`Verify` workflowも`test`と同様に成功を維持し、branch protectionをoperatorが更新する場合は`test`と`Verify`の両方をrequired checkにする。repo内の文書・コードだけで外部設定済みとは扱わない。
 - Production release開始時に`git fetch origin main`を実行し、現在branchが`main`かつlocal `HEAD == origin/main`であることを確認する。一致しない場合はdeployを開始しない。
 - Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
 - GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
