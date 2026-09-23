@@ -1,0 +1,409 @@
+# kinotch-api 利用・運用ガイド
+
+この文書は、kinotch-apiを利用・開発・運用する人向けの実務ガイドである。
+公開契約の正本は各仕様書に置き、ここでは「どの入口を使い、何を準備し、どの順に検証するか」をまとめる。
+
+## 1. サービスの役割
+
+kinotch-apiはCloudflare Workers上のGatewayと、責務別のprivate Workerを同一repositoryで管理する。
+
+~~~text
+HTTP client
+  └─ HTTPS → api.kinotch.workers.dev
+                ├─ REST route policy / auth / rate limit
+                ├─ Service Binding → text-transform
+                ├─ Service Binding → semantic-compression
+                └─ Service Binding → clock / weather / rokuyo
+
+MCP client / Codex
+  └─ OAuth → Cloudflare Access
+                └─ semantic-compression-mcp /mcp
+                      └─ Service Binding → semantic-compression
+                            └─ Gemini Interactions API
+~~~
+
+Compressionの実処理、Prompt、profile、model、usage、hash、文字数検証は
+semantic-compression Workerが正本として持つ。Remote MCPは薄いadapterであり、
+Gemini呼出やPromptを複製しない。
+
+## 2. 最初に読む資料
+
+| 用途 | 正本 |
+|---|---|
+| 人間向け入口 | README.md |
+| 公開Compression API契約 | docs/specs/semantic-compression-api.md |
+| Compressionのsecret・live test・deploy | docs/semantic-compression.md |
+| Remote MCP契約 | docs/specs/semantic-compression-mcp.md |
+| Remote MCPのAccess・Codex・smoke | docs/semantic-compression-mcp.md |
+| Gateway/Text API運用 | docs/OPERATIONS.md |
+| Text API計画・互換性 | docs/API_PLAN.md |
+| 開発・変更履歴 | docs/DEVELOPMENT_HISTORY.md |
+| Release実績 | docs/releases/*.json |
+| 現在状態 | project/docs/CURRENT_STATE.md |
+
+## 3. ローカル開発
+
+### 3.1 準備
+
+PowerShellでrepository rootへ移動し、lockfileから依存関係を構築する。
+
+~~~powershell
+npm ci
+~~~
+
+通常テストは外部Gemini、Cloudflare、MCP Accessへ接続しない。
+
+~~~powershell
+npm test
+~~~
+
+Text snapshotの生成物を個別に確認する場合:
+
+~~~powershell
+npm run build:text-snapshot
+npm run check:text-snapshot
+~~~
+
+### 3.2 Worker dry-run
+
+本番deployの代わりに、対象Workerごとのbundleとbindingを確認する。
+
+~~~powershell
+npx wrangler deploy --config .\wrangler.text-transform.jsonc --dry-run
+npx wrangler deploy --config .\wrangler.semantic-compression.jsonc --dry-run
+npx wrangler deploy --config .\wrangler.semantic-compression-mcp.jsonc --dry-run
+npx wrangler deploy --config .\wrangler.jsonc --dry-run
+~~~
+
+dry-runはProduction反映ではない。Cloudflare credentialやAccess設定の存在だけで、
+実際のGateway→Worker→Gemini経路が確認済みになるわけではない。
+
+### 3.3 MCP単体テスト
+
+~~~powershell
+npm run test:mcp
+~~~
+
+MCP testはJWT fixture、fake Service Binding、malformed upstream、rate limit、
+privacy境界を検査する。通常のnpm testと同じく外部OAuthや実Geminiは使わない。
+
+## 4. 公開REST API
+
+Base URL:
+
+~~~text
+https://api.kinotch.workers.dev
+~~~
+
+### 4.1 一般route
+
+| Method | Path | 用途 | 主な入力 |
+|---|---|---|---|
+| GET | /health | Gateway health | なし |
+| GET | /v1/time | 時刻中継 | なし |
+| GET | /v1/weather | 天気中継 | lat, lon |
+| GET | /v1/calendar/rokuyo | 六曜 | date=YYYY-MM-DD |
+| GET | /v1/astronomy/moon | 月情報 | lat, lon |
+| GET | /v1/capabilities | Text API能力・version | なし |
+| POST | /v1/ruby/parse | ルビ解析 | JSON |
+| POST | /v1/transform | Text変換 | JSON |
+| POST | /v1/transform/batch | Text batch変換 | JSON |
+| POST | /v1/compress | 意味保存型圧縮 | JSON + Bearer |
+
+GETの座標はlatが-90〜90、lonが-180〜180、dateは実在する
+YYYY-MM-DDでなければならない。Text APIのprofile・レスポンスは
+docs/API_PLAN.mdとtext-transform Workerの契約を参照する。
+
+### 4.2 Text APIの基本例
+
+~~~powershell
+$body = @{
+  text = "変換対象の本文"
+  profile = @("general-character-replacements")
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "https://api.kinotch.workers.dev/v1/transform" -ContentType "application/json" -Body $body
+~~~
+
+Ruby parseではtextと、必要な場合だけmarkers.open / markers.closeを送る。
+batchではtexts配列を送り、最大256件・合計200,000文字のvalidationを受ける。
+Text routeはpublic GatewayのPolicy、JSON validation、body limit、専用rate limitを通る。
+
+## 5. Semantic Compression REST API
+
+### 5.1 呼出例
+
+Compression caller tokenはrepositoryへ保存せず、環境変数などoperator管理の安全な場所から読む。
+
+~~~powershell
+$compressionToken = "<COMPRESSION_API_TOKEN>"
+$body = @{
+  text = "圧縮対象本文"
+  profile = "semantic-dense-v1"
+} | ConvertTo-Json -Compress
+Invoke-RestMethod -Method Post -Uri "https://api.kinotch.workers.dev/v1/compress" -Headers @{ Authorization = "Bearer $compressionToken" } -ContentType "application/json" -Body $body
+~~~
+
+curlを使う場合:
+
+~~~bash
+curl -X POST "https://api.kinotch.workers.dev/v1/compress" \
+  -H "Authorization: Bearer $COMPRESSION_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"圧縮対象本文","profile":"semantic-dense-v1"}'
+~~~
+
+### 5.2 Request契約
+
+送信できるfieldはtextとprofileだけである。
+
+~~~json
+{
+  "text": "圧縮対象本文",
+  "profile": "compact-v1"
+}
+~~~
+
+profileは次の2値だけを受け付ける。
+
+- compact-v1: 比較的軽量な固定Promptによる圧縮。
+- semantic-dense-v1: 意味、情報、論理関係、不確実性の保持を優先する高密度圧縮。
+
+prompt、system_instruction、model、provider、temperature、tools、Search、
+history、thinking levelはcallerから指定できない。未知field、未知profile、
+空text、型違いはProvider送信前に拒否する。
+
+### 5.3 Success response
+
+~~~json
+{
+  "compressed_text": "...",
+  "profile": "semantic-dense-v1",
+  "prompt_version": "semantic-dense-v1",
+  "model": "gemini-3.5-flash-lite",
+  "input_chars": 12345,
+  "output_chars": 4567,
+  "input_sha256": "64-char-lowercase-hex",
+  "output_sha256": "64-char-lowercase-hex",
+  "usage": {
+    "input_tokens": 4321,
+    "system_prompt_tokens": 1823,
+    "content_input_tokens": 2498,
+    "output_tokens": 987,
+    "thought_tokens": 0,
+    "cached_tokens": 0,
+    "total_tokens": 5308
+  },
+  "warnings": []
+}
+~~~
+
+input_charsとoutput_charsはUnicode code point数であり、Pythonのlen(str)と
+一致する。SHA-256はUTF-8の本文そのものを対象とする。input_tokensは本文だけ
+ではなく、固定System Prompt等を含むProvider側の総input tokenである。
+
+usageがProvider responseにない場合はnullを許容する。
+content_input_tokensはinput_tokensから固定Prompt metadataを引いた非負残差であり、
+本文だけの厳密token数ではない。
+
+warningsは本文やmarker値を含まない固定enumの機械的警告である。
+警告があってもAPIが自動的に原文へfallbackするわけではない。
+callerがwarningsを検査し、必要な場合だけ原文fallbackを判断する。
+
+### 5.4 制限・エラー
+
+| 制限 | 現行値 |
+|---|---:|
+| Gateway body limit | 2.5 MiB |
+| 公開構造上限 | 1,000,000 Unicode code points |
+| Provider送信前安全上限 | 200,000 Unicode code points |
+| pre-auth rate limit | 5 requests / 60 seconds / IP |
+| authenticated IP rate limit | 5 requests / 60 seconds / IP |
+| token fingerprint rate limit | 5 requests / 60 seconds / token |
+| Worker timeout | 45 seconds |
+| Gateway upstream timeout | 50 seconds |
+
+代表的なerror codeはinvalid_json、invalid_body、invalid_profile、empty_text、
+payload_too_large、provider_context_limit、authentication_failed、
+authentication_unavailable、rate_limited、provider_rate_limited、
+provider_invalid_response、provider_error、provider_timeoutである。
+Googleのraw error、API key、Prompt、本文は返さない。
+
+### 5.5 固定Provider
+
+Compression WorkerはGemini Interactions APIを次の条件で使う。
+
+~~~json
+{
+  "model": "gemini-3.5-flash-lite",
+  "input": "<text>",
+  "system_instruction": "<fixed profile prompt>",
+  "generation_config": {
+    "thinking_level": "minimal"
+  },
+  "store": false
+}
+~~~
+
+tools、Search、history、background、temperature、top_p、top_k、
+thinking_budget、Provider生成requestの自動retryは使用しない。
+
+compressed_textはモデル出力であり、untrusted display dataとして扱う。
+HTMLへ表示する場合はsanitizeし、dangerous URL schemeやraw HTMLを許可しない。
+Compression APIをprompt injection sanitizerとして利用してはならない。
+
+## 6. Local live test
+
+通常のnpm testでは外部APIを呼ばない。実Gemini確認を行う場合だけ、
+Compression専用のローカル環境変数を明示する。
+
+~~~powershell
+$env:KINOTCH_COMPRESSION_GEMINI_API_KEY = "<Compression専用Gemini key>"
+$env:RUN_GEMINI_LIVE_TEST = "true"
+npm run test:compression:live
+
+Remove-Item Env:KINOTCH_COMPRESSION_GEMINI_API_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_GEMINI_LIVE_TEST -ErrorAction SilentlyContinue
+~~~
+
+kinotch-apiのlocal live testはGEMINI_API_KEYをfallback参照しない。
+dev_agent等の環境変数との用途競合を避けるためである。
+
+Cloudflare Worker secretは別契約であり、登録名はGEMINI_API_KEYのまま:
+
+~~~powershell
+npx wrangler secret put GEMINI_API_KEY --config .\wrangler.semantic-compression.jsonc
+~~~
+
+実値はREADME、docs、test fixture、logs、release metadataへ書かない。
+
+品質評価・usage測定は別opt-inであり、既定15秒間隔、429自動retryなし、
+通常testから外部通信なしという運用を維持する。詳細は
+docs/semantic-compression.mdを参照する。
+
+## 7. Remote MCP
+
+### 7.1 入口と認証
+
+現在のMCP endpointは次である。
+
+~~~text
+https://semantic-compression-mcp.kinotch.workers.dev/mcp
+~~~
+
+MCPはCloudflare Access Managed OAuthで保護する。MCP Worker内でも
+Cf-Access-Jwt-Assertionの署名、issuer、audience、expirationを検証する。
+RESTのCOMPRESSION_API_TOKENをMCP認証や内部Service Binding呼出へ流用しない。
+
+### 7.2 Tool契約
+
+公開toolはcompress_textの1個だけで、入力はtextだけである。
+
+~~~json
+{
+  "text": "長文本文"
+}
+~~~
+
+profileは常にsemantic-dense-v1で、Prompt、model、provider、temperature、
+tools、Search、historyはMCP callerから変更できない。
+MCPはinitialize → notifications/initialized → tools/list → tools/callの
+stateless Streamable HTTP lifecycleを使う。
+
+### 7.3 Codex / Inspector
+
+初回はAccess application、Managed OAuth、TEAM_DOMAIN、POLICY_AUD設定が必要。
+その後、Codex側のOAuth loginとcompress_text実呼出を確認する。
+
+~~~text
+codex mcp login semantic_compressor
+~~~
+
+MCPのAccess cookie smokeはCodex OAuth実呼出とは別証拠である。
+MCP Inspector、cookie smoke、Codex実呼出の詳細とbootstrap順序は
+docs/semantic-compression-mcp.mdを参照する。
+
+## 8. Secretとprivacy
+
+| 名前 | 用途 | 所有境界 |
+|---|---|---|
+| GEMINI_API_KEY | Gemini Provider credential | semantic-compression Worker Secret |
+| KINOTCH_COMPRESSION_GEMINI_API_KEY | local live test専用 | operatorのローカル環境 |
+| COMPRESSION_API_TOKEN | REST caller認証 | Gateway Secret |
+| COMPRESSION_SMOKE_TOKEN | release smokeの一時caller token | operatorのローカル環境 |
+| TEAM_DOMAIN | MCP Access issuer設定 | MCP Worker vars |
+| POLICY_AUD | MCP Access audience設定 | MCP Worker vars |
+
+秘密値、Authorization、Access JWT、本文、compressed_text全文、System Prompt全文、
+Gemini raw responseは本番log・release metadata・repositoryへ記録しない。
+custom structured logはrequest ID、route、status、elapsed、safe counts、
+profile/version、safe error categoryに限定する。
+
+## 9. Production release
+
+Production authorityは npm run deploy:production だけである。
+main pushだけではProduction deployしない。個別Workerの手動deployや
+Cloudflare Git auto-deployを通常releaseの代替にしない。
+
+release gateは概ね次の順序で進む。
+
+~~~text
+fetch origin/main / clean worktree / source revision
+  → npm ci
+  → generated checks / tests
+  → Text・Compression・Gateway・MCP dry-run
+  → active Version capture
+  → Text deploy / smoke
+  → Compression deploy
+  → MCP deploy
+  → Gateway deploy
+  → readiness
+  → authenticated MCP smoke / Compression smoke / Gateway smoke
+  → release metadata
+  → failure時 rollback
+~~~
+
+実行前にoperatorが必要な値を設定する。
+
+~~~powershell
+$env:COMPRESSION_SMOKE_TOKEN = "<existing compression caller token>"
+$env:TEAM_DOMAIN = "https://<team>.cloudflareaccess.com"
+$env:POLICY_AUD = "<MCP Access audience tag>"
+$env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
+$env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<temporary Access session cookie>"
+npm run deploy:production
+~~~
+
+CookieはMCP Access application発行のものを使い、REST tokenや別applicationの
+cookieへ置き換えない。deploy後は一時環境変数を削除する。
+
+release metadataはdocs/releases/へ保存され、gitRevision、各Worker Version、
+smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへ
+rollbackする。
+
+## 10. 変更時の確認
+
+実装・文書変更後の最低確認:
+
+~~~powershell
+npm test
+git diff --check
+~~~
+
+Production release前には対象Workerのdry-runと、main / origin/main一致、
+GitHub Actions test・Verify、Cloudflare Accessとcredentialの外部設定を別々に確認する。
+実Gemini live test、MCP OAuth、Production deployは明示的なoperator判断なしに
+通常testから自動実行しない。
+
+## 11. Source of truth
+
+- API contract: docs/specs/semantic-compression-api.md
+- Compression operations: docs/semantic-compression.md
+- MCP contract: docs/specs/semantic-compression-mcp.md
+- MCP operations: docs/semantic-compression-mcp.md
+- Gateway/Text operations: docs/OPERATIONS.md
+- Development history: docs/DEVELOPMENT_HISTORY.md
+- Release evidence: docs/releases/*.json
+- Prompt: src/semantic-compression/prompt.js
+- Profile/model/limits: src/semantic-compression/contract.js
+- Prompt token metadata: src/semantic-compression/prompt-metadata.js
+

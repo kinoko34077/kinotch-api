@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-24 — KiNoTch Base v0.3.8 release hardening
+Last verified: 2026-09-24 — documentation history and usage guide
 
 ## Implemented
 
@@ -11,6 +11,7 @@ Last verified: 2026-09-24 — KiNoTch Base v0.3.8 release hardening
 - Structured npm setup, test, dev, and deploy command entries
 - Existing Hono/Worker, generated snapshot, MCP, and deployment boundaries retained
 - Existing Domain files remain at their original paths; no bulk move was performed
+- Detailed usage, operations, and first-parent development history are documented under docs/ and linked from this index
 
 ## Default state
 
@@ -40,3 +41,4 @@ Last verified: 2026-09-24 — KiNoTch Base v0.3.8 release hardening
 - `npm test`
 - GitHub Actions `test`: success
 - GitHub Actions `Verify`: success
+- Documentation links and source-of-truth references reviewed with the current repository layout
