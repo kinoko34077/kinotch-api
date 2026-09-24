@@ -7,6 +7,7 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 - `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。
 - Repository Baseの`Verify` workflowも`test`と同様に成功を維持し、branch protectionをoperatorが更新する場合は`test`と`Verify`の両方をrequired checkにする。repo内の文書・コードだけで外部設定済みとは扱わない。
 - Production release開始時に`git fetch origin main`を実行し、現在branchが`main`かつlocal `HEAD == origin/main`であることを確認する。一致しない場合はdeployを開始しない。
+- release gateの`npm ci`、build、check、testは明示的な安全環境allowlistだけを子processへ渡す。`MCP_SMOKE_ACCESS_COOKIE`、Compression smoke token、Gemini key、未知の将来secretは通常子processへ継承せず、WranglerへもCloudflare credentialだけを限定注入する。
 - Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
 - GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
@@ -32,7 +33,7 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 `POST /v1/compress` の契約、`compact-v1` / `semantic-dense-v1` の固定prompt、
 `gemini-3.5-flash-lite`、公開usage、`GEMINI_API_KEY`／`COMPRESSION_API_TOKEN` のsecret登録、
 `COMPRESSION_SMOKE_TOKEN` を使うlive smoke、2.5 MiB body limit、5 requests/60 secondsの
-専用rate limit（pre-auth IP、authenticated IP、authenticated token fingerprintの三段）、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → Textのrollbackは
+専用rate limit（pre-auth IP、authenticated IP、authenticated token fingerprintの三段）、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → MCP → Textのrollbackは
 [`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
 
 `COMPRESSION_API_TOKEN` は256-bit以上の暗号学的にランダムな値（cryptographically random）を使い、人間が考えたpasswordや短いtokenを登録しない。`compressed_text` は untrusted display data であり、HTML表示時は sanitize し、raw HTMLとdangerous URL schemeを許可しない。
@@ -107,7 +108,7 @@ npx wrangler tail text-transform --format json
 ## リリース後の確認
 
 `npm run deploy:production`を使い、clean worktree検査 → build後のgenerated差分検査 → check／test／dry-run →
-Text Worker → 境界smoke → Gateway → 全smokeの順で実行する。成功時は両WorkerのVersion ID、commit、engine／rule／snapshot
+Text Worker → Compression Worker → MCP Worker → Gateway → readiness／境界smoke → 全smokeの順で実行する。成功時は各WorkerのVersion ID、commit、engine／rule／snapshot
 metadata、JST時刻を`docs/releases/`へ記録する。個別Workerの手動deployやCloudflare Git連携による自動deployは正式経路としない。
 
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
@@ -116,12 +117,9 @@ Workerへ渡し、smokeで不一致を検出した場合はGatewayをdeployし�
 Service Bindingの反映には時間差があるため、release gateはText／Gateway smokeを最大12回、
 5秒間隔で再確認する。source revision不一致が解消しない場合は失敗として扱う。
 
-Text Workerはdeploy前に`wrangler deployments status --name text-transform --json`で100% active
-Versionを保存する。Gatewayもdeploy前に100% active Versionを保存する。いずれかのsmokeが最後まで
-通らない場合、release gateは保存した両Worker Versionへ自動rollbackし、`status: "failed"`、失敗stage、対象Version、rollback結果を
-`docs/releases/`へ記録する。rollback自体も失敗した場合は`textRecovery.status`が
-`rollback_failed`または`gatewayRecovery.status`が`rollback_failed`になるため、Cloudflare dashboardの
-Deploymentsから保存済みVersionを手動で再度activeにする。
+Text Worker、Compression Worker、MCP Worker、Gatewayはdeploy前に`wrangler deployments status --name ... --json`で100% active
+Versionを保存する。deploy commandが通信断等で曖昧に失敗した場合はremote active Versionを再取得し、直前Versionから変化していればdeploy済みとしてrollback対象に含める。いずれかのsmokeが最後まで
+通らない場合、release gateは保存したVersionへ自動rollbackし、rollback後にactive Versionと非課金recovery smokeを確認して`status: "verified_rolled_back"`を記録する。確認できない場合やrollback自体が失敗した場合は`rollback_failed`として`docs/releases/`へ残し、Cloudflare dashboardのDeploymentsから保存済みVersionを手動で再度activeにする。
 
 rollbackのdry scenarioは`test/release-recovery.test.js`で、100% active Versionの抽出、引数生成、
 成功・失敗をCloudflareへ変更を加えず検証する。productionで意図的にsmokeを壊す試験は行わない。

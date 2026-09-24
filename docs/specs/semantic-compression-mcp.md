@@ -13,7 +13,7 @@ This Worker exposes the existing semantic-compression service to MCP clients. It
 - External protection: Cloudflare Access Managed OAuth.
 - Worker-side assertion: `Cf-Access-Jwt-Assertion` is verified with Cloudflare Access JWKS, issuer, audience, signature, and expiration.
 - Required non-secret Worker vars: `TEAM_DOMAIN`, `POLICY_AUD`.
-- The repository smoke endpoint must use `https`, have the exact `/mcp` path, and contain no URL credentials, query, or fragment before its Access cookie is sent.
+- The repository smoke endpoint must use `https`, have no explicit port, the exact `/mcp` path, and contain no URL credentials, query, or fragment before its Access cookie is sent.
 - Production deploy passes these vars explicitly with Wrangler `--var`; missing values fail before Worker deployment.
 - Missing or invalid configuration fails closed.
 
@@ -48,7 +48,7 @@ MCP client
   -> Gemini
 ```
 
-The adapter reuses the compression contract's Unicode code-point limit (`MAX_GEMINI_INPUT_CODE_POINTS`, currently 200,000). It applies the dedicated `MCP_RATE_LIMITER` only immediately before a `compress_text` Service Binding call: 5 requests per 60 seconds per client IP. `initialize` and `tools/list` do not consume this compression limit. A missing or failing limiter fails closed, and an exhausted limiter returns `rate_limited`. It sends one binding request and does not retry an accepted compression generation.
+The adapter reuses the compression contract's Unicode code-point limit (`MAX_GEMINI_INPUT_CODE_POINTS`, currently 200,000). It applies the dedicated `MCP_RATE_LIMITER` only immediately before a `compress_text` Service Binding call: 5 requests per 60 seconds. The preferred key is a non-reversible SHA-256 fingerprint of the validated Access subject/email claim, with `CF-Connecting-IP` as fallback when no stable claim is present. `initialize` and `tools/list` do not consume this compression limit. A missing or failing limiter fails closed, and an exhausted limiter returns `rate_limited`. It sends one binding request and does not retry an accepted compression generation.
 
 The adapter accepts only a successful upstream response with non-empty `compressed_text`, fixed profile `semantic-dense-v1`, a prompt version, a model, valid non-negative character counts, and an array `warnings` field.
 
@@ -68,7 +68,7 @@ Input text, compressed text outside the intended tool result, Access JWTs, Autho
 
 After bootstrap, the operator creates the Access application, enables Managed OAuth, obtains `TEAM_DOMAIN` and `POLICY_AUD`, and completes authenticated smoke. The normal release gate then requires those Access vars plus the endpoint and session cookie, passes the Worker vars explicitly, and includes MCP deploy, smoke, metadata, and rollback. Access application creation, Managed OAuth policy, and authenticated Codex/Inspector smoke are operator-controlled gates and cannot be inferred from repository code.
 
-The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `notifications/initialized` notification, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie and validates that the endpoint uses HTTPS, has the exact `/mcp` path, and has no URL credentials, query, or fragment. It never retries an MCP call and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
+The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `notifications/initialized` notification, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie and validates that the endpoint uses HTTPS, has no explicit port, the exact `/mcp` path, and no URL credentials, query, or fragment. It never retries an MCP call and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
 
 Prompt/model/profile changes belong to the REST/compression service change process. This adapter must not copy or mutate those definitions.
 

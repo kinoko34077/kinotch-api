@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-24
-- 作成時点の先頭: 7d474f49eefc976acc970cf3a69635111d347a3a
-- 収録コミット数: 112
+- 作成時点の先頭: 2298101b1e6cbfac2911436cace2bf4f838a2807
+- 収録コミット数: 119
 
 ## この文書の読み方
 
@@ -28,9 +28,13 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - REST Compression APIは POST https://api.kinotch.workers.dev/v1/compress。
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
-- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。
-- その後の c8ae4aa、b7795fc、7d474f4 はrelease hardening・文書・Base管理境界の修正であり、この作成時点ではProduction再デプロイを行っていない。
-- 7d474f4 についてGitHub ActionsのCIとVerifyはsuccess。Verifyのcheckout SHA pinはBase管理ファイルのため個別repoでは変更せず、Base側更新事項として保留。
+- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。現行mainの後続修正はProductionへ未反映である。
+- 7d474f4 までのGitHub ActionsのCIとVerifyはsuccess。Verifyのcheckout SHA pinはBase管理ファイルのため個別repoでは変更せず、Base側更新事項として保留。
+- a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
+- c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
+- 263b98a はhardening実装計画の完了記録を追加した。
+- f8e7c3c はProduction smokeの対象Workerを固定し、38dd1fa はその計画を完了した。
+- 2298101 はrelease child環境のallowlist化、deploy結果のremote reconciliation、rollback後のactive Version／非課金recovery smoke検証、Node 22.18.0固定、MCP actor fingerprint rate limit、MCP endpoint port拒否を実装した。CIとVerifyはsuccessだが、Production deploy自体はまだ行っていない。
 
 ## 大きな変更段階
 
@@ -101,6 +105,12 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - MCP smoke errorをstatus／content-type／bounded codeだけへ安全に拡張。
 - Current StateとOperationsへCI／Verifyの実測状態を反映。
 - Verify workflowはBase管理対象であるため、個別repoでのcheckout SHA pinは取り消し、Base側更新事項として残した。
+- Production smokeのGateway／Text／Compression対象はrelease時に固定し、standalone診断時の環境変数overrideと分離した。
+- release child process環境はallowlistから再構成し、npm ci・test・buildへrelease専用secretを継承しないようにした。WranglerへはCloudflare credentialだけを限定注入する。
+- deploy commandの曖昧失敗ではremote active Versionを再取得してdeploy済み状態を判定し、rollback後はactive Versionと非課金recovery smokeを検証する。
+- Node 22.18.0をpackage engines、.node-version、Project-owned CIへ固定した。
+- MCPのAccess subject/emailをログへ出さずSHA-256 fingerprint化し、actor単位のrate-limit keyへ優先利用する。安定claimがない場合だけCloudflare IPへfallbackする。
+- MCP endpointの明示portを拒否し、Access cookieを誤った送信先へ送らない構造を固定した。
 
 ## Production release evidence
 
@@ -243,6 +253,13 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 110 | 2026-09-24 | c8ae4aa942fbc9012ad22e42eff5c4a8caefa432 | fix: harden MCP production release checks |
 | 111 | 2026-09-24 | b7795fc68ec36141b86a1ffb8e849612575d3d69 | docs: record release hardening and verify gate |
 | 112 | 2026-09-24 | 7d474f49eefc976acc970cf3a69635111d347a3a | chore: respect Base-managed Verify workflow |
+| 113 | 2026-09-24 | a56cdd3e606dfd12972d17ac6fd9eeb1452bc4a2 | docs: publish repository history and usage guide |
+| 114 | 2026-09-24 | 284e27cc5299029dd704f84d8b916e7e08878f30 | docs: close documentation publication plan |
+| 115 | 2026-09-24 | c15a1002148fad5cc91996b553a14b90baf4a77f | fix: harden compression provenance and release boundaries |
+| 116 | 2026-09-24 | 263b98a49a12da9c57f13799882fc71bee88c98c | docs: close hardening implementation plan |
+| 117 | 2026-09-24 | f8e7c3c947376156436f3aee1dc9a1c205d9c58e | fix: bind production smoke to fixed endpoints |
+| 118 | 2026-09-24 | 38dd1fa66d3e5cdd678b9cf1543c4ad6c0681fc6 | docs: close production smoke target plan |
+| 119 | 2026-09-24 | 2298101b1e6cbfac2911436cace2bf4f838a2807 | fix: harden release reliability boundaries |
 
 ## 再生成・更新
 
@@ -255,4 +272,3 @@ Get-ChildItem docs/releases -File | Sort-Object Name
 ~~~
 
 この文書自身の公開commitは、そのcommitを含む次回の履歴スナップショット更新時にinventoryへ追加する。pushイベントの正確な監査が必要な場合は、GitHubのAudit Log／EventsとCloudflareのdeployment historyを別途参照する。
-

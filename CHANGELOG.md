@@ -9,7 +9,7 @@ Cloudflareの時刻はUTC、括弧内に日本時間（JST、UTC+9）を記載�
 - `generate-kanji-fallback.mjs`の`localeCompare()`依存を廃止し、Unicode／UTF-16 code unit基準の決定的な比較へ変更。`dist/kanji-fallback.mjs`を再生成し、CI環境差によるstale判定を回帰テストで固定した。
 - `npm audit`を確認。production依存（`--omit=dev --omit=optional`）は脆弱性0件。検出された3件のhighは`wrangler → miniflare → sharp`の開発依存チェーンで、現時点の自動修正はWranglerのbreaking変更を伴うため適用していない。
 
-## 現在の構成
+## 2026-09-10時点の構成
 
 ```text
 standby-display main
@@ -19,7 +19,8 @@ standby-display main
                   └─ Service Binding: clock-server / weather-proxy / rokuyo-proxy
 
 kinotch-api main
-  └─ Workers Builds自動デプロイ設定済み
+  └─ Production authority: npm run deploy:production
+       └─ Cloudflare Workers Builds単独Production auto-deployは無効化
 
 旧Account
   ├─ clock-server / weather-proxy / rokuyo-proxy / legacy-clock: HTTP 410で凍結

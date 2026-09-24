@@ -17,8 +17,8 @@ Close the repository-fixable findings from the 2026-09-24 production audit witho
 - [x] Add failing tests for strict MCP endpoint ports, release-child environment allowlisting, Node runtime declaration, rollback verification, and deployment reconciliation.
 - [x] Implement the test-backed endpoint, environment, Node, rollback, and deployment reconciliation hardening.
 - [x] Update Current State, development history, and operations documentation with the current release boundary and recovery behavior.
-- [ ] Run focused tests, full regression, generated checks, dry-runs, and `git diff --check`.
-- [ ] Commit and push the repository changes; verify the resulting GitHub checks.
+- [x] Run focused tests, full regression, generated checks, dry-runs, and `git diff --check`.
+- [x] Commit and push the repository changes; verify the resulting GitHub checks.
 
 ## External items intentionally not changed
 
@@ -26,3 +26,5 @@ Close the repository-fixable findings from the 2026-09-24 production audit witho
 - GitHub branch protection required-check configuration.
 - Base-managed Verify workflow action pinning and Node warning.
 - Cloudflare Access / Workers Builds dashboard state.
+
+Verification evidence: focused tests 63/63 passed; full `npm test` passed with 237 pass, 1 skip, 0 fail; generated snapshot checks passed; Text, Compression, MCP, and Gateway Wrangler dry-runs passed; `knt.cmd verify` passed; implementation commit `2298101` was pushed to `origin/main`; GitHub Actions `CI` and `Verify` both succeeded.

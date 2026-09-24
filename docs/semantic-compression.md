@@ -194,7 +194,7 @@ Remove-Item Env:COMPRESSION_PROMPT_TOKEN_MEASURE_INTERVAL_MS
 
 Compression smokeは新しいGateway Service Binding経路を実際に検証する必要があるため、Compression Worker deploy直後ではなくGateway deploy後に実行する。反映待ちのGET readiness確認は再試行するが、Provider受理不明の通信失敗やGemini生成自体は無条件再送しない。production smokeのdirect checkでは `https://semantic-compression.kinotch.workers.dev/health` も確認し、HTTP 200で直接到達できる場合は失敗とする。
 
-smoke失敗時のrollback対象は `Gateway → Compression → Text` の順である。release metadataには `compressionVersionId`、`previousCompressionVersionId`、`compressionSmoke`、`compressionRecovery`、`compressionModel`、`compressionPromptVersion` を含める。既存Text/Gatewayのmetadataとrollback契約は削除しない。
+smoke失敗時のrollback対象は `Gateway → Compression → MCP → Text` の順である。各rollbackはWrangler commandの終了コードだけで成功扱いにせず、100% active Versionの再取得と非課金recovery smokeを通して `verified_rolled_back` と記録する。deploy commandが曖昧に失敗した場合もremote active Versionを再照合し、remote変更を検出した状態でrollback対象へ含める。release metadataには `compressionVersionId`、`previousCompressionVersionId`、`compressionSmoke`、`compressionRecovery`、`compressionModel`、`compressionPromptVersion` を含める。既存Text/Gateway/MCPのmetadataとrollback契約は削除しない。
 
 ## 出力の安全な表示
 

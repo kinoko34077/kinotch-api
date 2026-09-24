@@ -29,7 +29,7 @@ The first deployment has a one-time bootstrap path because the Access applicatio
 
 The normal production release command requires `TEAM_DOMAIN`, `POLICY_AUD`, `MCP_ENDPOINT`, and `MCP_SMOKE_ACCESS_COOKIE` in its operator environment. It passes `TEAM_DOMAIN` and `POLICY_AUD` explicitly as Wrangler `--var` values on both MCP dry-run and deploy. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
 
-The MCP Worker has a dedicated `MCP_RATE_LIMITER` binding for `compress_text`: 5 requests per 60 seconds per client IP. Handshake and discovery requests do not consume this limit. If the binding is missing or fails, the tool fails closed with `rate_limiter_unavailable`; a denied call returns `rate_limited`. The REST Gateway rate limits remain independent.
+The MCP Worker has a dedicated `MCP_RATE_LIMITER` binding for `compress_text`: 5 requests per 60 seconds. After Access JWT verification, the preferred key is a non-reversible SHA-256 fingerprint of the validated Access subject/email claim; if no stable claim is present, the key falls back to `CF-Connecting-IP`. Handshake and discovery requests do not consume this limit. If the binding is missing or fails, the tool fails closed with `rate_limiter_unavailable`; a denied call returns `rate_limited`. The REST Gateway rate limits remain independent.
 
 After Access setup, run the authenticated smoke once, then use the normal release gate:
 
@@ -67,7 +67,7 @@ After Access setup, select Streamable HTTP in MCP Inspector and use the deployed
 
 Do not paste Access JWTs, API keys, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. The normal production release accepts only `https://semantic-compression-mcp.kinotch.workers.dev/mcp`; HTTPS, `/mcp`, no credentials, no query, and no fragment are enforced, and another Worker hostname fails before any cookie-bearing request. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
+The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, and requires an operator-provided Access session cookie. The normal production release accepts only `https://semantic-compression-mcp.kinotch.workers.dev/mcp`; HTTPS, no explicit port, `/mcp`, no credentials, no query, and no fragment are enforced, and another Worker hostname fails before any cookie-bearing request. This is an Access session-cookie smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 ```powershell
 $env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
@@ -105,7 +105,7 @@ The only normal production release command is:
 npm run deploy:production
 ```
 
-The one-time `npm run bootstrap:mcp` command is only the pre-Access Worker bootstrap described above; it is not an alternate normal release authority. The normal release gate records MCP version, endpoint, protocol, tool version, smoke, and recovery fields without recording credentials. A failed MCP smoke rolls back the MCP version when a previous version exists. Access bootstrap failures remain an explicit incomplete external operation rather than a fabricated smoke success.
+The one-time `npm run bootstrap:mcp` command is only the pre-Access Worker bootstrap described above; it is not an alternate normal release authority. The normal release gate records MCP version, endpoint, protocol, tool version, smoke, and recovery fields without recording credentials. A failed deploy is reconciled against the remote active Version before recovery state is recorded. A failed MCP smoke rolls back the MCP version when a previous version exists, verifies that the requested Version is active again, and runs a non-billable MCP handshake recovery smoke. Access bootstrap failures remain an explicit incomplete external operation rather than a fabricated smoke success.
 
 ## Troubleshooting
 
