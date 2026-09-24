@@ -2,7 +2,7 @@
 
 ## Production deploy authority
 
-Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、両Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
+Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、各Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → MCP Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
 
 - `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。
 - Repository Baseの`Verify` workflowも`test`と同様に成功を維持し、branch protectionをoperatorが更新する場合は`test`と`Verify`の両方をrequired checkにする。repo内の文書・コードだけで外部設定済みとは扱わない。
@@ -11,6 +11,7 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 - GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
 - 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
+- `npm run smoke:production` は、明示した `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` をローカル診断用に使用できる。一方、`npm run deploy:production` のrelease smokeはこれらの環境変数を無視し、`https://api.kinotch.workers.dev`、`https://text-transform.kinotch.workers.dev`、`https://semantic-compression.kinotch.workers.dev`へ固定する。別endpointが正常でもrelease成功とは扱わない。
 
 ## 本番の基本確認
 

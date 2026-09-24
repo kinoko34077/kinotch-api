@@ -9,6 +9,8 @@ import {
   validateWeatherPayload,
   checkDirectCompressionWorker,
   COMPRESSION_SMOKE_TIMEOUT_MS,
+  PRODUCTION_SMOKE_TARGETS,
+  resolveSmokeTargets,
   runCompressionGatewayReadiness,
   runCompressionSmoke,
 } from "../scripts/smoke-production.mjs";
@@ -26,6 +28,55 @@ function capabilities(sourceRevision) {
     dictionaryVersion: "dictionary-v1",
   };
 }
+
+test("standalone smoke targets may be overridden without changing production targets", () => {
+  const localTargets = resolveSmokeTargets({
+    API_BASE_URL: "https://local-api.invalid/",
+    TEXT_DIRECT_URL: "https://local-text.invalid/",
+    COMPRESSION_DIRECT_URL: "https://local-compression.invalid/",
+  });
+
+  assert.deepEqual(localTargets, {
+    baseUrl: "https://local-api.invalid",
+    textDirectUrl: "https://local-text.invalid",
+    compressionDirectUrl: "https://local-compression.invalid",
+  });
+  assert.deepEqual(PRODUCTION_SMOKE_TARGETS, {
+    baseUrl: "https://api.kinotch.workers.dev",
+    textDirectUrl: "https://text-transform.kinotch.workers.dev",
+    compressionDirectUrl: "https://semantic-compression.kinotch.workers.dev",
+  });
+});
+
+test("compression smoke accepts an explicit target set", async () => {
+  const inputText = "短い入力";
+  const compressedPayload = await buildCompressionResponse({
+    compressedText: "短縮",
+    inputText,
+    profile: "compact-v1",
+    promptVersion: "compact-v1.1",
+  });
+  let receivedUrl;
+  await runCompressionSmoke({
+    token: "<fixture-smoke-token>",
+    profile: "compact-v1",
+    inputText,
+    targets: {
+      baseUrl: "https://explicit-target.invalid",
+      textDirectUrl: "https://unused-text.invalid",
+      compressionDirectUrl: "https://unused-compression.invalid",
+    },
+    fetchImpl: async (input) => {
+      receivedUrl = input;
+      return new Response(JSON.stringify(compressedPayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "X-Request-ID": "smoke-compression-compact" },
+      });
+    },
+  });
+
+  assert.equal(receivedUrl, "https://explicit-target.invalid/v1/compress");
+});
 
 test("capabilities smoke accepts the expected source revision", () => {
   assert.equal(validateCapabilitiesPayload(capabilities("a".repeat(40)), "a".repeat(40)), null);

@@ -13,6 +13,7 @@ import {
   rollbackAfterSmokeFailure,
 } from "./release-recovery.mjs";
 import {
+  PRODUCTION_SMOKE_TARGETS,
   runCompressionGatewayReadiness,
   runCompressionSmoke,
   runProductionSmoke,
@@ -374,6 +375,7 @@ async function main() {
 
     state.stage = "Text Worker smoke";
     state.textSmoke = await runSmokeWithRetry({
+      targets: PRODUCTION_SMOKE_TARGETS,
       checkDirect: true,
       checkGuards: false,
       checkCompression: false,
@@ -412,16 +414,18 @@ async function main() {
     state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
 
     state.stage = "Compression Gateway readiness";
-    await runCompressionGatewayReadinessWithRetry();
+    await runCompressionGatewayReadinessWithRetry({ targets: PRODUCTION_SMOKE_TARGETS });
 
     state.stage = "Compression smoke";
     state.compressionSmoke = {
-      compact: await runCompressionSmoke({
-        token: process.env.COMPRESSION_SMOKE_TOKEN,
+          compact: await runCompressionSmoke({
+            targets: PRODUCTION_SMOKE_TARGETS,
+            token: process.env.COMPRESSION_SMOKE_TOKEN,
         profile: COMPRESSION_PROFILE_COMPACT,
       }),
-      semanticDense: await runCompressionSmoke({
-        token: process.env.COMPRESSION_SMOKE_TOKEN,
+          semanticDense: await runCompressionSmoke({
+            targets: PRODUCTION_SMOKE_TARGETS,
+            token: process.env.COMPRESSION_SMOKE_TOKEN,
         profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
       }),
     };
@@ -429,6 +433,7 @@ async function main() {
 
     state.stage = "Gateway smoke";
     state.gatewaySmoke = await runSmokeWithRetry({
+      targets: PRODUCTION_SMOKE_TARGETS,
       checkDirect: true,
       checkCompression: false,
       expectedSourceRevision: state.gitRevision,

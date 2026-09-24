@@ -9,17 +9,32 @@ import {
   sha256Hex,
 } from "../src/semantic-compression/contract.js";
 
-const API_BASE_URL = (process.env.API_BASE_URL ?? "https://api.kinotch.workers.dev").replace(/\/+$/, "");
-const TEXT_DIRECT_URL = (process.env.TEXT_DIRECT_URL ?? "https://text-transform.kinotch.workers.dev").replace(/\/+$/, "");
-const COMPRESSION_DIRECT_URL = (process.env.COMPRESSION_DIRECT_URL ?? "https://semantic-compression.kinotch.workers.dev").replace(/\/+$/, "");
+export const PRODUCTION_SMOKE_TARGETS = Object.freeze({
+  baseUrl: "https://api.kinotch.workers.dev",
+  textDirectUrl: "https://text-transform.kinotch.workers.dev",
+  compressionDirectUrl: "https://semantic-compression.kinotch.workers.dev",
+});
+
+function normalizeSmokeUrl(value, fallback) {
+  return (typeof value === "string" && value.length > 0 ? value : fallback).replace(/\/+$/, "");
+}
+
+export function resolveSmokeTargets(env = process.env) {
+  return {
+    baseUrl: normalizeSmokeUrl(env?.API_BASE_URL, PRODUCTION_SMOKE_TARGETS.baseUrl),
+    textDirectUrl: normalizeSmokeUrl(env?.TEXT_DIRECT_URL, PRODUCTION_SMOKE_TARGETS.textDirectUrl),
+    compressionDirectUrl: normalizeSmokeUrl(env?.COMPRESSION_DIRECT_URL, PRODUCTION_SMOKE_TARGETS.compressionDirectUrl),
+  };
+}
+
 export const COMPRESSION_SMOKE_TIMEOUT_MS = 60_000;
 
-async function request(path, init = {}, fetchImpl = globalThis.fetch, timeoutMs = 15_000) {
+async function request(baseUrl, path, init = {}, fetchImpl = globalThis.fetch, timeoutMs = 15_000) {
   const startedAt = performance.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(`${API_BASE_URL}${path}`, { ...init, signal: controller.signal });
+    const response = await fetchImpl(`${baseUrl}${path}`, { ...init, signal: controller.signal });
     let payload = null;
     try {
       payload = await response.json();
@@ -66,12 +81,12 @@ async function checkDirectWorker(url, fetchImpl) {
   return { status: statuses.at(-1), reachable: true, statuses };
 }
 
-export async function checkDirectTextWorker({ fetchImpl = globalThis.fetch } = {}) {
-  return checkDirectWorker(TEXT_DIRECT_URL, fetchImpl);
+export async function checkDirectTextWorker({ fetchImpl = globalThis.fetch, targets = resolveSmokeTargets() } = {}) {
+  return checkDirectWorker(targets.textDirectUrl, fetchImpl);
 }
 
-export async function checkDirectCompressionWorker({ fetchImpl = globalThis.fetch } = {}) {
-  return checkDirectWorker(COMPRESSION_DIRECT_URL, fetchImpl);
+export async function checkDirectCompressionWorker({ fetchImpl = globalThis.fetch, targets = resolveSmokeTargets() } = {}) {
+  return checkDirectWorker(targets.compressionDirectUrl, fetchImpl);
 }
 
 export function validateCapabilitiesPayload(payload, expectedSourceRevision) {
@@ -164,6 +179,7 @@ export async function validateCompressionPayload(
 
 export async function runCompressionSmoke({
   fetchImpl = globalThis.fetch,
+  targets = resolveSmokeTargets(),
   token,
   path = "/v1/compress",
   profile = COMPRESSION_PROFILE_SEMANTIC_DENSE,
@@ -180,7 +196,7 @@ export async function runCompressionSmoke({
     throw new Error("Compression smoke requires a supported profile");
   }
 
-  const result = await request(path, {
+  const result = await request(targets.baseUrl, path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -212,9 +228,10 @@ export async function runCompressionSmoke({
 
 export async function runCompressionGatewayReadiness({
   fetchImpl = globalThis.fetch,
+  targets = resolveSmokeTargets(),
   path = "/v1/compress",
 } = {}) {
-  const result = await request(path, {
+  const result = await request(targets.baseUrl, path, {
     method: "GET",
     headers: { "X-Request-ID": "smoke-compression-readiness" },
   }, fetchImpl);
@@ -232,18 +249,19 @@ export async function runProductionSmoke({
   checkDirect = false,
   checkGuards = true,
   checkCompression = true,
+  targets = resolveSmokeTargets(),
   compressionToken,
   expectedSourceRevision,
   fetchImpl = globalThis.fetch,
 } = {}) {
-  const health = await request("/health", {
+  const health = await request(targets.baseUrl, "/health", {
     headers: { "X-Request-ID": "smoke-health" },
   }, fetchImpl);
   if (health.status !== 200 || health.payload?.status !== "ok") {
     throw new Error(`health smoke failed with status ${health.status}`);
   }
 
-  const capabilities = await request("/v1/capabilities", {
+  const capabilities = await request(targets.baseUrl, "/v1/capabilities", {
     headers: { "X-Request-ID": "smoke-capabilities" },
   }, fetchImpl);
   const capabilitiesError = capabilities.status === 200
@@ -253,31 +271,31 @@ export async function runProductionSmoke({
     throw new Error(`capabilities smoke failed with status ${capabilities.status}: ${capabilitiesError}`);
   }
 
-  const time = await request("/v1/time", {
+  const time = await request(targets.baseUrl, "/v1/time", {
     headers: { "X-Request-ID": "smoke-time" },
   }, fetchImpl);
   const timeError = time.status === 200 ? validateClockPayload(time.payload) : "time request failed";
   if (timeError) throw new Error(`time smoke failed with status ${time.status}: ${timeError}`);
 
-  const weather = await request("/v1/weather?lat=35.6812&lon=139.7671", {
+  const weather = await request(targets.baseUrl, "/v1/weather?lat=35.6812&lon=139.7671", {
     headers: { "X-Request-ID": "smoke-weather" },
   }, fetchImpl);
   const weatherError = weather.status === 200 ? validateWeatherPayload(weather.payload) : "weather request failed";
   if (weatherError) throw new Error(`weather smoke failed with status ${weather.status}: ${weatherError}`);
 
-  const rokuyo = await request("/v1/calendar/rokuyo?date=2026-09-09", {
+  const rokuyo = await request(targets.baseUrl, "/v1/calendar/rokuyo?date=2026-09-09", {
     headers: { "X-Request-ID": "smoke-rokuyo" },
   }, fetchImpl);
   const rokuyoError = rokuyo.status === 200 ? validateRokuyoPayload(rokuyo.payload) : "rokuyo request failed";
   if (rokuyoError) throw new Error(`rokuyo smoke failed with status ${rokuyo.status}: ${rokuyoError}`);
 
-  const moon = await request("/v1/astronomy/moon?lat=35.6812&lon=139.7671", {
+  const moon = await request(targets.baseUrl, "/v1/astronomy/moon?lat=35.6812&lon=139.7671", {
     headers: { "X-Request-ID": "smoke-moon" },
   }, fetchImpl);
   const moonError = moon.status === 200 ? validateMoonPayload(moon.payload) : "moon request failed";
   if (moonError) throw new Error(`moon smoke failed with status ${moon.status}: ${moonError}`);
 
-  const preflight = await request("/v1/transform", {
+  const preflight = await request(targets.baseUrl, "/v1/transform", {
     method: "OPTIONS",
     headers: {
       Origin: "https://smoke.invalid",
@@ -294,7 +312,7 @@ export async function runProductionSmoke({
     throw new Error(`CORS preflight smoke failed with status ${preflight.status}`);
   }
 
-  const batch = await request("/v1/transform/batch", {
+  const batch = await request(targets.baseUrl, "/v1/transform/batch", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -320,11 +338,13 @@ export async function runProductionSmoke({
     ? {
       compact: await runCompressionSmoke({
         fetchImpl,
+        targets,
         token: compressionToken,
         profile: COMPRESSION_PROFILE_COMPACT,
       }),
       semanticDense: await runCompressionSmoke({
         fetchImpl,
+        targets,
         token: compressionToken,
         profile: COMPRESSION_PROFILE_SEMANTIC_DENSE,
       }),
@@ -332,7 +352,7 @@ export async function runProductionSmoke({
     : null;
 
   const invalidProfile = checkGuards
-    ? await request("/v1/transform", {
+    ? await request(targets.baseUrl, "/v1/transform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: "学校", profile: ["not-a-profile"] }),
@@ -342,13 +362,13 @@ export async function runProductionSmoke({
     throw new Error(`invalid profile smoke failed with status ${invalidProfile.status}`);
   }
 
-  const invalidQuery = checkGuards ? await request("/v1/weather?lat=91&lon=139.7", {}, fetchImpl) : null;
+  const invalidQuery = checkGuards ? await request(targets.baseUrl, "/v1/weather?lat=91&lon=139.7", {}, fetchImpl) : null;
   if (invalidQuery && (invalidQuery.status !== 400 || invalidQuery.payload?.error !== "invalid_query")) {
     throw new Error(`query validation smoke failed with status ${invalidQuery.status}`);
   }
 
   const oversizedBody = checkGuards
-    ? await request("/v1/transform", {
+    ? await request(targets.baseUrl, "/v1/transform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: "x".repeat(600_000) }),
@@ -377,17 +397,17 @@ export async function runProductionSmoke({
     throw new Error("compression request ID propagation smoke failed");
   }
 
-  const directTextWorker = checkDirect ? await checkDirectTextWorker({ fetchImpl }) : null;
+  const directTextWorker = checkDirect ? await checkDirectTextWorker({ fetchImpl, targets }) : null;
   if (directTextWorker?.reachable) {
     throw new Error("text-transform direct workers.dev endpoint is still reachable");
   }
-  const directCompressionWorker = checkDirect ? await checkDirectCompressionWorker({ fetchImpl }) : null;
+  const directCompressionWorker = checkDirect ? await checkDirectCompressionWorker({ fetchImpl, targets }) : null;
   if (directCompressionWorker?.reachable) {
     throw new Error("semantic-compression direct workers.dev endpoint is still reachable");
   }
 
   return {
-    baseUrl: API_BASE_URL,
+    baseUrl: targets.baseUrl,
     health: { status: health.status, durationMs: health.durationMs },
     capabilities: {
       status: capabilities.status,

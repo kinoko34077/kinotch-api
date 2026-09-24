@@ -77,3 +77,8 @@ test("production release retries only non-billable Compression readiness", () =>
   assert.match(source, /profile: COMPRESSION_PROFILE_SEMANTIC_DENSE/);
   assert.match(source, /checkCompression:\s*false/);
 });
+
+test("production release passes fixed production smoke targets to every smoke boundary", () => {
+  assert.match(source, /PRODUCTION_SMOKE_TARGETS/);
+  assert.ok((source.match(/targets:\s*PRODUCTION_SMOKE_TARGETS/g) ?? []).length >= 5);
+});

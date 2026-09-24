@@ -190,7 +190,7 @@ Remove-Item Env:COMPRESSION_PROMPT_TOKEN_MEASURE_INTERVAL_MS
 
 ## Deployとrollback
 
-`npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → Gateway deploy → 非課金のCompression Gateway readiness確認（反映待ち時のみ再試行）→ Gateway経由でcompact-v1とsemantic-dense-v1を各1回smoke → Compressionを再実行しない完全Gateway smoke → release metadata の順に実行する。
+`npm run deploy:production` は、generated checks → tests → Text Worker dry-run → Compression Worker dry-run → MCP Worker dry-run → Gateway dry-run → 直前100% active version capture → Text deploy → Text smoke → Compression deploy → MCP deploy → Gateway deploy → 非課金のCompression Gateway readiness確認（反映待ち時のみ再試行）→ Gateway経由でcompact-v1とsemantic-dense-v1を各1回smoke → Compressionを再実行しない完全Gateway smoke → release metadata の順に実行する。release smokeは `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` の環境変数overrideを使用せず、Gateway `https://api.kinotch.workers.dev`、Text Worker `https://text-transform.kinotch.workers.dev`、Compression Worker `https://semantic-compression.kinotch.workers.dev`へ固定する。これらの環境変数は `npm run smoke:production` を単独で実行するローカル診断時だけ使用できる。
 
 Compression smokeは新しいGateway Service Binding経路を実際に検証する必要があるため、Compression Worker deploy直後ではなくGateway deploy後に実行する。反映待ちのGET readiness確認は再試行するが、Provider受理不明の通信失敗やGemini生成自体は無条件再送しない。production smokeのdirect checkでは `https://semantic-compression.kinotch.workers.dev/health` も確認し、HTTP 200で直接到達できる場合は失敗とする。
 
