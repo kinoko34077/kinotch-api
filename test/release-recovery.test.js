@@ -124,9 +124,40 @@ test("rollback dry scenario reports a successful recovery", async () => {
   const result = await rollbackAfterSmokeFailure({
     previousVersionId: activeVersionId,
     rollback: async (versionId) => calls.push(versionId),
+    getActiveVersionId: async () => activeVersionId,
+    recoverySmoke: async () => ({ status: "passed", kind: "non_billable" }),
   });
-  assert.deepEqual(result, { status: "rolled_back", targetVersionId: activeVersionId });
+  assert.deepEqual(result, {
+    status: "verified_rolled_back",
+    targetVersionId: activeVersionId,
+    activeVersionId,
+    recoverySmoke: { status: "passed", kind: "non_billable" },
+  });
   assert.deepEqual(calls, [activeVersionId]);
+});
+
+test("rollback rejects when the requested version is not active after rollback", async () => {
+  await assert.rejects(
+    rollbackAfterSmokeFailure({
+      previousVersionId: activeVersionId,
+      rollback: async () => {},
+      getActiveVersionId: async () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      recoverySmoke: async () => ({ status: "passed" }),
+    }),
+    /active version mismatch/i,
+  );
+});
+
+test("rollback rejects when recovery smoke does not pass", async () => {
+  await assert.rejects(
+    rollbackAfterSmokeFailure({
+      previousVersionId: activeVersionId,
+      rollback: async () => {},
+      getActiveVersionId: async () => activeVersionId,
+      recoverySmoke: async () => ({ status: "failed" }),
+    }),
+    /recovery smoke failed/i,
+  );
 });
 
 test("rollback dry scenario propagates a recovery failure", async () => {
@@ -134,6 +165,8 @@ test("rollback dry scenario propagates a recovery failure", async () => {
     rollbackAfterSmokeFailure({
       previousVersionId: activeVersionId,
       rollback: async () => { throw new Error("rollback unavailable"); },
+      getActiveVersionId: async () => activeVersionId,
+      recoverySmoke: async () => ({ status: "passed" }),
     }),
     /rollback unavailable/,
   );

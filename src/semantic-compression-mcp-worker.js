@@ -28,8 +28,11 @@ export function createCompressionMcpWorker({
         return errorResponse(bodyLimit.code, bodyLimit.code === "payload_too_large" ? 413 : 400);
       }
 
+      const handlerEnv = authentication.actorKey
+        ? { ...env, MCP_ACCESS_ACTOR_KEY: authentication.actorKey }
+        : env;
       try {
-        return await createCompressionMcpHandlerImpl(env)(request, env, ctx);
+        return await createCompressionMcpHandlerImpl(handlerEnv)(request, handlerEnv, ctx);
       } catch {
         return errorResponse("internal_error", 500);
       }

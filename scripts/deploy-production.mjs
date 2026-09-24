@@ -37,6 +37,7 @@ import {
 import { runMcpSmoke } from "./smoke-mcp.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
+import { deployWithReconciliation } from "./release-deploy.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -228,6 +229,34 @@ async function runCompressionGatewayReadinessWithRetry(options, attempts = 12) {
   throw lastError;
 }
 
+async function runGatewayRecoverySmoke() {
+  await runProductionSmoke({
+    targets: PRODUCTION_SMOKE_TARGETS,
+    checkDirect: true,
+    checkCompression: false,
+  });
+  return { status: "passed", mode: "non_billable_gateway_smoke" };
+}
+
+async function runCompressionRecoverySmoke() {
+  await runCompressionGatewayReadiness({ targets: PRODUCTION_SMOKE_TARGETS });
+  return { status: "passed", mode: "non_billable_compression_readiness" };
+}
+
+async function runMcpRecoverySmoke(mcpSmokeInputs) {
+  if (!mcpSmokeInputs) throw new Error("MCP recovery smoke inputs are unavailable");
+  await runMcpSmoke({ ...mcpSmokeInputs, checkToolCall: false });
+  return { status: "passed", mode: "non_billable_mcp_handshake" };
+}
+
+function summarizeDeploymentResult(result) {
+  return {
+    status: result.status,
+    versionId: result.versionId ?? null,
+    needsRollback: result.needsRollback === true,
+  };
+}
+
 function releaseTimestamp() {
   const recordedAt = new Date();
   return {
@@ -283,6 +312,10 @@ async function main() {
     compressionRecovery: null,
     mcpRecovery: null,
     gatewayRecovery: null,
+    textDeployment: null,
+    compressionDeployment: null,
+    mcpDeployment: null,
+    gatewayDeployment: null,
     textDeployed: false,
     textSmokeCompleted: false,
     compressionDeployed: false,
@@ -291,6 +324,7 @@ async function main() {
     gatewayDeployed: false,
     gatewaySmokeCompleted: false,
   };
+  let mcpSmokeInputs = null;
 
   try {
     state.stage = "clean worktree assertion";
@@ -312,7 +346,7 @@ async function main() {
     assertPrivateWorkerConfig(compressionWorkerConfig, "semantic-compression");
 
     state.stage = "MCP Access configuration assertion";
-    const mcpSmokeInputs = resolveMcpSmokeInputs(process.env);
+    mcpSmokeInputs = resolveMcpSmokeInputs(process.env);
     state.mcpEndpoint = mcpSmokeInputs.endpoint;
 
     if (typeof process.env.COMPRESSION_SMOKE_TOKEN !== "string" || process.env.COMPRESSION_SMOKE_TOKEN.length === 0) {
@@ -360,18 +394,25 @@ async function main() {
     state.previousMcpVersionId = await getActiveMcpVersionId();
 
     state.stage = "Text Worker deploy";
-    const textDeployOutput = await runWrangler(
-      [
-        "deploy",
-        "--config",
-        "wrangler.text-transform.jsonc",
-        "--var",
-        `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
-      ],
-      { capture: true },
-    );
-    state.textDeployed = true;
-    state.textVersionId = getVersionId(textDeployOutput, "text-transform");
+    const textDeployment = await deployWithReconciliation({
+      deploy: () => runWrangler(
+        [
+          "deploy",
+          "--config",
+          "wrangler.text-transform.jsonc",
+          "--var",
+          `TEXT_CORE_SOURCE_REVISION:${state.gitRevision}`,
+        ],
+        { capture: true },
+      ),
+      parseVersionId: (output) => getVersionId(output, "text-transform"),
+      getActiveVersionId: getActiveTextVersionId,
+      previousVersionId: state.previousTextVersionId,
+    });
+    state.textDeployment = summarizeDeploymentResult(textDeployment);
+    state.textDeployed = textDeployment.deployed;
+    state.textVersionId = textDeployment.versionId;
+    if (textDeployment.error) throw textDeployment.error;
 
     state.stage = "Text Worker smoke";
     state.textSmoke = await runSmokeWithRetry({
@@ -384,34 +425,55 @@ async function main() {
     state.textSmokeCompleted = true;
 
     state.stage = "Compression Worker deploy";
-    const compressionDeployOutput = await runWrangler(
-      [
-        "deploy",
-        "--config",
-        "wrangler.semantic-compression.jsonc",
-      ],
-      { capture: true },
-    );
-    state.compressionDeployed = true;
-    state.compressionVersionId = getVersionId(compressionDeployOutput, "semantic-compression");
+    const compressionDeployment = await deployWithReconciliation({
+      deploy: () => runWrangler(
+        [
+          "deploy",
+          "--config",
+          "wrangler.semantic-compression.jsonc",
+        ],
+        { capture: true },
+      ),
+      parseVersionId: (output) => getVersionId(output, "semantic-compression"),
+      getActiveVersionId: getActiveCompressionVersionId,
+      previousVersionId: state.previousCompressionVersionId,
+    });
+    state.compressionDeployment = summarizeDeploymentResult(compressionDeployment);
+    state.compressionDeployed = compressionDeployment.deployed;
+    state.compressionVersionId = compressionDeployment.versionId;
+    if (compressionDeployment.error) throw compressionDeployment.error;
 
     state.stage = "MCP Worker deploy";
-    const mcpDeployOutput = await runWrangler(
-      createMcpDeployArgs({ env: process.env }),
-      { capture: true },
-    );
-    state.mcpDeployed = true;
-    state.mcpVersionId = getVersionId(mcpDeployOutput, "semantic-compression-mcp");
+    const mcpDeployment = await deployWithReconciliation({
+      deploy: () => runWrangler(
+        createMcpDeployArgs({ env: process.env }),
+        { capture: true },
+      ),
+      parseVersionId: (output) => getVersionId(output, "semantic-compression-mcp"),
+      getActiveVersionId: getActiveMcpVersionId,
+      previousVersionId: state.previousMcpVersionId,
+    });
+    state.mcpDeployment = summarizeDeploymentResult(mcpDeployment);
+    state.mcpDeployed = mcpDeployment.deployed;
+    state.mcpVersionId = mcpDeployment.versionId;
+    if (mcpDeployment.error) throw mcpDeployment.error;
     state.stage = "MCP Access session-cookie smoke";
     state.mcpSmoke = await runMcpSmoke(mcpSmokeInputs);
 
     state.stage = "Gateway deploy";
-    const gatewayDeployOutput = await runWrangler(
-      ["deploy", "--config", "wrangler.jsonc"],
-      { capture: true },
-    );
-    state.gatewayDeployed = true;
-    state.gatewayVersionId = getVersionId(gatewayDeployOutput, "api");
+    const gatewayDeployment = await deployWithReconciliation({
+      deploy: () => runWrangler(
+        ["deploy", "--config", "wrangler.jsonc"],
+        { capture: true },
+      ),
+      parseVersionId: (output) => getVersionId(output, "api"),
+      getActiveVersionId: getActiveGatewayVersionId,
+      previousVersionId: state.previousGatewayVersionId,
+    });
+    state.gatewayDeployment = summarizeDeploymentResult(gatewayDeployment);
+    state.gatewayDeployed = gatewayDeployment.deployed;
+    state.gatewayVersionId = gatewayDeployment.versionId;
+    if (gatewayDeployment.error) throw gatewayDeployment.error;
 
     state.stage = "Compression Gateway readiness";
     await runCompressionGatewayReadinessWithRetry({ targets: PRODUCTION_SMOKE_TARGETS });
@@ -451,8 +513,12 @@ async function main() {
       gatewayVersionId: state.gatewayVersionId,
       textSmoke: state.textSmoke,
       compressionSmoke: state.compressionSmoke,
-      gatewaySmoke: state.gatewaySmoke,
-      compressionRecovery: state.compressionRecovery,
+       gatewaySmoke: state.gatewaySmoke,
+       textDeployment: state.textDeployment,
+       compressionDeployment: state.compressionDeployment,
+       mcpDeployment: state.mcpDeployment,
+       gatewayDeployment: state.gatewayDeployment,
+       compressionRecovery: state.compressionRecovery,
       ...buildMcpReleaseMetadata({
         versionId: state.mcpVersionId,
         previousVersionId: state.previousMcpVersionId,
@@ -479,6 +545,8 @@ async function main() {
             "automatic-gateway-smoke-failure-rollback",
             { workerName: "api", config: "wrangler.jsonc" },
           )),
+          getActiveVersionId: getActiveGatewayVersionId,
+          recoverySmoke: runGatewayRecoverySmoke,
         });
       } catch (rollbackError) {
         state.gatewayRecovery = {
@@ -498,6 +566,8 @@ async function main() {
             "automatic-compression-smoke-failure-rollback",
             { workerName: "semantic-compression", config: "wrangler.semantic-compression.jsonc" },
           )),
+          getActiveVersionId: getActiveCompressionVersionId,
+          recoverySmoke: runCompressionRecoverySmoke,
         });
       } catch (rollbackError) {
         state.compressionRecovery = {
@@ -517,6 +587,8 @@ async function main() {
             "automatic-mcp-smoke-failure-rollback",
             { workerName: MCP_RELEASE_WORKER_NAME, config: MCP_RELEASE_CONFIG },
           )),
+          getActiveVersionId: getActiveMcpVersionId,
+          recoverySmoke: () => runMcpRecoverySmoke(mcpSmokeInputs),
         });
       } catch (rollbackError) {
         state.mcpRecovery = {
@@ -535,6 +607,8 @@ async function main() {
             versionId,
             "automatic-text-smoke-failure-rollback",
           )),
+          getActiveVersionId: getActiveTextVersionId,
+          recoverySmoke: runGatewayRecoverySmoke,
         });
       } catch (rollbackError) {
         state.textRecovery = {
@@ -570,6 +644,10 @@ async function main() {
         textRecovery: state.textRecovery,
         compressionRecovery: state.compressionRecovery,
         gatewayRecovery: state.gatewayRecovery,
+        textDeployment: state.textDeployment,
+        compressionDeployment: state.compressionDeployment,
+        mcpDeployment: state.mcpDeployment,
+        gatewayDeployment: state.gatewayDeployment,
         compressionModel: COMPRESSION_MODEL,
         compressionPromptVersion: COMPRESSION_PROMPT_VERSION,
         compressionPromptVersions: {

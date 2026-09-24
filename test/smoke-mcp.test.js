@@ -59,6 +59,35 @@ test("MCP smoke completes initialize lifecycle before tools/list and compress_te
   assert.deepEqual(calls[3].body.params.arguments, { text: "MCP smoke text" });
 });
 
+test("MCP recovery smoke stops after tools/list without calling compression", async () => {
+  const methods = [];
+  const result = await runMcpSmoke({
+    endpoint: "https://mcp.example.test/mcp",
+    accessCookie: "CF_Authorization=secret-cookie",
+    checkToolCall: false,
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      methods.push(body.method);
+      if (body.method === "initialize") return rpcResult(body.id, { protocolVersion: "2025-06-18" });
+      if (body.method === "notifications/initialized") return new Response(null, { status: 202 });
+      return rpcResult(body.id, { tools: [{ name: "compress_text" }] });
+    },
+  });
+
+  assert.deepEqual(result, {
+    status: "passed",
+    httpStatus: 200,
+    authMode: "access_session_cookie",
+    endpoint: "https://mcp.example.test/mcp",
+    tool: null,
+    profile: null,
+    model: null,
+    inputChars: null,
+    outputChars: null,
+  });
+  assert.deepEqual(methods, ["initialize", "notifications/initialized", "tools/list"]);
+});
+
 test("MCP smoke fails safely without endpoint or Access session cookie", async () => {
   await assert.rejects(
     runMcpSmoke({ endpoint: "", accessCookie: "" }),
@@ -81,10 +110,11 @@ test("MCP smoke rejects non-HTTPS or credential-ambiguous endpoints before fetch
     "https://user:pass@mcp.example.test/mcp",
     "https://mcp.example.test/mcp?debug=true",
     "https://mcp.example.test/mcp#fragment",
+    "https://mcp.example.test:8443/mcp",
   ]) {
     await assert.rejects(
       runMcpSmoke({ endpoint, accessCookie: "CF_Authorization=secret-cookie", fetchImpl }),
-      /MCP_ENDPOINT must use HTTPS|MCP_ENDPOINT must not include credentials|MCP_ENDPOINT must not include query or fragment/,
+      /MCP_ENDPOINT must use HTTPS|MCP_ENDPOINT must not include credentials|MCP_ENDPOINT must not include query or fragment|MCP_ENDPOINT must not include an explicit port/,
     );
   }
   assert.equal(fetchCalls, 0);

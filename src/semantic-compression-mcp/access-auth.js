@@ -13,6 +13,19 @@ function normalizeTeamDomain(value) {
   return url.origin;
 }
 
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function accessActorClaim(payload) {
+  for (const value of [payload?.sub, payload?.email]) {
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return null;
+}
+
 export async function verifyAccessJwt(request, env, {
   createRemoteJWKSetImpl = createRemoteJWKSet,
   jwtVerifyImpl = jwtVerify,
@@ -35,7 +48,12 @@ export async function verifyAccessJwt(request, env, {
     if (!Number.isSafeInteger(payload?.exp) || payload.exp <= now()) {
       return { ok: false, code: "authentication_failed" };
     }
-    return { ok: true };
+    const actorClaim = accessActorClaim(payload);
+    if (!actorClaim) return { ok: true };
+    return {
+      ok: true,
+      actorKey: await sha256Hex(`cloudflare-access:${actorClaim}`),
+    };
   } catch {
     return { ok: false, code: "authentication_failed" };
   }

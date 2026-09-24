@@ -56,6 +56,7 @@ function parseEndpoint(endpoint) {
     throw new Error("MCP_ENDPOINT must be a valid URL");
   }
   if (url.protocol !== "https:") throw new Error("MCP_ENDPOINT must use HTTPS");
+  if (url.port) throw new Error("MCP_ENDPOINT must not include an explicit port");
   if (url.username || url.password) throw new Error("MCP_ENDPOINT must not include credentials");
   if (url.search || url.hash) throw new Error("MCP_ENDPOINT must not include query or fragment");
   if (url.pathname !== "/mcp") throw new Error("MCP_ENDPOINT must point to /mcp");
@@ -87,6 +88,7 @@ export async function runMcpSmoke({
   accessCookie,
   fetchImpl = globalThis.fetch,
   timeoutMs = MCP_SMOKE_TIMEOUT_MS,
+  checkToolCall = true,
 } = {}) {
   const target = parseEndpoint(endpoint);
   if (typeof accessCookie !== "string" || accessCookie.length === 0) {
@@ -151,6 +153,19 @@ export async function runMcpSmoke({
   const tools = await request("tools/list", {});
   if (!Array.isArray(tools.tools) || tools.tools.length !== 1 || tools.tools[0]?.name !== "compress_text") {
     throw new McpSmokeError();
+  }
+  if (!checkToolCall) {
+    return {
+      status: "passed",
+      httpStatus: 200,
+      authMode: "access_session_cookie",
+      endpoint: target,
+      tool: null,
+      profile: null,
+      model: null,
+      inputChars: null,
+      outputChars: null,
+    };
   }
   const result = await request("tools/call", {
     name: "compress_text",

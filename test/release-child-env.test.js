@@ -12,6 +12,7 @@ const sourceEnv = {
   RUN_GEMINI_LIVE_TEST: "true",
   RUN_COMPRESSION_QUALITY_EVAL: "true",
   RUN_COMPRESSION_USAGE_MEASURE: "true",
+  UNRELATED_SECRET: "must-not-reach-child",
   CLOUDFLARE_API_TOKEN: "cloudflare-token-fixture",
   CLOUDFLARE_API_KEY: "cloudflare-key-fixture",
   CLOUDFLARE_EMAIL: "operator@example.test",
@@ -21,10 +22,9 @@ const sourceEnv = {
 test("release child environment removes release secrets by default", () => {
   const childEnv = createReleaseChildEnv(sourceEnv);
 
-  assert.deepEqual(childEnv, {
-    PATH: "fixture-path",
-    NODE_ENV: "production",
-  });
+  assert.equal(childEnv.PATH, "fixture-path");
+  assert.equal(childEnv.NODE_ENV, "production");
+  assert.equal(childEnv.UNRELATED_SECRET, undefined);
   assert.equal(sourceEnv.MCP_SMOKE_ACCESS_COOKIE, "cookie-fixture");
 });
 

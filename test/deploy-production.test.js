@@ -82,3 +82,19 @@ test("production release passes fixed production smoke targets to every smoke bo
   assert.match(source, /PRODUCTION_SMOKE_TARGETS/);
   assert.ok((source.match(/targets:\s*PRODUCTION_SMOKE_TARGETS/g) ?? []).length >= 5);
 });
+
+test("production release reconciles deploy failures and verifies rollback recovery", () => {
+  assert.match(source, /deployWithReconciliation/);
+  assert.match(source, /getActiveVersionId/);
+  assert.match(source, /recoverySmoke/);
+  assert.match(source, /runGatewayRecoverySmoke/);
+  assert.match(source, /runCompressionRecoverySmoke/);
+  assert.match(source, /runMcpRecoverySmoke/);
+});
+
+test("production release records deployment reconciliation summaries on success", () => {
+  assert.match(source, /textDeployment:\s*state\.textDeployment/);
+  assert.match(source, /compressionDeployment:\s*state\.compressionDeployment/);
+  assert.match(source, /mcpDeployment:\s*state\.mcpDeployment/);
+  assert.match(source, /gatewayDeployment:\s*state\.gatewayDeployment/);
+});

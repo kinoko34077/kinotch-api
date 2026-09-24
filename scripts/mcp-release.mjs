@@ -46,6 +46,7 @@ export function resolveMcpSmokeInputs(env = process.env) {
   }
   if (
     parsed.protocol !== "https:"
+    || parsed.port
     || parsed.username
     || parsed.password
     || parsed.search

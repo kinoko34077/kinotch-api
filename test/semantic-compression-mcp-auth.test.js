@@ -48,6 +48,19 @@ test("JWT verifier receives normalized issuer and audience and returns no claims
   assert.deepEqual(result, { ok: true });
 });
 
+test("JWT verification returns only a non-reversible actor fingerprint", async () => {
+  const result = await verifyAccessJwt(requestWithToken(), {
+    TEAM_DOMAIN: "https://team.example.com/",
+    POLICY_AUD: "audience-tag",
+  }, authOptions({
+    payload: { sub: "operator@example.test", exp: Math.floor(Date.now() / 1000) + 60 },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.match(result.actorKey, /^[a-f0-9]{64}$/);
+  assert.doesNotMatch(result.actorKey, /operator|example/);
+});
+
 test("invalid issuer, audience, signature, or expiry becomes authentication_failed", async (t) => {
   for (const [name, verifier] of [
     ["issuer", async () => { throw new Error("issuer mismatch"); }],

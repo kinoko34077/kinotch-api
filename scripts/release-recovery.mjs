@@ -73,11 +73,35 @@ export function createRollbackArgs(versionId, message) {
   });
 }
 
-export async function rollbackAfterSmokeFailure({ previousVersionId, rollback }) {
+export async function rollbackAfterSmokeFailure({
+  previousVersionId,
+  rollback,
+  getActiveVersionId,
+  recoverySmoke,
+}) {
   assertVersionId(previousVersionId);
   if (typeof rollback !== "function") {
     throw new TypeError("rollback must be a function");
   }
+  if (typeof getActiveVersionId !== "function") {
+    throw new TypeError("getActiveVersionId must be a function");
+  }
+  if (typeof recoverySmoke !== "function") {
+    throw new TypeError("recoverySmoke must be a function");
+  }
   await rollback(previousVersionId);
-  return { status: "rolled_back", targetVersionId: previousVersionId };
+  const activeVersionId = await getActiveVersionId();
+  if (activeVersionId !== previousVersionId) {
+    throw new Error("Rollback active version mismatch");
+  }
+  const recoveryResult = await recoverySmoke();
+  if (recoveryResult?.status !== "passed") {
+    throw new Error("Rollback recovery smoke failed");
+  }
+  return {
+    status: "verified_rolled_back",
+    targetVersionId: previousVersionId,
+    activeVersionId,
+    recoverySmoke: recoveryResult,
+  };
 }

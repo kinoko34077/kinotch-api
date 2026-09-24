@@ -73,6 +73,13 @@ test("MCP release smoke rejects an endpoint for another Worker", () => {
     }),
     /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
   );
+  assert.throws(
+    () => resolveMcpSmokeInputs({
+      MCP_ENDPOINT: "https://semantic-compression-mcp.kinotch.workers.dev:8443/mcp",
+      MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
+    }),
+    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+  );
   assert.deepEqual(resolveMcpSmokeInputs({
     MCP_ENDPOINT: MCP_RELEASE_ENDPOINT,
     MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",

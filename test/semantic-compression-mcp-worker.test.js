@@ -204,6 +204,40 @@ test("MCP compression rate limit runs before the Service Binding and uses client
   ]);
 });
 
+test("MCP compression rate limit prefers the verified Access actor fingerprint", async () => {
+  let rateKey;
+  const worker = createCompressionMcpWorker({
+    verifyAccessJwtImpl: async () => ({ ok: true, actorKey: "a".repeat(64) }),
+  });
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 9,
+    method: "tools/call",
+    params: { name: "compress_text", arguments: { text: "本文" } },
+  }, { "CF-Connecting-IP": "198.51.100.7" }), {
+    MCP_RATE_LIMITER: {
+      limit(input) {
+        rateKey = input.key;
+        return Promise.resolve({ success: true });
+      },
+    },
+    COMPRESSION: {
+      fetch: async () => new Response(JSON.stringify({
+        compressed_text: "圧縮結果",
+        profile: "semantic-dense-v1",
+        prompt_version: "semantic-dense-v1.1",
+        model: "gemini-3.5-flash-lite",
+        input_chars: 2,
+        output_chars: 4,
+        warnings: [],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    },
+  }, {});
+
+  assert.equal(response.status, 200);
+  assert.equal(rateKey, `semantic-compression-mcp:actor:${"a".repeat(64)}`);
+});
+
 test("MCP rate limiting ignores caller-controlled X-Forwarded-For without Cloudflare client IP", async () => {
   let rateKey;
   const worker = createCompressionMcpWorker({ verifyAccessJwtImpl: accessApproved });
