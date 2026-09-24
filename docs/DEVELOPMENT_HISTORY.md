@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-24
-- 作成時点の先頭: 2da444092577ba335c802f901afaf08c2c0fe9f2
-- 収録コミット数: 122
+- 作成時点の先頭: 088943a27f03bb5e3c3d21ec63b12326c61fa982
+- 収録コミット数: 123
 
 ## この文書の読み方
 
@@ -28,8 +28,8 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - REST Compression APIは POST https://api.kinotch.workers.dev/v1/compress。
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
-- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。現行mainの後続修正はProductionへ未反映である。
-- 7d474f4 までのGitHub ActionsのCIとVerifyはsuccess。Base-managed Verifyのcheckout SHA pinはBase側で `60592ce` に反映済みで、個別repoのv0.3.8 snapshotは一括同期していない。
+- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。現行main `088943a27f03bb5e3c3d21ec63b12326c61fa982` の後続修正はProductionへ未反映である。
+- 現行main `088943a` のGitHub Actions `CI` と `Verify` はsuccess。Base-managed Verifyのcheckout SHA pinはBase側で `60592ce` に反映済みで、個別repoのv0.3.8 snapshotは一括同期していない。
 - a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
 - c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
 - 263b98a はhardening実装計画の完了記録を追加した。
@@ -38,6 +38,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - 99cd489 はrelease reliabilityのCurrent State、Operations、MCP運用、変更履歴を更新した。GitHub main protectionはその後APIでrequired check `verify`を追加し、`test`／`verify`の両方をrequiredとして確認した。
 - 852d7e4 はGitHub main protectionのrequired check確認結果をCurrent Stateへ記録した。
 - 2da4440 はGemini生成requestをInteractions API安定版 `v1/interactions`へ移行した。固定Promptの`countTokens`測定endpointは`v1beta`のまま維持し、生成endpointとの責務を文書化した。focused regression 34件を通過したが、Production deployはまだ行っていない。
+- 088943a はCurrent State、Operations、履歴スナップショットを現行release境界へ更新した。現行mainとProduction metadataの差分を明示し、Production deployはまだ行っていない。
 
 ## 大きな変更段階
 
@@ -266,6 +267,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 120 | 2026-09-24 | 99cd48910e57c4def88bfc6c48ecdca80db93303 | docs: record release reliability state |
 | 121 | 2026-09-24 | 852d7e4157a7af4c2425309e66a35ecd68518b58 | docs: record main protection verification |
 | 122 | 2026-09-24 | 2da444092577ba335c802f901afaf08c2c0fe9f2 | fix: use stable Gemini interactions endpoint |
+| 123 | 2026-09-24 | 088943a27f03bb5e3c3d21ec63b12326c61fa982 | docs: refresh current release state |
 
 ## 再生成・更新
 
