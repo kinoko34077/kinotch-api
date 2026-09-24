@@ -32,11 +32,11 @@ Last verified: 2026-09-24 — release reliability hardening review
 - Cloudflare bindings, provider retry, deploy, and rollback policy remain Project-owned.
 - Runtime Action contracts are not required by this adoption.
 - The latest tracked production release metadata still records source revision `204d15eb382802aa776d5026421e197d52725300`; the current main revision is not production-confirmed until an operator runs the formal release gate.
-- GitHub branch protection required-check configuration, Cloudflare Workers Builds state, Cloudflare Access state, and Base-managed Verify workflow pinning remain external/operator-managed items.
+- GitHub main protection currently requires `test` and `verify`; force push and branch deletion are disabled. PR review, administrator enforcement, strict status, Cloudflare Workers Builds state, Cloudflare Access state, and Base-managed Verify workflow pinning remain external/operator-managed choices.
 
 ## Next work
 
-1. Keep GitHub Actions `test` and `Verify` successful; make both required checks in branch protection when operator-managed settings are updated.
+1. Keep GitHub Actions `test` and `Verify` successful; both are currently required checks on `main`.
 2. Run `npm run deploy:production` from the current clean `origin/main` only after operator confirmation, then commit the generated release metadata through the normal workflow.
 3. Keep API and generated snapshot policy Project-owned.
 4. Consider further Default adoption only where it removes a real duplicate.

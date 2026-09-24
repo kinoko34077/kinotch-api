@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-24
-- 作成時点の先頭: 2298101b1e6cbfac2911436cace2bf4f838a2807
-- 収録コミット数: 119
+- 作成時点の先頭: 99cd48910e57c4def88bfc6c48ecdca80db93303
+- 収録コミット数: 120
 
 ## この文書の読み方
 
@@ -35,6 +35,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - 263b98a はhardening実装計画の完了記録を追加した。
 - f8e7c3c はProduction smokeの対象Workerを固定し、38dd1fa はその計画を完了した。
 - 2298101 はrelease child環境のallowlist化、deploy結果のremote reconciliation、rollback後のactive Version／非課金recovery smoke検証、Node 22.18.0固定、MCP actor fingerprint rate limit、MCP endpoint port拒否を実装した。CIとVerifyはsuccessだが、Production deploy自体はまだ行っていない。
+- 99cd489 はrelease reliabilityのCurrent State、Operations、MCP運用、変更履歴を更新した。GitHub main protectionはその後APIでrequired check `verify`を追加し、`test`／`verify`の両方をrequiredとして確認した。
 
 ## 大きな変更段階
 
@@ -260,6 +261,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 117 | 2026-09-24 | f8e7c3c947376156436f3aee1dc9a1c205d9c58e | fix: bind production smoke to fixed endpoints |
 | 118 | 2026-09-24 | 38dd1fa66d3e5cdd678b9cf1543c4ad6c0681fc6 | docs: close production smoke target plan |
 | 119 | 2026-09-24 | 2298101b1e6cbfac2911436cace2bf4f838a2807 | fix: harden release reliability boundaries |
+| 120 | 2026-09-24 | 99cd48910e57c4def88bfc6c48ecdca80db93303 | docs: record release reliability state |
 
 ## 再生成・更新
 

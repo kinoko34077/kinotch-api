@@ -23,7 +23,7 @@ Close the repository-fixable findings from the 2026-09-24 production audit witho
 ## External items intentionally not changed
 
 - Production deployment from the current main revision.
-- GitHub branch protection required-check configuration.
+- GitHub branch protection mutation was performed as external operator configuration: `test` and `verify` are required, force push and deletion are disabled; PR/admin enforcement remains unchanged.
 - Base-managed Verify workflow action pinning and Node warning.
 - Cloudflare Access / Workers Builds dashboard state.
 

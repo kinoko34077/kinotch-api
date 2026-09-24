@@ -5,11 +5,11 @@
 Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、各Workerのdry-run、直前Versionの取得、Text Worker → Compression Worker → MCP Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
 
 - `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。
-- Repository Baseの`Verify` workflowも`test`と同様に成功を維持し、branch protectionをoperatorが更新する場合は`test`と`Verify`の両方をrequired checkにする。repo内の文書・コードだけで外部設定済みとは扱わない。
+- Repository Baseの`Verify` workflowも`test`と同様に成功を維持する。現在のGitHub `main` protectionはrequired check `test`／`verify`、force push禁止、branch deletion禁止を設定済みとしてAPIで確認している。PR必須化、administrator enforcement、strict statusは今回変更していない。
 - Production release開始時に`git fetch origin main`を実行し、現在branchが`main`かつlocal `HEAD == origin/main`であることを確認する。一致しない場合はdeployを開始しない。
 - release gateの`npm ci`、build、check、testは明示的な安全環境allowlistだけを子processへ渡す。`MCP_SMOKE_ACCESS_COOKIE`、Compression smoke token、Gemini key、未知の将来secretは通常子processへ継承せず、WranglerへもCloudflare credentialだけを限定注入する。
 - Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
-- GitHub `main`はrequired check `test`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
+- GitHub `main`はrequired check `test`／`verify`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
 - 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
 - `npm run smoke:production` は、明示した `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` をローカル診断用に使用できる。一方、`npm run deploy:production` のrelease smokeはこれらの環境変数を無視し、`https://api.kinotch.workers.dev`、`https://text-transform.kinotch.workers.dev`、`https://semantic-compression.kinotch.workers.dev`へ固定する。別endpointが正常でもrelease成功とは扱わない。
