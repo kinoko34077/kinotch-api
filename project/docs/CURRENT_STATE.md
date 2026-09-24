@@ -2,11 +2,11 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-24 — release reliability hardening review
+Last verified: 2026-09-24 — release reliability hardening and Gemini stable endpoint review
 
 ## Implemented
 
-- Repository-local KiNoTch Base v0.3.2 and Project Overlay
+- Repository-local KiNoTch Base v0.3.8 and Project Overlay
 - API and MCP Surface declarations
 - Structured npm setup, test, dev, and deploy command entries
 - Existing Hono/Worker, generated snapshot, MCP, and deployment boundaries retained
@@ -17,7 +17,9 @@ Last verified: 2026-09-24 — release reliability hardening review
 - Worker deploy results are reconciled against remote active versions; rollback verifies the active version and runs non-billable recovery smoke.
 - Remote MCP rate limiting prefers a non-reversible fingerprint of the verified Access subject/email claim and falls back to `CF-Connecting-IP` only when no stable claim exists.
 - Repository runtime is pinned to Node 22.18.0 through `package.json`, `.node-version`, and the project-owned CI workflow.
-- Current repository hardening revision is `2298101b1e6cbfac2911436cace2bf4f838a2807`; its GitHub Actions `CI` and `Verify` runs both succeeded.
+- Gemini generation uses the stable Interactions API `v1/interactions`; fixed-prompt `countTokens` measurement remains on the documented `v1beta` token endpoint.
+- Current repository hardening revision is `2da444092577ba335c802f901afaf08c2c0fe9f2`; its focused Gemini/release regression tests passed before push.
+- Base main commit `60592ce7535502356b65e9ae76da2ded3c1dff06` pins the Base-managed checkout action. This repository still intentionally adopts the tracked Base v0.3.8 snapshot; a broad Base v0.4.0 synchronization was not performed.
 
 ## Default state
 
@@ -31,8 +33,8 @@ Last verified: 2026-09-24 — release reliability hardening review
 - Public HTTP status and error-code contracts remain unchanged.
 - Cloudflare bindings, provider retry, deploy, and rollback policy remain Project-owned.
 - Runtime Action contracts are not required by this adoption.
+- GitHub main protection currently requires `test` and `verify`; force push and branch deletion are disabled. PR review, administrator enforcement, strict status, Cloudflare Workers Builds state, and Cloudflare Access state remain external/operator-managed choices.
 - The latest tracked production release metadata still records source revision `204d15eb382802aa776d5026421e197d52725300`; the current main revision is not production-confirmed until an operator runs the formal release gate.
-- GitHub main protection currently requires `test` and `verify`; force push and branch deletion are disabled. PR review, administrator enforcement, strict status, Cloudflare Workers Builds state, Cloudflare Access state, and Base-managed Verify workflow pinning remain external/operator-managed choices.
 
 ## Next work
 

@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-24
-- 作成時点の先頭: 99cd48910e57c4def88bfc6c48ecdca80db93303
-- 収録コミット数: 120
+- 作成時点の先頭: 2da444092577ba335c802f901afaf08c2c0fe9f2
+- 収録コミット数: 122
 
 ## この文書の読み方
 
@@ -29,13 +29,15 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
 - 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。現行mainの後続修正はProductionへ未反映である。
-- 7d474f4 までのGitHub ActionsのCIとVerifyはsuccess。Verifyのcheckout SHA pinはBase管理ファイルのため個別repoでは変更せず、Base側更新事項として保留。
+- 7d474f4 までのGitHub ActionsのCIとVerifyはsuccess。Base-managed Verifyのcheckout SHA pinはBase側で `60592ce` に反映済みで、個別repoのv0.3.8 snapshotは一括同期していない。
 - a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
 - c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
 - 263b98a はhardening実装計画の完了記録を追加した。
 - f8e7c3c はProduction smokeの対象Workerを固定し、38dd1fa はその計画を完了した。
 - 2298101 はrelease child環境のallowlist化、deploy結果のremote reconciliation、rollback後のactive Version／非課金recovery smoke検証、Node 22.18.0固定、MCP actor fingerprint rate limit、MCP endpoint port拒否を実装した。CIとVerifyはsuccessだが、Production deploy自体はまだ行っていない。
 - 99cd489 はrelease reliabilityのCurrent State、Operations、MCP運用、変更履歴を更新した。GitHub main protectionはその後APIでrequired check `verify`を追加し、`test`／`verify`の両方をrequiredとして確認した。
+- 852d7e4 はGitHub main protectionのrequired check確認結果をCurrent Stateへ記録した。
+- 2da4440 はGemini生成requestをInteractions API安定版 `v1/interactions`へ移行した。固定Promptの`countTokens`測定endpointは`v1beta`のまま維持し、生成endpointとの責務を文書化した。focused regression 34件を通過したが、Production deployはまだ行っていない。
 
 ## 大きな変更段階
 
@@ -262,6 +264,8 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 118 | 2026-09-24 | 38dd1fa66d3e5cdd678b9cf1543c4ad6c0681fc6 | docs: close production smoke target plan |
 | 119 | 2026-09-24 | 2298101b1e6cbfac2911436cace2bf4f838a2807 | fix: harden release reliability boundaries |
 | 120 | 2026-09-24 | 99cd48910e57c4def88bfc6c48ecdca80db93303 | docs: record release reliability state |
+| 121 | 2026-09-24 | 852d7e4157a7af4c2425309e66a35ecd68518b58 | docs: record main protection verification |
+| 122 | 2026-09-24 | 2da444092577ba335c802f901afaf08c2c0fe9f2 | fix: use stable Gemini interactions endpoint |
 
 ## 再生成・更新
 

@@ -36,6 +36,8 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 専用rate limit（pre-auth IP、authenticated IP、authenticated token fingerprintの三段）、本文をログへ残さない方針、synthetic 50件のopt-in品質baseline評価、deployとGateway → Compression → MCP → Textのrollbackは
 [`docs/semantic-compression.md`](semantic-compression.md) を正本とする。
 
+Geminiの生成requestは安定版Interactions APIの`v1/interactions`を使用する。固定Promptのtoken測定に使う`countTokens`は、現行API referenceに合わせて`v1beta` endpointを使用する。この2つを混同せず、callerがendpointやmodelを変更できない固定構成を維持する。
+
 `COMPRESSION_API_TOKEN` は256-bit以上の暗号学的にランダムな値（cryptographically random）を使い、人間が考えたpasswordや短いtokenを登録しない。`compressed_text` は untrusted display data であり、HTML表示時は sanitize し、raw HTMLとdangerous URL schemeを許可しない。
 
 品質baselineは `RUN_COMPRESSION_QUALITY_EVAL=true` と
