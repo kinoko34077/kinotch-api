@@ -52,6 +52,8 @@ Gatewayへの呼び出しには `Authorization: Bearer <operator-provided caller
 
 `usage` はProvider responseの `total_input_tokens`、`total_output_tokens`、`total_thought_tokens`、`total_cached_tokens`、`total_tokens` を正規化した値である。`input_tokens` は本文だけでなくsystem instruction等を含むProvider側のinput usageで、報告されない値は `null` になる。`system_prompt_tokens` は、選択した固定Prompt文字列を同じmodelのGemini `countTokens` で事前測定した固定metadataである。`content_input_tokens` は `input_tokens - system_prompt_tokens` の非負残差で、Provider内部のframing等を含む可能性があるため本文そのものの厳密なtoken数ではない。いずれかの値が欠落・不整合なら `content_input_tokens` は `null` とする。profileとprompt_versionは別のprovenance fieldで、現在は `compact-v1 → compact-v1.1`、`semantic-dense-v1 → semantic-dense-v1.1` である。
 
+生成にはGoogle Gemini Interactions APIの安定版 `v1/interactions` endpointを使用する。固定Promptの事前token測定に使う `models/{model}:countTokens` は、現行Google API referenceに合わせて `v1beta` endpointを維持する。いずれもProduction requestでcallerがendpointやmodelを変更することはできない。
+
 `input_chars` と `output_chars` はJavaScript UTF-16 code unit数ではなくUnicode code point数で、Python `len(str)` と一致する。SHA-256はUTF-8化したtextそのものを対象とする。圧縮結果を原文のSSOTとして保存しない。
 
 主な正規化errorは `invalid_json`、`invalid_body`、`invalid_profile`、`empty_text`、`payload_too_large`、`provider_context_limit`、`authentication_failed`、`authentication_unavailable`、`rate_limited`、`provider_rate_limited`、`provider_invalid_response`、`provider_error`、`provider_timeout` である。Googleのraw error bodyは返さない。

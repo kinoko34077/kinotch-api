@@ -49,7 +49,7 @@ test("Worker sends one fixed stateless Interactions request", async () => {
   );
 
   assert.equal(response.status, 200);
-  assert.equal(request.input, "https://generativelanguage.googleapis.com/v1beta/interactions");
+  assert.equal(request.input, "https://generativelanguage.googleapis.com/v1/interactions");
   assert.equal(new Headers(request.init.headers).get("x-goog-api-key"), API_KEY);
   assert.equal(request.body.model, "gemini-3.5-flash-lite");
   assert.equal(request.body.input, "原文");

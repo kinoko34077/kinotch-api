@@ -121,6 +121,8 @@ semantic-dense-v1   → prompt_version semantic-dense-v1.1
 
 選択profileに対応する固定System Prompt（共通Service boundary instruction + profile固有Prompt）を解決し、次の意味を満たすrequestをGeminiへ送信する。
 
+生成requestはGoogle Gemini Interactions APIの安定版 `v1/interactions` endpointへ送信する。固定Promptの事前token測定に使う `models/{model}:countTokens` は、現行Google API referenceに合わせて `v1beta` endpointを使用する。
+
 ```json
 {
   "model": "gemini-3.5-flash-lite",

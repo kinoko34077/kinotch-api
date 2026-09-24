@@ -5,7 +5,7 @@ import {
 import { COMPRESSION_SYSTEM_INSTRUCTION } from "./prompt.js";
 
 export const GEMINI_INTERACTIONS_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/interactions";
+  "https://generativelanguage.googleapis.com/v1/interactions";
 export const DEFAULT_GEMINI_TIMEOUT_MS = 45_000;
 
 export class CompressionProviderError extends Error {
