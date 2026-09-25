@@ -186,7 +186,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 24 | 2026-09-08 | 42be3b32303c2f217d50deaf37b6d2c188c1a1ae | Fix Windows release gate process spawning |
 | 25 | 2026-09-08 | 488aad3225fe756b9338d9040effe80fdc36aab5 | Harden private worker boundary smoke |
 | 26 | 2026-09-08 | f4a4907de2ae006bef04e5cd8a38e9f61be19e39 | Harden body limits and release metadata |
-| 27 | 2026-09-08 | 39d5bb255c9ae3a68e2a02af7f75facf6d36e0e84 | Record guarded production release |
+| 27 | 2026-09-08 | 39d5bb255c9ae722b7bce6f82323e72f5307e084 | Record guarded production release |
 | 28 | 2026-09-08 | a6770daeac4e3a68e2a02af7f75facf6d36e0e84 | Generate browser client and classify upstream failures |
 | 29 | 2026-09-08 | 871e1596aa67e4a7451515a43d896a5778ba474e | Document final guard verification |
 | 30 | 2026-09-08 | 3bad1c80d2d11b400c34240b0b2020bba7802fc7 | Enforce actual request body byte limits |
