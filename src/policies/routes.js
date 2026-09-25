@@ -1,12 +1,14 @@
+import { REMOTE_AUDIT_LIMITS } from "../jev-audit/contract.js";
 import {
   validateBatchBody,
   validateCoordinatesQuery,
   validateDateQuery,
   validateCompressionBody,
+  validateJevAuditBody,
   validateRubyBody,
   validateTransformBody,
 } from "../middleware/validation.js";
-import { authenticateCompression } from "../middleware/authentication.js";
+import { authenticateCompression, authenticateJevAudit } from "../middleware/authentication.js";
 import { COMPRESSION_BODY_LIMIT_BYTES } from "../semantic-compression/contract.js";
 
 const GENERAL_RATE_LIMIT = Object.freeze({
@@ -34,6 +36,25 @@ const COMPRESSION_TOKEN_RATE_LIMIT = Object.freeze({
   binding: "COMPRESSION_TOKEN_RATE_LIMITER",
   keyPrefix: "semantic-compression-auth",
   key: (c) => c.get("compressionAuthFingerprint"),
+  limit: 5,
+  period: 60,
+});
+const JEV_AUDIT_PREAUTH_RATE_LIMIT = Object.freeze({
+  binding: "JEV_AUDIT_PREAUTH_RATE_LIMITER",
+  keyPrefix: "jev-audit-preauth",
+  limit: 5,
+  period: 60,
+});
+const JEV_AUDIT_RATE_LIMIT = Object.freeze({
+  binding: "JEV_AUDIT_RATE_LIMITER",
+  keyPrefix: "jev-audit",
+  limit: 5,
+  period: 60,
+});
+const JEV_AUDIT_TOKEN_RATE_LIMIT = Object.freeze({
+  binding: "JEV_AUDIT_TOKEN_RATE_LIMITER",
+  keyPrefix: "jev-audit-auth",
+  key: (c) => c.get("jevAuditAuthFingerprint"),
   limit: 5,
   period: 60,
 });
@@ -116,6 +137,19 @@ export const routePolicies = Object.freeze({
     tokenRateLimit: COMPRESSION_TOKEN_RATE_LIMIT,
     authenticate: authenticateCompression,
     validateBody: validateCompressionBody,
+    upstreamTimeoutMs: 50_000,
+  }),
+  jevAudit: Object.freeze({
+    id: "jev-audit",
+    path: "/v1/audit",
+    method: "POST",
+    bodyType: "json",
+    bodyLimitBytes: REMOTE_AUDIT_LIMITS.maxRequestBytes,
+    preAuthRateLimit: JEV_AUDIT_PREAUTH_RATE_LIMIT,
+    rateLimit: JEV_AUDIT_RATE_LIMIT,
+    tokenRateLimit: JEV_AUDIT_TOKEN_RATE_LIMIT,
+    authenticate: authenticateJevAudit,
+    validateBody: validateJevAuditBody,
     upstreamTimeoutMs: 50_000,
   }),
 });
