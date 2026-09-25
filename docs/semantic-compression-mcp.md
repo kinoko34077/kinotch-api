@@ -139,6 +139,14 @@ tool_timeout_sec = 60
 http_headers_helper = 'node "C:/path/to/kinotch-api/scripts/codex-mcp-access-headers.mjs"'
 ```
 
+The preferred machine-local registration path is the bounded setup command from the repository root:
+
+```powershell
+npm run setup:codex-mcp-service-auth
+```
+
+This runs `scripts/configure-codex-mcp-service-auth.mjs`. It edits only `%USERPROFILE%\.codex\config.toml`, preserves unrelated Codex config sections, and replaces or inserts only the `mcp_servers.semantic_compressor` scalar section. It records the absolute local path to `scripts/codex-mcp-access-headers.mjs`, so rerun the setup command if the repository is moved. The setup does not read or write any Service Token value into Codex config; credentials remain only in the fixed external secret file and are read at request time by the header helper. It rejects alternate config paths and ambiguous duplicate `semantic_compressor` sections rather than guessing which one to edit.
+
 Do not embed either Service Token value in TOML. Do not set `http_headers` with literal credentials. The helper is only a credential-injection boundary; it does not implement MCP, alter the Worker, or create another Production release authority.
 
 In the default reuse mode, no Cloudflare configuration change is required beyond the already-working release-smoke `Service Auth` policy. Keep the existing Managed OAuth policy intact and do not use `Bypass`. Reusing one token intentionally couples revocation and rotation: revoking or rotating that Service Token affects both release smoke and Codex Service Auth. Configure the optional Codex override only if that coupling later becomes undesirable.
@@ -162,6 +170,7 @@ The release metadata keeps `mcpOAuthSmoke` separate and operator-required becaus
 - Release Service Token smoke `401` / `403`: check the release-smoke Service Token, `Service Auth` policy, application hostname, and token validity; do not switch the policy to `Bypass`.
 - Codex Service Auth `401` / `403` in default reuse mode: check the same release-smoke Service Token and existing exact-token `Service Auth` policy. If a complete `CODEX_CF_ACCESS_*` optional override is configured, check that override token and its policy instead.
 - Codex helper exits non-zero before connection: with no Codex override, confirm both `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` exist and are non-empty. If either `CODEX_CF_ACCESS_*` key exists, both Codex override keys must exist and be non-empty.
+- Codex setup refuses to edit config: remove accidental duplicate `[mcp_servers.semantic_compressor]` sections manually, then rerun `npm run setup:codex-mcp-service-auth`. The setup intentionally does not guess between duplicate target sections.
 - `authentication_failed`: check the Access application, JWT issuer/audience/signature/expiry, and clock; do not disable Worker-side verification.
 - `authentication_unavailable`: check `TEAM_DOMAIN` and `POLICY_AUD` Worker vars.
 - `rate_limiter_unavailable`: check the `MCP_RATE_LIMITER` binding and its Wrangler ratelimit configuration; do not bypass it.
