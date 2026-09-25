@@ -14,7 +14,7 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 - 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
 - `npm run smoke:production` は、明示した `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` をローカル診断用に使用できる。一方、`npm run deploy:production` のrelease smokeはこれらの環境変数を無視し、`https://api.kinotch.workers.dev`、`https://text-transform.kinotch.workers.dev`、`https://semantic-compression.kinotch.workers.dev`へ固定する。別endpointが正常でもrelease成功とは扱わない。
 - Production operator値はrepository外の固定ファイル `%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。mapperの許可keyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、`CLOUDFLARE_API_TOKEN`、`JEV_AUDIT_MCP_POLICY_AUD`、`JEV_AUDIT_SMOKE_TOKEN`の9つだけで、未知key・必須key不足・固定path以外の指定はfail closedとする。
-- `npm run smoke:mcp:local` は既存`npm run smoke:mcp`のlauncher、`npm run release:local` はJev Audit-aware production wrapperから正式release gateを起動するsecret injection用launcherである。正式なProduction authorityや既存release gateを分割・迂回しない。Compression MCPとJev Audit MCPの自動release smokeは共通のCloudflare Access Service Token（`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`）を使用し、session cookieは使用しない。Codex Managed OAuthの実利用確認とは別証拠として扱う。secret値、file本文、`process.env`全体は出力せず、agentはsecret directoryをopaque boundaryとして直接参照しない。
+- `npm run smoke:mcp:local` は既存`npm run smoke:mcp`のlauncher、`npm run release:local` はJev Audit-aware production wrapperから正式release gateを起動するsecret injection用launcherである。正式なProduction authorityや既存release gateを分割・迂回しない。Compression MCPとJev Audit MCPの自動release smokeは共通のCloudflare Access Service Token（`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`）を使用し、session cookieは使用しない。CompressionのCodex Managed OAuth実利用確認は別証拠として扱うが、Jev AuditはService Tokenを通常Production MCP認証として採用し、Jev固有のManaged OAuthを完了条件としない。secret値、file本文、`process.env`全体は出力せず、agentはsecret directoryをopaque boundaryとして直接参照しない。
 
 ## 本番の基本確認
 
@@ -68,7 +68,9 @@ Jev Audit Remoteの利用・secret・公開境界・現行verification stateは[
 - REST smoke inputは `JEV_AUDIT_SMOKE_TOKEN`。自動MCP smokeは共通の`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`を使い、session cookieは使用しない。いずれもrepository、release metadata、通常ログへ値を残さない。
 - Remote v1はexplicit file snapshotsだけを監査し、local filesystem/Git/`changed_only`を扱わない。
 - source/diff本文、Authorization、Access credential、TypeSafe key、raw provider responseを通常ログへ記録しない。
-- 実装・自動test・release/smoke wiringは完了しているが、live TypeSafe REST E2E、Production deploy、authenticated MCP tool-call E2Eは実行成功までpendingとして扱う。
+- **Production verified**: 2026-09-25、source revision `84e8109ef43064efd72fd1012054dc7787de6a8e` の正式releaseでlive TypeSafe REST E2EがHTTP 200、authenticated Jev MCP Service Token E2EがHTTP 200となり、実`audit_files` tool callまで成功した。private/MCPとも`needsRollback: false`で、rollback不要。証跡は`docs/releases/20260925T144351192Z.json`と`docs/releases/jev-audit-20260925T144353075Z.json`。
+- Service TokenをJev Audit MCPの通常Production認証として採用する。Jev固有のManaged OAuthは完了条件ではなく、将来interactive利用が必要になった場合の任意経路である。
+- post-release hardeningではMCP/RESTのUnicode path上限統一、固定model driftのfail-closed、full Service Token smokeで`list_profiles`→`audit_files`を実callする回帰検証を追加した。これらは次回の通常formal releaseまでは「repositoryで検証済み・Production未反映」と区別する。
 
 ## 遅延の見方
 
@@ -124,6 +126,8 @@ npx wrangler tail text-transform --format json
 ## リリース後の確認
 
 `npm run deploy:production`を正式authorityとして使い、Jev Audit wrapperのsource gate → Jev private/MCP準備・deploy → 既存core clean worktree検査 → build後のgenerated差分検査 → check／test／dry-run → Text Worker → Compression Worker → MCP Worker → Compression MCP Service Token smoke → Gateway → readiness／境界smoke → Jev Audit REST/MCP smoke → 全smokeの順で検証する。成功時は各WorkerのVersion ID、commit、engine／rule／snapshot metadata、JST時刻を`docs/releases/`へ記録する。個別Workerの手動deployやCloudflare Git連携による自動deployは正式経路としない。
+
+Jev Auditのfull Production MCP smokeはService Tokenで`tools/list`を確認した後、`list_profiles`が`development` / `generic`を返すことと`audit_files`の実tool callを検証する。rollback recovery smokeは課金を伴う`audit_files`を呼ばず、initialize / tool discoveryだけでAccess・MCP handshakeを確認する。Jev固有のManaged OAuth検証は正式releaseの完了条件に含めない。
 
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と
 一致しなければならない。release gateは同じ40文字SHAをWranglerのruntime variableとしてText
