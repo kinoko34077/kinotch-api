@@ -363,7 +363,7 @@ async function main() {
     }
 
     state.stage = "clean dependency install";
-    await runNpm(["ci"]);
+    await runNpm(["ci", "--foreground-scripts"]);
     state.stage = "build snapshot";
     await runNpm(["run", "build:text-snapshot"]);
     state.stage = "generated file stability assertion";

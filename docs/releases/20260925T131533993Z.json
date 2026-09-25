@@ -1,0 +1,144 @@
+{
+  "recordedAtUtc": "2026-09-25T13:15:33.993Z",
+  "recordedAtJst": "2026-09-25 22:15:33",
+  "status": "failed",
+  "gitRevision": "b5ad74abe068f85534895cc27579eba79c978d32",
+  "sourceRevision": "b5ad74abe068f85534895cc27579eba79c978d32",
+  "previousTextVersionId": "46471bc4-0f56-4cd2-85dc-98153a15cbe5",
+  "previousCompressionVersionId": "66a8afbe-3c5f-4594-8ced-54b4eda3d747",
+  "previousGatewayVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+  "textVersionId": "e0dcca9f-9f8c-4762-9f13-f8ca3a3fb907",
+  "compressionVersionId": null,
+  "gatewayVersionId": null,
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 114.15
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 116.88,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "b5ad74abe068f85534895cc27579eba79c978d32"
+    },
+    "services": {
+      "time": {
+        "status": 200,
+        "durationMs": 37.74,
+        "serverTime": 1790342131228
+      },
+      "weather": {
+        "status": 200,
+        "durationMs": 311.89,
+        "temp": 24,
+        "weather": "Clouds"
+      },
+      "rokuyo": {
+        "status": 200,
+        "durationMs": 294.81,
+        "rokuyo": "仏滅"
+      },
+      "moon": {
+        "status": 200,
+        "durationMs": 107.28,
+        "age": 14.408506944444444
+      }
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Authorization,Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 45.2,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "oversizedBody": null,
+    "compression": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch",
+      "time": "smoke-time",
+      "weather": "smoke-weather",
+      "rokuyo": "smoke-rokuyo",
+      "moon": "smoke-moon"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    },
+    "directCompressionWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "compressionSmoke": null,
+  "mcpVersionId": null,
+  "previousMcpVersionId": "ae3fb6ee-93d8-44f9-9398-afe3de44d037",
+  "mcpEndpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
+  "mcpProtocol": "streamable-http",
+  "mcpToolVersion": "compress_text/v1",
+  "mcpSmoke": {
+    "status": "incomplete",
+    "reason": "Authenticated Access service-token smoke has not completed",
+    "authMode": "access_service_token",
+    "endpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
+  },
+  "mcpOAuthSmoke": {
+    "status": "operator_required",
+    "reason": "Codex Managed OAuth client flow must be verified separately"
+  },
+  "mcpRecovery": null,
+  "gatewaySmoke": null,
+  "textRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "46471bc4-0f56-4cd2-85dc-98153a15cbe5",
+    "error": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe C:\\Users\\kinok\\Documents\\Programs\\kinotch-api\\node_modules\\wrangler\\bin\\wrangler.js rollback 46471bc4-0f56-4cd2-85dc-98153a15cbe5 --name text-transform --message automatic-text-smoke-failure-rollback --config wrangler.text-transform.jsonc exited with 1"
+  },
+  "compressionRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "66a8afbe-3c5f-4594-8ced-54b4eda3d747",
+    "error": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe C:\\Users\\kinok\\Documents\\Programs\\kinotch-api\\node_modules\\wrangler\\bin\\wrangler.js rollback 66a8afbe-3c5f-4594-8ced-54b4eda3d747 --name semantic-compression --message automatic-compression-smoke-failure-rollback --config wrangler.semantic-compression.jsonc exited with 1"
+  },
+  "gatewayRecovery": null,
+  "textDeployment": {
+    "status": "deployed",
+    "versionId": "e0dcca9f-9f8c-4762-9f13-f8ca3a3fb907",
+    "needsRollback": false
+  },
+  "compressionDeployment": {
+    "status": "reconciliation_failed",
+    "versionId": null,
+    "needsRollback": true
+  },
+  "mcpDeployment": null,
+  "gatewayDeployment": null,
+  "compressionModel": "gemini-3.5-flash-lite",
+  "compressionPromptVersion": "semantic-dense-v1.1",
+  "compressionPromptVersions": {
+    "compact": "compact-v1.1",
+    "semanticDense": "semantic-dense-v1.1"
+  },
+  "failure": {
+    "stage": "Compression Worker deploy",
+    "message": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe C:\\Users\\kinok\\Documents\\Programs\\kinotch-api\\node_modules\\wrangler\\bin\\wrangler.js deploy --config wrangler.semantic-compression.jsonc exited with 1"
+  }
+}
