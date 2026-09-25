@@ -33,6 +33,7 @@ const SUPPORTED_SECRET_FILE_KEYS = Object.freeze([
 
 export const MAPPER_MODES = Object.freeze({
   MCP_SMOKE: "mcp-smoke",
+  JEV_AUDIT_BOOTSTRAP: "jev-audit-bootstrap",
   PRODUCTION_RELEASE: "production-release",
 });
 
@@ -42,9 +43,13 @@ const MODE_KEYS = Object.freeze({
     "CF_ACCESS_CLIENT_ID",
     "CF_ACCESS_CLIENT_SECRET",
   ]),
+  [MAPPER_MODES.JEV_AUDIT_BOOTSTRAP]: Object.freeze([
+    "CLOUDFLARE_API_TOKEN",
+  ]),
   [MAPPER_MODES.PRODUCTION_RELEASE]: ALLOWED_PRODUCTION_SECRET_KEYS,
 });
 
+const JEV_AUDIT_BOOTSTRAP_CONFIRMATION = "JEV_AUDIT_BOOTSTRAP_CONFIRM";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
 export function getProductionSecretPath({ homeDirectory = homedir() } = {}) {
@@ -105,11 +110,18 @@ export function mapProductionSecrets(secrets, mode) {
 export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets }) {
   const mappedSecrets = mapProductionSecrets(secrets, mode);
   const childEnv = createReleaseChildEnv(sourceEnv);
+  if (
+    mode === MAPPER_MODES.JEV_AUDIT_BOOTSTRAP
+    && sourceEnv?.[JEV_AUDIT_BOOTSTRAP_CONFIRMATION] === "true"
+  ) {
+    childEnv[JEV_AUDIT_BOOTSTRAP_CONFIRMATION] = "true";
+  }
   return Object.freeze({ ...childEnv, ...mappedSecrets });
 }
 
 function childArgsForMode(mode) {
   if (mode === MAPPER_MODES.MCP_SMOKE) return ["run", "smoke:mcp"];
+  if (mode === MAPPER_MODES.JEV_AUDIT_BOOTSTRAP) return ["run", "bootstrap:jev-audit"];
   if (mode === MAPPER_MODES.PRODUCTION_RELEASE) return ["run", "deploy:production"];
   throw new Error(`Unknown production secret mapper mode: ${mode}`);
 }
