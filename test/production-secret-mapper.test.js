@@ -24,6 +24,9 @@ const secretValues = Object.freeze({
   MCP_ENDPOINT: "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
   MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=cookie-fixture-value",
   COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",
+  JEV_AUDIT_MCP_POLICY_AUD: "jev-audit-audience-fixture-value",
+  JEV_AUDIT_SMOKE_TOKEN: "jev-audit-token-fixture-value",
+  JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=jev-cookie-fixture-value",
 });
 
 const secretText = Object.entries(secretValues)
@@ -57,7 +60,7 @@ function fakeSpawn(exitCode, capture) {
   };
 }
 
-test("production secret parser accepts exactly the five allowlisted keys", () => {
+test("production secret parser accepts exactly the eight allowlisted keys", () => {
   assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);
   assert.deepEqual(parseProductionSecretText(secretText), secretValues);
 });
@@ -137,11 +140,12 @@ test("mapped child environment preserves safe runtime values but not unrelated s
   assert.equal(childEnv.MCP_ENDPOINT, secretValues.MCP_ENDPOINT);
   assert.equal(childEnv.MCP_SMOKE_ACCESS_COOKIE, secretValues.MCP_SMOKE_ACCESS_COOKIE);
   assert.equal(childEnv.COMPRESSION_SMOKE_TOKEN, undefined);
+  assert.equal(childEnv.JEV_AUDIT_SMOKE_TOKEN, undefined);
   assert.equal(childEnv.UNRELATED_SECRET, undefined);
   assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
 });
 
-test("production-release maps five keys and launches the existing release authority", async () => {
+test("production-release maps eight keys and launches the existing release authority", async () => {
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.PRODUCTION_RELEASE, {
     secrets: secretValues,
@@ -151,11 +155,9 @@ test("production-release maps five keys and launches the existing release author
   assert.equal(exitCode, 0);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].args.join(" "), "run deploy:production");
-  assert.equal(calls[0].options.env.TEAM_DOMAIN, secretValues.TEAM_DOMAIN);
-  assert.equal(calls[0].options.env.POLICY_AUD, secretValues.POLICY_AUD);
-  assert.equal(calls[0].options.env.MCP_ENDPOINT, secretValues.MCP_ENDPOINT);
-  assert.equal(calls[0].options.env.MCP_SMOKE_ACCESS_COOKIE, secretValues.MCP_SMOKE_ACCESS_COOKIE);
-  assert.equal(calls[0].options.env.COMPRESSION_SMOKE_TOKEN, secretValues.COMPRESSION_SMOKE_TOKEN);
+  for (const [key, value] of Object.entries(secretValues)) {
+    assert.equal(calls[0].options.env[key], value);
+  }
   assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cloudflare-fixture");
 });
 
@@ -169,6 +171,7 @@ test("mcp-smoke launches the existing smoke authority and propagates child failu
   assert.equal(exitCode, 17);
   assert.equal(calls[0].args.join(" "), "run smoke:mcp");
   assert.equal(calls[0].options.env.COMPRESSION_SMOKE_TOKEN, undefined);
+  assert.equal(calls[0].options.env.JEV_AUDIT_SMOKE_TOKEN, undefined);
 });
 
 test("mapper main keeps synthetic secret values out of stdout and stderr", async () => {
@@ -214,11 +217,11 @@ test("mapper main rejects an alternate path argument before reading any file", a
   assert.match(stderr.join("\n"), /exactly one supported mode argument/);
 });
 
-test("package scripts expose only the two fixed local mapper modes", () => {
+test("package scripts preserve fixed mapper modes and route production through jev-audit wrapper", () => {
   assert.equal(packageJson.scripts["smoke:mcp:local"], "node scripts/production-secret-mapper.mjs mcp-smoke");
   assert.equal(packageJson.scripts["release:local"], "node scripts/production-secret-mapper.mjs production-release");
   assert.equal(packageJson.scripts["smoke:mcp"], "node scripts/smoke-mcp.mjs");
-  assert.equal(packageJson.scripts["deploy:production"], "node scripts/deploy-production.mjs");
+  assert.equal(packageJson.scripts["deploy:production"], "node scripts/deploy-production-with-jev-audit.mjs");
   assert.equal(packageJson.scripts.deploy, "npm run deploy:production");
 });
 
