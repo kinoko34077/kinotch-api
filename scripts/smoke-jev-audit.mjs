@@ -1,10 +1,15 @@
 import {
+  DEFAULT_JEV_MODEL,
+} from "../src/jev-audit/contract.js";
+import {
   JEV_AUDIT_MCP_ENDPOINT,
   JEV_AUDIT_REST_ENDPOINT,
 } from "./jev-audit-release.mjs";
 
 export { JEV_AUDIT_REST_ENDPOINT };
 export const JEV_AUDIT_SMOKE_TIMEOUT_MS = 60_000;
+
+const EXPECTED_PROFILES = Object.freeze(["development", "generic"]);
 
 export class JevAuditSmokeError extends Error {
   constructor(message = "jev-audit smoke failed") {
@@ -28,10 +33,19 @@ function assertAuditReport(report) {
   if (!Number.isInteger(report.batches) || report.batches <= 0) throw new JevAuditSmokeError();
   if (!report.aggregate || typeof report.aggregate?.overall?.status !== "string") throw new JevAuditSmokeError();
   if (report.provenance?.audit_semantics_version !== "0.2.12") throw new JevAuditSmokeError();
-  if (typeof report.provenance?.resolved_model !== "string" || report.provenance.resolved_model.length === 0) {
+  if (report.provenance?.resolved_model !== DEFAULT_JEV_MODEL) throw new JevAuditSmokeError();
+  return report;
+}
+
+function assertProfiles(result) {
+  const profiles = result?.structuredContent?.profiles;
+  if (!Array.isArray(profiles) || profiles.length !== EXPECTED_PROFILES.length) {
     throw new JevAuditSmokeError();
   }
-  return report;
+  if (profiles.some((profile, index) => profile !== EXPECTED_PROFILES[index])) {
+    throw new JevAuditSmokeError();
+  }
+  return [...profiles];
 }
 
 function requireSecret(value, name) {
@@ -197,6 +211,11 @@ export async function runJevAuditMcpSmoke({
     };
   }
 
+  const profiles = assertProfiles(await request("tools/call", {
+    name: "list_profiles",
+    arguments: {},
+  }));
+
   const result = await request("tools/call", {
     name: "audit_files",
     arguments: FIXTURE,
@@ -209,6 +228,7 @@ export async function runJevAuditMcpSmoke({
     authMode: "access_service_token",
     toolCall: true,
     tool: "audit_files",
+    profiles,
     filesScanned: report.files_scanned,
     batches: report.batches,
     aggregateStatus: report.aggregate.overall.status,
