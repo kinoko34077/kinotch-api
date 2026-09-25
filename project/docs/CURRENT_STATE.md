@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` and Codex Managed OAuth MCP E2E verified; Jev Audit Remote implementation/release hardening and one-time bootstrap repository path verified, live Jev production verification pending; Codex Service Auth helper repository implementation supports release-token reuse, live Service Auth E2E pending
+Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` and Codex Managed OAuth MCP E2E verified; Jev Audit Remote implementation/release hardening and one-time bootstrap repository path verified, live Jev production verification pending; Codex Service Auth helper and bounded machine-local setup repository implementation verified, live Service Auth E2E pending
 
 ## Implemented
 
@@ -20,6 +20,7 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - The fixed external secret-file parser recognizes optional Codex-only `CODEX_CF_ACCESS_CLIENT_ID` / `CODEX_CF_ACCESS_CLIENT_SECRET` values without adding them to either Production release or release-smoke required-key sets.
 - `scripts/codex-mcp-access-headers.mjs` implements the Codex `http_headers_helper` boundary. By default it reuses the existing release-smoke `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`; if both Codex-specific override keys exist they take precedence; if only one override key exists or either override value is empty the helper fails closed. It accepts no alternate path and emits only `CF-Access-Client-Id` / `CF-Access-Client-Secret` as the machine-consumed JSON header object without printing secret values.
 - The selected default Codex Service Auth mode therefore requires no duplicate secret values and no additional Cloudflare Service Token or Access policy for the existing Compression MCP application. The existing release-smoke exact-token `Service Auth` policy is reused. A separate Codex token remains an optional future override if independent revocation becomes necessary.
+- `scripts/configure-codex-mcp-service-auth.mjs` plus `npm run setup:codex-mcp-service-auth` provide a bounded machine-local Codex setup path. The setup edits only `%USERPROFILE%\.codex\config.toml`, preserves unrelated config sections, replaces or inserts only the `mcp_servers.semantic_compressor` scalar section, records the absolute local path to `scripts/codex-mcp-access-headers.mjs`, accepts no alternate config path, and fails closed on duplicate target sections. It never writes Service Token values into Codex config.
 - Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` succeeded on 2026-09-25 and is recorded by `docs/releases/20260925T094316840Z.json`; Text, Compression, MCP, and Gateway deployments all report `needsRollback: false`, Gateway/Text/Compression smoke passed, and Compression MCP Service Token smoke passed.
 - Codex CLI 0.155.1 separately verified the interactive Managed OAuth path against the Production Compression MCP endpoint: OAuth, tool discovery, `compress_text`, and returned `semantic-dense-v1` / `semantic-dense-v1.1` / `gemini-3.5-flash-lite` contract all passed without using the Service Token. This is operator E2E evidence separate from release metadata.
 - Worker deploy results are reconciled against remote active versions; rollback verifies the active version and runs non-billable recovery smoke.
@@ -51,7 +52,7 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Cloudflare Access Service Token creation and its `Service Auth` policies are external operator-managed state; repository tests verify request/header contracts, not dashboard configuration itself.
 - The generated release metadata intentionally keeps `mcpOAuthSmoke.status = operator_required`; it is immutable evidence of what that release process itself verified. The later Codex Managed OAuth E2E PASS is recorded separately in this Current State rather than rewriting the release record.
 - Codex Service Auth defaults to sharing the release-smoke Service Token. This intentionally couples credential rotation, revocation, and compromise scope between automated release smoke and local Codex Service Auth. The optional complete `CODEX_CF_ACCESS_*` override restores independent revocation when needed.
-- Codex Service Auth helper code is repository-verified, but the machine-local Codex `http_headers_helper` configuration and real Service Auth `compress_text` E2E remain external operator evidence until performed.
+- Codex Service Auth helper and machine-local setup code are repository-verified, but execution of `npm run setup:codex-mcp-service-auth`, inspection of the resulting live Codex registration, and a real Service Auth `compress_text` E2E remain external machine evidence until performed.
 - The Codex helper provides an operational secret-isolation boundary, not a hard OS privilege boundary against arbitrary same-user shell access.
 - The latest tracked Production release predates the Jev Audit Remote feature. Jev Audit one-time bootstrap, Cloudflare Worker Secret registration, Access application/policy setup, live TypeSafe REST E2E, and authenticated Jev Audit MCP E2E remain external production evidence until performed; repository tests/dry-runs do not count as that evidence.
 
@@ -63,7 +64,7 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 4. Create the `jev-audit-mcp.kinotch.workers.dev` Cloudflare Access application, enable the intended Managed OAuth policy, allow the existing release Service Token through an exact-token `Service Auth` policy, and record its Audience as `JEV_AUDIT_MCP_POLICY_AUD` in the opaque local inputs.
 5. From synchronized clean `main`, run the formal Jev Audit-aware production release gate with `npm run release:local`.
 6. Confirm one live TypeSafe REST E2E and authenticated Jev Audit MCP `list_profiles` / `audit_files` E2E, then record deployed version IDs and smoke evidence.
-7. Configure machine-local Codex `semantic_compressor` with `http_headers_helper` pointing directly to `scripts/codex-mcp-access-headers.mjs`; in the selected default mode it will reuse the existing release Service Token without adding `CODEX_CF_ACCESS_*` values or a new Cloudflare policy. Run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
+7. On the authorized Codex machine, synchronize `main` and run `npm run setup:codex-mcp-service-auth`. This configures machine-local `semantic_compressor` with an absolute `http_headers_helper` path and reuses the existing release Service Token without adding `CODEX_CF_ACCESS_*` values or a new Cloudflare policy. Confirm `codex mcp list`, then run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
 8. Record external E2E evidence separately, then use the features in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
 
 ## Verification
@@ -74,8 +75,9 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Compression MCP release Service Token smoke: passed (`authMode = access_service_token`)
 - Codex CLI 0.155.1 Managed OAuth E2E for Compression MCP: OAuth PASS, `tools/list` PASS, `compress_text` discovery/call PASS, Service Token not used
 - Codex Service Auth helper unit/regression coverage: default release-token fallback, complete Codex-specific override precedence, partial override fail-closed behavior, Production-mode isolation, exact two-header JSON output, and alternate-path rejection
-- Codex Service Auth documentation contract: `http_headers_helper`, fixed secret path, default release-token reuse, optional Codex override, Service Auth headers, and Managed OAuth coexistence are documented without real credentials
-- Real Codex Service Auth E2E: pending machine-local Codex helper configuration and one synthetic `compress_text` call; no additional Cloudflare token/policy is required for the selected reuse mode
+- Codex Service Auth setup unit/regression coverage: fixed machine-local config path, absolute helper command, bounded target-section replacement, unrelated-section preservation, duplicate-target rejection, alternate-path rejection, and no Service Token literals in config
+- Codex Service Auth documentation contract: `http_headers_helper`, fixed secret path, default release-token reuse, optional Codex override, one-command machine-local setup, Service Auth headers, and Managed OAuth coexistence are documented without real credentials
+- Real Codex Service Auth E2E: pending execution of the machine-local setup plus one synthetic `compress_text` call; no additional Cloudflare token/policy is required for the selected reuse mode
 - Jev Audit one-time bootstrap TDD: missing bootstrap module and confirmation-propagation regressions were observed RED before implementation; current contract covers explicit confirmation, private→MCP safe resume, completed-bootstrap rejection, dedicated Wrangler configs, opaque Cloudflare-only secret mapping, and package launchers.
 - Jev Audit bootstrap implementation head: GitHub Actions `CI` PASS and `Verify` PASS; CI includes `npm test`, Base compatibility, private Worker dry-run, Remote MCP Worker dry-run, and Gateway dry-run.
 - `knt doctor`

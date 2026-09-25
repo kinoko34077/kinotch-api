@@ -22,6 +22,7 @@
     "smoke:mcp": "node scripts/smoke-mcp.mjs",
     "smoke:jev-audit": "node scripts/smoke-jev-audit.mjs",
     "smoke:mcp:local": "node scripts/production-secret-mapper.mjs mcp-smoke",
+    "setup:codex-mcp-service-auth": "node scripts/configure-codex-mcp-service-auth.mjs",
     "release:local": "node scripts/production-secret-mapper.mjs production-release",
     "bootstrap:mcp": "node scripts/mcp-bootstrap.mjs",
     "bootstrap:jev-audit": "node scripts/jev-audit-bootstrap.mjs",

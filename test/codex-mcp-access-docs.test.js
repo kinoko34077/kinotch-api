@@ -21,3 +21,12 @@ test("Codex Service Auth helper workflow documents release-token reuse without e
   assert.doesNotMatch(operations, /CODEX_CF_ACCESS_CLIENT_SECRET\s*=\s*[A-Za-z0-9_-]{12,}/);
   assert.doesNotMatch(operations, /CF_ACCESS_CLIENT_SECRET\s*=\s*[A-Za-z0-9_-]{12,}/);
 });
+
+test("Codex Service Auth operations document the bounded one-command machine-local setup", () => {
+  assert.match(operations, /npm run setup:codex-mcp-service-auth/);
+  assert.match(operations, /configure-codex-mcp-service-auth\.mjs/);
+  assert.match(operations, /%USERPROFILE%\\\.codex\\config\.toml/);
+  assert.match(operations, /absolute.*codex-mcp-access-headers\.mjs|codex-mcp-access-headers\.mjs.*absolute/i);
+  assert.match(operations, /preserv(?:e|es).*unrelated.*config|unrelated.*config.*preserv/i);
+  assert.match(operations, /does not.*Service Token.*value|Service Token.*value.*not.*config/i);
+});
