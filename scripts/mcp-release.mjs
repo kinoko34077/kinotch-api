@@ -37,7 +37,8 @@ export function createMcpDeployArgs({ env = process.env, dryRun = false } = {}) 
 
 export function resolveMcpSmokeInputs(env = process.env) {
   const endpoint = requiredEnvValue(env, "MCP_ENDPOINT");
-  const accessCookie = requiredEnvValue(env, "MCP_SMOKE_ACCESS_COOKIE");
+  const accessClientId = requiredEnvValue(env, "CF_ACCESS_CLIENT_ID");
+  const accessClientSecret = requiredEnvValue(env, "CF_ACCESS_CLIENT_SECRET");
   let parsed;
   try {
     parsed = new URL(endpoint);
@@ -56,7 +57,11 @@ export function resolveMcpSmokeInputs(env = process.env) {
   ) {
     throw new Error(`MCP_ENDPOINT must target ${MCP_RELEASE_ENDPOINT}`);
   }
-  return { endpoint: parsed.toString(), accessCookie };
+  return {
+    endpoint: parsed.toString(),
+    accessClientId,
+    accessClientSecret,
+  };
 }
 
 export function resolveMcpSmokeState(env = process.env) {
@@ -65,15 +70,15 @@ export function resolveMcpSmokeState(env = process.env) {
     resolveMcpWorkerVars(env);
     return {
       status: "incomplete",
-      reason: "Authenticated Access session-cookie smoke has not completed",
-      authMode: "access_session_cookie",
+      reason: "Authenticated Access service-token smoke has not completed",
+      authMode: "access_service_token",
       endpoint,
     };
   } catch (error) {
     return {
       status: "incomplete",
       reason: error.message,
-      authMode: "access_session_cookie",
+      authMode: "access_service_token",
       endpoint: typeof env?.MCP_ENDPOINT === "string" && env.MCP_ENDPOINT.length > 0
         ? env.MCP_ENDPOINT
         : null,
