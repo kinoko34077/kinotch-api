@@ -4,6 +4,15 @@
 旧側Workerの凍結、GitHub管理、自動デプロイ設定までを時系列でまとめたものです。
 Cloudflareの時刻はUTC、括弧内に日本時間（JST、UTC+9）を記載します。
 
+## 2026-09-25（Jev Audit Remote実装・Production検証待ち）
+
+- Jev Audit Remoteをfeature branchで実装。private `jev-audit` Workerへ`jev-audit` v0.2.12のsnapshot validation、batching、TypeSafe System One呼出、response validation、deterministic aggregationを集約した。
+- Gatewayへ`POST /v1/audit`を追加し、`JEV_AUDIT_API_TOKEN`で認証する。Remote MCP `jev-audit-mcp`は`audit_files`／`list_profiles`だけを公開し、同じprivate WorkerをService Binding経由で利用する。
+- Remote v1はexplicit file snapshots専用で、local filesystem、Git、`changed_only`、caller model override、custom profile pathは扱わない。
+- `TYPESAFE_API_KEY`はprivate `jev-audit` Workerだけが所有し、Gateway/MCPへ複製しない。source/diff本文、Authorization、Access credential、provider key、raw provider responseを通常ログへ残さない境界を固定した。
+- Jev Audit private/MCP deploy、REST/MCP smoke、previous/current Version追跡、rollback/recoveryを既存Production releaseへ統合するwrapperを追加した。既存Semantic Compression release責務は維持する。
+- 自動testとrelease wiringは実装済み。ただしlive TypeSafe REST E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは未実施であり、成功証拠が得られるまでProduction verifiedとは扱わない。
+
 ## 2026-09-10（生成物のCI再現性修正）
 
 - `generate-kanji-fallback.mjs`の`localeCompare()`依存を廃止し、Unicode／UTF-16 code unit基準の決定的な比較へ変更。`dist/kanji-fallback.mjs`を再生成し、CI環境差によるstale判定を回帰テストで固定した。
