@@ -61,6 +61,12 @@ test("production release sanitizes child environments and scopes Cloudflare cred
   assert.doesNotMatch(source, /env:\s*process\.env\s*,?\s*stdio/);
 });
 
+test("production Wrangler calls use the local CLI without shell re-interpretation", () => {
+  assert.match(source, /createWranglerInvocation/);
+  assert.match(source, /shell:\s*invocation\.shell/);
+  assert.doesNotMatch(source, /npxCommand|npx\.cmd/);
+});
+
 test("production release fails closed before deployment without Compression smoke token", () => {
   assert.match(source, /Compression smoke requires COMPRESSION_SMOKE_TOKEN/);
   assert.match(source, /compressionDeployed/);

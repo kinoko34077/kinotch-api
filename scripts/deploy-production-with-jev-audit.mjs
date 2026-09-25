@@ -12,14 +12,15 @@ import {
 } from "./release-recovery.mjs";
 import { PRODUCTION_SMOKE_TARGETS, runProductionSmoke } from "./smoke-production.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
+import { createWranglerInvocation } from "./wrangler-runner.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function run(command, args, {
   capture = false,
   allowFailure = false,
   env = process.env,
+  shell = process.platform === "win32",
 } = {}) {
   return new Promise((resolve, reject) => {
     let output = "";
@@ -28,7 +29,7 @@ function run(command, args, {
       cwd: projectRoot,
       env,
       stdio: capture || allowFailure ? ["inherit", "pipe", "pipe"] : "inherit",
-      shell: process.platform === "win32",
+      shell,
     });
     if (capture || allowFailure) {
       child.stdout.on("data", (chunk) => {
@@ -61,9 +62,10 @@ async function assertCleanWorktree() {
 }
 
 function runWrangler(args, options = {}) {
-  const normalizedArgs = args[0] === "wrangler" ? args.slice(1) : args;
-  return run(npxCommand, ["wrangler", ...normalizedArgs], {
+  const invocation = createWranglerInvocation(args, { projectRoot });
+  return run(invocation.command, invocation.args, {
     ...options,
+    shell: invocation.shell,
     env: createReleaseChildEnv(process.env, { includeCloudflareCredentials: true }),
   });
 }
@@ -104,7 +106,10 @@ async function recoverGatewayAfterJevFailure(previousGatewayVersionId) {
 }
 
 async function runCoreProductionRelease() {
-  return run(process.execPath, ["scripts/deploy-production.mjs"], { env: process.env });
+  return run(process.execPath, ["scripts/deploy-production.mjs"], {
+    env: process.env,
+    shell: false,
+  });
 }
 
 function safeError(error) {
