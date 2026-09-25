@@ -59,7 +59,7 @@ test("validateSystemOneResponse accepts current TypeSafe answer shape and preser
   assert.deepEqual(parsed.usage, { input_tokens: null, output_tokens: null });
 });
 
-test("validateSystemOneResponse fails closed on malformed probabilities and answer sets", () => {
+test("validateSystemOneResponse fails closed on malformed probabilities, answer sets, and unexpected model", () => {
   const malformed = providerPayload();
   malformed.answers.local_status.probabilities.clear = 0.2;
   assert.throws(
@@ -71,6 +71,11 @@ test("validateSystemOneResponse fails closed on malformed probabilities and answ
   delete missing.answers.spec_mismatch;
   assert.throws(
     () => validateSystemOneResponse(missing),
+    (error) => error instanceof AuditRemoteError && error.code === "provider_response_invalid",
+  );
+
+  assert.throws(
+    () => validateSystemOneResponse(providerPayload({ model: "jev-unexpected" })),
     (error) => error instanceof AuditRemoteError && error.code === "provider_response_invalid",
   );
 });
