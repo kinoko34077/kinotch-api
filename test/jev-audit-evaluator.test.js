@@ -186,6 +186,7 @@ test("evaluateAudit maps provider status failures, timeout, and partial batch fa
       { files: [
         { path: "a.py", content: "a".repeat(20_000) },
         { path: "b.py", content: "b".repeat(20_000) },
+        { path: "c.py", content: "c".repeat(20_000) },
       ] },
       {
         fetchImpl: async () => {
