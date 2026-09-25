@@ -27,7 +27,7 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Gemini generation uses the stable Interactions API `v1/interactions`; fixed-prompt `countTokens` measurement remains on the documented `v1beta` token endpoint.
 - Node 26.10.0 migration verification completed with `npm ci`, the full test suite, and dry-runs for Text, Compression, MCP, and Gateway Workers; the opt-in live Gemini test remains excluded from ordinary CI.
 - Base main commit `60592ce7535502356b65e9ae76da2ded3c1dff06` pins the Base-managed checkout action. This repository still intentionally adopts the tracked Base v0.3.8 snapshot; a broad Base v0.4.0 synchronization was not performed.
-- Jev Audit Remote is integrated into the main project implementation: the private `jev-audit` Worker owns snapshot validation, batching, TypeSafe System One calls, response validation, and deterministic aggregation; REST `/v1/audit` and `jev-audit-mcp` use the shared private Worker boundary.
+- Jev Audit Remote is implemented and integrated into the main project implementation: the private `jev-audit` Worker owns snapshot validation, batching, TypeSafe System One calls, response validation, and deterministic aggregation; REST `/v1/audit` and `jev-audit-mcp` use the shared private Worker boundary.
 - Jev Audit Remote preserves `jev-audit` v0.2.12 semantics, exposes only explicit file snapshots with `development` / `generic` profiles, and adds production release/smoke/rollback integration without changing the local Python CLI/STDIO MCP implementation.
 - Jev Audit Access JWT verification, MCP body-limit ordering, actor-fingerprint/IP rate limiting, stateless Streamable HTTP MCP handler, and private Service Binding pattern are aligned with the current Semantic Compression Remote MCP implementation while using dedicated bindings/namespaces.
 - Jev Audit release hardening captures the pre-release Gateway version. If the existing core release succeeds but Jev Audit post-core smoke fails, the public Gateway is rolled back and recovery-smoked before the Jev Audit MCP/private Workers are recovered. If the core release itself fails, the existing core rollback remains authoritative and the wrapper does not perform a second Gateway rollback.
@@ -55,13 +55,14 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 
 ## Next work
 
-1. From clean synchronized `main`, run the one-time Jev Audit bootstrap through `JEV_AUDIT_BOOTSTRAP_CONFIRM=true` + `npm run bootstrap:jev-audit:local` if the two Jev Workers do not yet exist.
-2. Register `TYPESAFE_API_KEY` only on the private `jev-audit` Worker and `JEV_AUDIT_API_TOKEN` only on the existing Gateway; use the same REST token value only as the opaque local `JEV_AUDIT_SMOKE_TOKEN` release input.
-3. Create the `jev-audit-mcp.kinotch.workers.dev` Cloudflare Access application, enable the intended Managed OAuth policy, allow the existing release Service Token through an exact-token `Service Auth` policy, and record its Audience as `JEV_AUDIT_MCP_POLICY_AUD` in the opaque local inputs.
-4. From synchronized clean `main`, run the formal Jev Audit-aware production release gate with `npm run release:local`.
-5. Confirm one live TypeSafe REST E2E and authenticated Jev Audit MCP `list_profiles` / `audit_files` E2E, then record deployed version IDs and smoke evidence.
-6. Create/select a Codex-dedicated Cloudflare Access Service Token, add the exact-token `Service Auth` policy, add the two `CODEX_CF_ACCESS_*` values to the fixed secret file, configure Codex `http_headers_helper`, and run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
-7. Record external E2E evidence separately, then use the features in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
+1. Keep GitHub Actions `test` and `Verify` successful while completing the Jev Audit production rollout.
+2. From clean synchronized `main`, run the one-time Jev Audit bootstrap through `JEV_AUDIT_BOOTSTRAP_CONFIRM=true` + `npm run bootstrap:jev-audit:local` if the two Jev Workers do not yet exist.
+3. Register `TYPESAFE_API_KEY` only on the private `jev-audit` Worker and `JEV_AUDIT_API_TOKEN` only on the existing Gateway; use the same REST token value only as the opaque local `JEV_AUDIT_SMOKE_TOKEN` release input.
+4. Create the `jev-audit-mcp.kinotch.workers.dev` Cloudflare Access application, enable the intended Managed OAuth policy, allow the existing release Service Token through an exact-token `Service Auth` policy, and record its Audience as `JEV_AUDIT_MCP_POLICY_AUD` in the opaque local inputs.
+5. From synchronized clean `main`, run the formal Jev Audit-aware production release gate with `npm run release:local`.
+6. Confirm one live TypeSafe REST E2E and authenticated Jev Audit MCP `list_profiles` / `audit_files` E2E, then record deployed version IDs and smoke evidence.
+7. Create/select a Codex-dedicated Cloudflare Access Service Token, add the exact-token `Service Auth` policy, add the two `CODEX_CF_ACCESS_*` values to the fixed secret file, configure Codex `http_headers_helper`, and run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
+8. Record external E2E evidence separately, then use the features in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
 
 ## Verification
 
