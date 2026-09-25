@@ -19,17 +19,16 @@ The first deployment has a one-time bootstrap path because the Access applicatio
 3. In Cloudflare Zero Trust, create an Access self-hosted application for the deployed `semantic-compression-mcp` Worker hostname.
 4. Restrict the normal interactive policy to the intended operator identities. Do not put email addresses or policy identity values in this repository.
 5. Enable Managed OAuth for the application so Codex and other interactive MCP clients can use the user-authenticated path.
-6. Create a dedicated release-smoke Service Token and add a `Service Auth` policy for that exact token on the same Access application. Do not use `Bypass`, and do not replace the interactive Managed OAuth policy.
-7. If Codex Service Auth is wanted for non-interactive local use, create a separate Codex-dedicated Service Token and add a `Service Auth` policy for that exact token on the same application. Keep it independently revocable from the release-smoke token.
-8. Record the Cloudflare One team domain and Application Audience Tag as operator configuration values.
-9. Configure Worker vars (not secrets):
+6. Create a dedicated release-smoke Service Token and add a `Service Auth` policy for that exact token on the same Access application. Do not use `Bypass`, and do not replace the interactive Managed OAuth policy. By default, Codex Service Auth reuses this already-authorized release-smoke Service Token; no second token or second policy is required. A separate Codex token remains an optional override when independent revocation is needed later.
+7. Record the Cloudflare One team domain and Application Audience Tag as operator configuration values.
+8. Configure Worker vars (not secrets):
 
    - `TEAM_DOMAIN`: the team hostname, with or without the `https://` prefix; code normalizes it.
    - `POLICY_AUD`: the MCP Access application Audience Tag.
 
    Apply these two non-secret vars to the bootstrap-deployed Worker through the operator-controlled Cloudflare Worker settings before the first authenticated smoke. The normal release later passes the same values explicitly with Wrangler, so dashboard state is not the normal release source of truth.
 
-The normal production release command requires `TEAM_DOMAIN`, `POLICY_AUD`, `MCP_ENDPOINT`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET` in its operator environment. It passes `TEAM_DOMAIN` and `POLICY_AUD` explicitly as Wrangler `--var` values on both MCP dry-run and deploy. The Service Token ID/secret are release-smoke credentials only and are sent to Access as `CF-Access-Client-Id` / `CF-Access-Client-Secret` request headers; they are not Worker vars. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
+The normal production release command requires `TEAM_DOMAIN`, `POLICY_AUD`, `MCP_ENDPOINT`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET` in its operator environment. It passes `TEAM_DOMAIN` and `POLICY_AUD` explicitly as Wrangler `--var` values on both MCP dry-run and deploy. The Service Token ID/secret are release-smoke credentials sent to Access as `CF-Access-Client-Id` / `CF-Access-Client-Secret`; they are not Worker vars. The same values are also the default Codex Service Auth credentials through the local header helper. This reuse does not change the Production release mapping or deploy authority. Do not rely on an untracked local config file or an unverified dashboard-only variable for the release.
 
 The MCP Worker has a dedicated `MCP_RATE_LIMITER` binding for `compress_text`: 5 requests per 60 seconds. After Access JWT verification, the preferred key is a non-reversible SHA-256 fingerprint of the validated Access subject/email claim; if no stable claim is present, the key falls back to `CF-Connecting-IP`. A Service Token Access assertion can therefore use the existing IP fallback without changing the release-smoke contract. Handshake and discovery requests do not consume this limit. If the binding is missing or fails, the tool fails closed with `rate_limiter_unavailable`; a denied call returns `rate_limited`. The REST Gateway rate limits remain independent.
 
@@ -77,7 +76,7 @@ Managed OAuth remains the interactive user-authenticated path. In MCP Inspector,
 
 Do not paste Access JWTs, API keys, Service Token credentials, or private text into repository files or terminal transcripts. Run one smoke call at a time; the tool does not add automatic retries.
 
-The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, but authenticates the automated release path with the dedicated release Service Token. The normal production release accepts only `https://semantic-compression-mcp.kinotch.workers.dev/mcp`; HTTPS, no explicit port, `/mcp`, no credentials, no query, and no fragment are enforced, and another Worker hostname fails before any Service Token-bearing request. This is an Access Service Token smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
+The repository smoke helper performs the same four protocol operations once, including the `notifications/initialized` lifecycle notification, but authenticates the automated release path with the release Service Token. The normal production release accepts only `https://semantic-compression-mcp.kinotch.workers.dev/mcp`; HTTPS, no explicit port, `/mcp`, no credentials, no query, and no fragment are enforced, and another Worker hostname fails before any Service Token-bearing request. This is an Access Service Token smoke, not proof that a Codex client completed the Managed OAuth client flow; record those as separate evidence.
 
 For the release smoke, the client sends the two Cloudflare Access headers only:
 
@@ -90,7 +89,7 @@ The smoke does not send a browser `Cookie` header or reuse the REST `COMPRESSION
 
 ## Codex registration
 
-Codex supports two intentionally separate authentication paths for this MCP.
+Codex supports two authentication paths for this MCP.
 
 ### Managed OAuth
 
@@ -107,20 +106,22 @@ enabled_tools = ["compress_text"]
 tool_timeout_sec = 60
 ```
 
-Confirm the actual schema supported by the installed Codex version before saving it. Do not add a fixed bearer token, release Service Token, or `COMPRESSION_API_TOKEN` to Codex config.
+Confirm the actual schema supported by the installed Codex version before saving it. Do not add a fixed bearer token, Service Token, or `COMPRESSION_API_TOKEN` to Codex config.
 
 ### Service Auth through `http_headers_helper`
 
-For non-interactive Codex access, use a Codex-dedicated Service Token rather than reusing the release-smoke token. Store only these two additional keys in the existing fixed external secret file `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env`:
+For non-interactive Codex access, by default, reuse the existing release-smoke Service Token already stored as `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` in `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env`. Because that token is already authorized by the MCP Access application's exact-token `Service Auth` policy, reuse mode requires no second Cloudflare token, no second Access policy, and no duplicate secret-file values.
+
+A separately revocable Codex token remains available as an optional override. To enable it later, add both keys to the same fixed external secret file:
 
 ```text
 CODEX_CF_ACCESS_CLIENT_ID=<codex-service-token-client-id>
 CODEX_CF_ACCESS_CLIENT_SECRET=<codex-service-token-client-secret>
 ```
 
-These keys are not part of the Production release required-key set. `release:local` and `smoke:mcp:local` continue to use their existing release credentials; they do not require or forward the Codex-only pair.
+If neither Codex override key exists, `scripts/codex-mcp-access-headers.mjs` uses `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`. If both exist and are non-empty, the Codex-specific pair wins. If exactly one override key exists, or either override value is empty, the helper fails closed rather than silently falling back. The optional override keys are not part of the Production release required-key set; `release:local` and `smoke:mcp:local` always continue to use the release credentials.
 
-`scripts/codex-mcp-access-headers.mjs` reads the same fixed secret-file path, requires only the Codex-specific pair, accepts no alternate path argument, and writes exactly one JSON object to stdout containing:
+The helper reads only the fixed secret-file path, accepts no alternate path argument, and writes exactly one JSON object to stdout containing:
 
 ```text
 CF-Access-Client-Id
@@ -140,7 +141,7 @@ http_headers_helper = 'node "C:/path/to/kinotch-api/scripts/codex-mcp-access-hea
 
 Do not embed either Service Token value in TOML. Do not set `http_headers` with literal credentials. The helper is only a credential-injection boundary; it does not implement MCP, alter the Worker, or create another Production release authority.
 
-Before using this mode, the operator must create/select the Codex-dedicated Cloudflare Access Service Token and add a `Service Auth` policy for that exact token to the same Access application. Keep the existing Managed OAuth policy intact and do not use `Bypass`.
+In the default reuse mode, no Cloudflare configuration change is required beyond the already-working release-smoke `Service Auth` policy. Keep the existing Managed OAuth policy intact and do not use `Bypass`. Reusing one token intentionally couples revocation and rotation: revoking or rotating that Service Token affects both release smoke and Codex Service Auth. Configure the optional Codex override only if that coupling later becomes undesirable.
 
 Verification for Codex Service Auth is one synthetic `compress_text` call without an interactive OAuth prompt. Confirm `initialize`, `tools/list`, tool discovery, one `compress_text` result, and the expected public contract `semantic-dense-v1` / `semantic-dense-v1.1` / `gemini-3.5-flash-lite`. Do not loop or auto-retry the tool call.
 
@@ -154,13 +155,13 @@ npm run deploy:production
 
 `npm run release:local` is only the fixed local secret-injection launcher for that authority. The one-time `npm run bootstrap:mcp` command is only the pre-Access Worker bootstrap described above; it is not an alternate normal release authority. The normal release gate records MCP version, endpoint, protocol, tool version, smoke auth mode, and recovery fields without recording credentials. A failed deploy is reconciled against the remote active Version before recovery state is recorded. A failed MCP smoke rolls back the MCP version when a previous version exists, verifies that the requested Version is active again, and runs a non-billable MCP handshake recovery smoke using the same release Service Token inputs. Access bootstrap failures remain an explicit incomplete external operation rather than a fabricated smoke success.
 
-The release metadata keeps `mcpOAuthSmoke` separate and operator-required because the automated release Service Token smoke is not evidence of a successful Codex Managed OAuth flow. Codex Service Auth through `http_headers_helper` is also separate operator evidence and does not rewrite historical release metadata.
+The release metadata keeps `mcpOAuthSmoke` separate and operator-required because the automated release Service Token smoke is not evidence of a successful Codex Managed OAuth flow. Codex Service Auth through `http_headers_helper` is also separate operator evidence and does not rewrite historical release metadata, even when it reuses the same Service Token credential.
 
 ## Troubleshooting
 
-- Release Service Token smoke `401` / `403`: check the exact release-smoke Service Token, `Service Auth` policy, application hostname, and token validity; do not switch the policy to `Bypass`.
-- Codex Service Auth `401` / `403`: check the Codex-dedicated Service Token and its exact `Service Auth` policy; do not substitute the release credential silently.
-- Codex helper exits non-zero before connection: confirm both `CODEX_CF_ACCESS_CLIENT_ID` and `CODEX_CF_ACCESS_CLIENT_SECRET` exist and are non-empty in the fixed external secret file.
+- Release Service Token smoke `401` / `403`: check the release-smoke Service Token, `Service Auth` policy, application hostname, and token validity; do not switch the policy to `Bypass`.
+- Codex Service Auth `401` / `403` in default reuse mode: check the same release-smoke Service Token and existing exact-token `Service Auth` policy. If a complete `CODEX_CF_ACCESS_*` optional override is configured, check that override token and its policy instead.
+- Codex helper exits non-zero before connection: with no Codex override, confirm both `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` exist and are non-empty. If either `CODEX_CF_ACCESS_*` key exists, both Codex override keys must exist and be non-empty.
 - `authentication_failed`: check the Access application, JWT issuer/audience/signature/expiry, and clock; do not disable Worker-side verification.
 - `authentication_unavailable`: check `TEAM_DOMAIN` and `POLICY_AUD` Worker vars.
 - `rate_limiter_unavailable`: check the `MCP_RATE_LIMITER` binding and its Wrangler ratelimit configuration; do not bypass it.
