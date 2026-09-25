@@ -41,17 +41,17 @@
     },
     {
       "name": "JEV_AUDIT_RATE_LIMITER",
-      "namespace_id": "26090806",
+      "namespace_id": "26090809",
       "simple": { "limit": 5, "period": 60 }
     },
     {
       "name": "JEV_AUDIT_PREAUTH_RATE_LIMITER",
-      "namespace_id": "26090807",
+      "namespace_id": "26090810",
       "simple": { "limit": 5, "period": 60 }
     },
     {
       "name": "JEV_AUDIT_TOKEN_RATE_LIMITER",
-      "namespace_id": "26090808",
+      "namespace_id": "26090811",
       "simple": { "limit": 5, "period": 60 }
     }
   ],
