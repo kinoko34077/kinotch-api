@@ -15,6 +15,7 @@ function statusJson(versionId) {
 function makeHarness() {
   const calls = [];
   const stages = [];
+  const mcpSmokeCalls = [];
   let privateVersion = PREVIOUS_PRIVATE;
   let mcpVersion = PREVIOUS_MCP;
 
@@ -52,19 +53,23 @@ function makeHarness() {
       TEAM_DOMAIN: "https://example.cloudflareaccess.com",
       JEV_AUDIT_MCP_POLICY_AUD: "jev-aud",
       JEV_AUDIT_SMOKE_TOKEN: "rest-secret",
-      JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=session",
+      CF_ACCESS_CLIENT_ID: "client-id",
+      CF_ACCESS_CLIENT_SECRET: "client-secret",
     },
     onStage: (stage) => stages.push(stage),
     assertPrivateConfig: async () => {},
     runRestSmoke: async () => ({ status: "passed", auditSemanticsVersion: "0.2.12" }),
-    runMcpSmoke: async ({ checkToolCall }) => ({ status: "passed", toolCall: checkToolCall === true }),
+    runMcpSmoke: async (options) => {
+      mcpSmokeCalls.push(options);
+      return { status: "passed", toolCall: options.checkToolCall === true };
+    },
   });
 
-  return { phase, calls, stages };
+  return { phase, calls, stages, mcpSmokeCalls };
 }
 
 test("phase dry-runs, captures versions, deploys both Workers, then runs live REST/MCP smoke", async () => {
-  const { phase, calls, stages } = makeHarness();
+  const { phase, calls, stages, mcpSmokeCalls } = makeHarness();
   await phase.prepare();
   await phase.deploy();
   await phase.smoke();
@@ -76,6 +81,9 @@ test("phase dry-runs, captures versions, deploys both Workers, then runs live RE
   assert.equal(metadata.jevAuditMcpVersionId, NEW_MCP);
   assert.equal(metadata.jevAuditRestSmoke.status, "passed");
   assert.equal(metadata.jevAuditMcpSmoke.toolCall, true);
+  assert.equal(mcpSmokeCalls[0].accessClientId, "client-id");
+  assert.equal(mcpSmokeCalls[0].accessClientSecret, "client-secret");
+  assert.equal(mcpSmokeCalls[0].accessCookie, undefined);
   assert.ok(stages.includes("Jev Audit private Worker dry-run"));
   assert.ok(stages.includes("Jev Audit MCP Worker dry-run"));
   assert.ok(stages.includes("Jev Audit REST smoke"));
@@ -85,7 +93,7 @@ test("phase dry-runs, captures versions, deploys both Workers, then runs live RE
 });
 
 test("phase recovery rolls back MCP then private Worker and verifies recovery smoke", async () => {
-  const { phase, calls } = makeHarness();
+  const { phase, calls, mcpSmokeCalls } = makeHarness();
   await phase.prepare();
   await phase.deploy();
   const recovery = await phase.recover();
@@ -96,4 +104,7 @@ test("phase recovery rolls back MCP then private Worker and verifies recovery sm
   assert.equal(rollbackCalls.length, 2);
   assert.ok(rollbackCalls[0].args.includes("automatic-jev-audit-mcp-smoke-failure-rollback"));
   assert.ok(rollbackCalls[1].args.includes("automatic-jev-audit-private-smoke-failure-rollback"));
+  assert.equal(mcpSmokeCalls.at(-1).accessClientId, "client-id");
+  assert.equal(mcpSmokeCalls.at(-1).accessClientSecret, "client-secret");
+  assert.equal(mcpSmokeCalls.at(-1).checkToolCall, false);
 });
