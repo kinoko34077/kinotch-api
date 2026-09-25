@@ -87,7 +87,7 @@ test("phase dry-runs, captures versions, deploys both Workers, then runs live RE
   assert.ok(stages.includes("Jev Audit private Worker dry-run"));
   assert.ok(stages.includes("Jev Audit MCP Worker dry-run"));
   assert.ok(stages.includes("Jev Audit REST smoke"));
-  assert.ok(stages.includes("Jev Audit MCP smoke"));
+  assert.ok(stages.includes("Jev Audit MCP Service Token smoke"));
   assert.ok(calls.some(({ args }) => args.includes("wrangler.jev-audit.jsonc") && args.includes("--dry-run")));
   assert.ok(calls.some(({ args }) => args.includes("wrangler.jev-audit-mcp.jsonc") && args.includes("--dry-run")));
 });
