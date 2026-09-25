@@ -103,7 +103,7 @@ export function mapProductionSecrets(secrets, mode) {
   if (missingKeys.length > 0) {
     throw new Error(`Missing required production secret keys:\n${missingKeys.map((key) => `- ${key}`).join("\n")}`);
   }
-  return Object.freeze(Object.fromEntries(requiredKeys.map((key) => [key, secrets[key]]));
+  return Object.freeze(Object.fromEntries(requiredKeys.map((key) => [key, secrets[key]])));
 }
 
 export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets }) {
