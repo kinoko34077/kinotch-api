@@ -98,3 +98,36 @@ test("production release records deployment reconciliation summaries on success"
   assert.match(source, /mcpDeployment:\s*state\.mcpDeployment/);
   assert.match(source, /gatewayDeployment:\s*state\.gatewayDeployment/);
 });
+
+test("production release includes jev-audit private Worker, MCP, and both live smoke boundaries", () => {
+  assert.match(source, /resolveJevAuditReleaseInputs/);
+  assert.match(source, /createJevAuditPrivateDeployArgs/);
+  assert.match(source, /createJevAuditMcpDeployArgs/);
+  assert.match(source, /JEV_AUDIT_PRIVATE_WORKER_NAME/);
+  assert.match(source, /JEV_AUDIT_MCP_WORKER_NAME/);
+  assert.match(source, /Jev Audit private Worker dry-run/);
+  assert.match(source, /Jev Audit MCP Worker dry-run/);
+  assert.match(source, /Jev Audit REST smoke/);
+  assert.match(source, /runJevAuditRestSmoke/);
+  assert.match(source, /Jev Audit MCP smoke/);
+  assert.match(source, /runJevAuditMcpSmoke/);
+});
+
+test("production release captures jev-audit versions and rollback state", () => {
+  assert.match(source, /previousJevAuditPrivateVersionId/);
+  assert.match(source, /jevAuditPrivateVersionId/);
+  assert.match(source, /previousJevAuditMcpVersionId/);
+  assert.match(source, /jevAuditMcpVersionId/);
+  assert.match(source, /jevAuditPrivateRecovery/);
+  assert.match(source, /jevAuditMcpRecovery/);
+  assert.match(source, /automatic-jev-audit-private-smoke-failure-rollback/);
+  assert.match(source, /automatic-jev-audit-mcp-smoke-failure-rollback/);
+});
+
+test("production release records jev-audit deployment and smoke metadata", () => {
+  assert.match(source, /buildJevAuditReleaseMetadata/);
+  assert.match(source, /jevAuditPrivateDeployment/);
+  assert.match(source, /jevAuditMcpDeployment/);
+  assert.match(source, /jevAuditRestSmoke/);
+  assert.match(source, /jevAuditMcpSmoke/);
+});
