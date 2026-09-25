@@ -1,0 +1,167 @@
+name: One-off Wrangler token mapper migration
+
+on:
+  push:
+    branches:
+      - chore/wrangler-token-mapper
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/wrangler-token-mapper
+          fetch-depth: 0
+
+      - name: Update tests first and confirm RED
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('test/production-secret-mapper.test.js')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace(
+            '  CF_ACCESS_CLIENT_SECRET: "client-secret-fixture-value",\n  COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",\n',
+            '  CF_ACCESS_CLIENT_SECRET: "client-secret-fixture-value",\n  COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",\n  CLOUDFLARE_API_TOKEN: "cloudflare-api-token-fixture-value",\n',
+          )
+
+          old = '''test("production secret parser accepts exactly the six allowlisted keys", () => {\n  assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);\n  assert.deepEqual(parseProductionSecretText(secretText), secretValues);\n});'''
+          new = '''test("production secret parser accepts the seven supported keys and ignores unrelated keys", () => {\n  assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);\n  assert.deepEqual(\n    parseProductionSecretText(`${secretText}\\nUNRELATED_SECRET=ignored-fixture-value`),\n    secretValues,\n  );\n});'''
+          if old not in s:
+            raise SystemExit('parser test block not found')
+          s = s.replace(old, new)
+
+          old = '''test("legacy cookie and unknown secret keys fail closed without exposing values", () => {\n  const unknownValue = "unknown-secret-fixture-value";\n  assert.throws(\n    () => parseProductionSecretText(`${secretText}\\nMCP_SMOKE_ACCESS_COOKIE=${unknownValue}`),\n    (error) => error.message.includes("MCP_SMOKE_ACCESS_COOKIE") && !error.message.includes(unknownValue),\n  );\n  assert.throws(\n    () => parseProductionSecretText(`${secretText}\\nUNRELATED_SECRET=${unknownValue}`),\n    (error) => error.message.includes("UNRELATED_SECRET") && !error.message.includes(unknownValue),\n  );\n});'''
+          new = '''test("legacy and unrelated keys are ignored and never mapped", () => {\n  const parsed = parseProductionSecretText(\n    `${secretText}\\nMCP_SMOKE_ACCESS_COOKIE=legacy-cookie-fixture\\nUNRELATED_SECRET=unknown-secret-fixture-value`,\n  );\n  assert.deepEqual(parsed, secretValues);\n  assert.equal(parsed.MCP_SMOKE_ACCESS_COOKIE, undefined);\n  assert.equal(parsed.UNRELATED_SECRET, undefined);\n});'''
+          if old not in s:
+            raise SystemExit('unknown-key test block not found')
+          s = s.replace(old, new)
+
+          s = s.replace(
+            'test("production-release maps six keys and launches the existing release authority", async () => {',
+            'test("production-release maps seven keys and launches the existing release authority", async () => {',
+          )
+          s = s.replace(
+            '    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "cloudflare-fixture" },',
+            '    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "stale-source-env-token" },',
+          )
+          s = s.replace(
+            '  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cloudflare-fixture");',
+            '  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);',
+          )
+          s = s.replace(
+            '  assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);\n',
+            '  assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);\n  assert.match(documentation, /CLOUDFLARE_API_TOKEN/);\n',
+          )
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          set +e
+          node --test test/production-secret-mapper.test.js
+          red_status=$?
+          set -e
+          if [ "$red_status" -eq 0 ]; then
+            echo 'Expected mapper contract tests to fail before implementation, but they passed.'
+            exit 1
+          fi
+          echo 'RED confirmed.'
+
+      - name: Implement seven-key mapper and documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_one(path, old, new):
+            p = Path(path)
+            s = p.read_text(encoding='utf-8')
+            if old not in s:
+              raise SystemExit(f'expected text not found in {path}: {old[:100]!r}')
+            if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one match in {path}, got {s.count(old)}')
+            p.write_text(s.replace(old, new), encoding='utf-8')
+
+          # mapper: add Cloudflare deploy credential and ignore unknown file keys.
+          p = Path('scripts/production-secret-mapper.mjs')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+            '  "COMPRESSION_SMOKE_TOKEN",\n]);',
+            '  "COMPRESSION_SMOKE_TOKEN",\n  "CLOUDFLARE_API_TOKEN",\n]);',
+          )
+          start = s.find('function safeKeyName(key) {')
+          end = s.find('\nexport function getProductionSecretPath', start)
+          if start == -1 or end == -1:
+            raise SystemExit('unknown-key helper block not found')
+          s = s[:start] + s[end+1:]
+          s = s.replace('\n  assertKnownKeys(parsed);', '')
+          s = s.replace('\n  assertKnownKeys(secrets);', '')
+          p.write_text(s, encoding='utf-8')
+
+          replace_one(
+            'README.md',
+            '''mapperが扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、\n`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN` の6つだけです。\n未知keyや必須key不足はfail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialは\nこのファイルへ追加せず、既存のoperator-managed設定を使用します。''',
+            '''mapperがProduction releaseで扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、\n`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、\n`CLOUDFLARE_API_TOKEN` の7つです。必須key不足はfail-closedで停止し、未知keyは子processへ渡さず\n無視します。値はログへ出しません。Wrangler用Cloudflare credentialもこの固定secret fileから供給します。''',
+          )
+
+          # USAGE secret table.
+          replace_one(
+            'docs/USAGE.md',
+            '| CF_ACCESS_CLIENT_SECRET | MCP release smoke用Service Token secret | operatorのローカルsecret file |\n',
+            '| CF_ACCESS_CLIENT_SECRET | MCP release smoke用Service Token secret | operatorのローカルsecret file |\n| CLOUDFLARE_API_TOKEN | Wrangler Production管理API credential | operatorのローカルsecret file |\n',
+          )
+          replace_one(
+            'docs/USAGE.md',
+            '$env:CF_ACCESS_CLIENT_SECRET = "<release-smoke service-token client secret>"\nnpm run deploy:production',
+            '$env:CF_ACCESS_CLIENT_SECRET = "<release-smoke service-token client secret>"\n$env:CLOUDFLARE_API_TOKEN = "<Wrangler API token>"\nnpm run deploy:production',
+          )
+          replace_one(
+            'docs/USAGE.md',
+            '''mapperが受け付けるkeyは次の6つだけで、未知keyや必須key不足は停止する。\n\n~~~text\nTEAM_DOMAIN=<team-domain>\nPOLICY_AUD=<audience-tag>\nMCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp\nCF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>\nCF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>\nCOMPRESSION_SMOKE_TOKEN=<compression-caller-token>\n~~~''',
+            '''Production releaseで使用するkeyは次の7つである。必須key不足は停止するが、同じfile内の未知keyは無視し、子processへは渡さない。\n\n~~~text\nTEAM_DOMAIN=<team-domain>\nPOLICY_AUD=<audience-tag>\nMCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp\nCF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>\nCF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>\nCOMPRESSION_SMOKE_TOKEN=<compression-caller-token>\nCLOUDFLARE_API_TOKEN=<wrangler-api-token>\n~~~''',
+          )
+          replace_one(
+            'docs/USAGE.md',
+            '''Cloudflare deploy credentialはこの6key fileへ含めず、既存のoperator-managed認証を使用する。\nsecret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり\nしない。''',
+            '''Wrangler用`CLOUDFLARE_API_TOKEN`もこの固定secret fileからProduction releaseへ注入する。\nsecret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり\nしない。''',
+          )
+
+          replace_one(
+            'docs/OPERATIONS.md',
+            '''- Production operator値はrepository外の固定ファイル `%USERPROFILE%\\\\.kinotch-secrets\\\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。mapperの許可keyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`の6つだけで、未知key・必須key不足・固定path以外の指定はfail closedとする。''',
+            '''- Production operator値はrepository外の固定ファイル `%USERPROFILE%\\\\.kinotch-secrets\\\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。Production releaseで使用するkeyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、`CLOUDFLARE_API_TOKEN`の7つで、必須key不足・固定path以外の指定はfail closedとする。未知keyは無視し、allowlist外の値を子processへ渡さない。''',
+          )
+
+          replace_one(
+            'project/docs/CURRENT_STATE.md',
+            'Last verified: 2026-09-25 — MCP release-smoke Service Token migration',
+            'Last verified: 2026-09-25 — Production secret mapper Wrangler credential integration',
+          )
+          replace_one(
+            'project/docs/CURRENT_STATE.md',
+            '''- Production operator secrets can be supplied through the fixed external `%USERPROFILE%\\\\.kinotch-secrets\\\\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; `smoke:mcp:local` and `release:local` are launchers only, and the formal authority remains `npm run deploy:production`.''',
+            '''- Production operator secrets can be supplied through the fixed external `%USERPROFILE%\\\\.kinotch-secrets\\\\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; Production release consumes seven supported keys including `CLOUDFLARE_API_TOKEN`, ignores unknown file keys without forwarding them, `smoke:mcp:local` and `release:local` remain launchers only, and the formal authority remains `npm run deploy:production`.''',
+          )
+
+          replace_one(
+            'docs/DEVELOPMENT_HISTORY.md',
+            '''- mapperは許可された5 keyだけをmode別に子processへ渡し、未知key・必須key不足・未知modeではfail closedする。secret値、file本文、`process.env`全体は出力しない。''',
+            '''- mapperはProduction releaseで7 key（`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、`CLOUDFLARE_API_TOKEN`）を扱い、mode別に必要値だけを子processへ渡す。必須key不足・未知modeはfail closed、未知file keyは無視して転送しない。secret値、file本文、`process.env`全体は出力しない。''',
+          )
+          PY
+
+          node --test test/production-secret-mapper.test.js test/production-secret-mapper-windows.test.js test/production-deploy-authority-docs.test.js
+          git diff --check
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/production-secret-mapper.mjs test/production-secret-mapper.test.js README.md docs/USAGE.md docs/OPERATIONS.md project/docs/CURRENT_STATE.md docs/DEVELOPMENT_HISTORY.md
+          git commit -m "chore: map Wrangler API token from production secrets"
+          git push origin HEAD:chore/wrangler-token-mapper
