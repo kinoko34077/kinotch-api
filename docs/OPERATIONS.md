@@ -7,14 +7,14 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 - `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。
 - Repository Baseの`Verify` workflowも`test`と同様に成功を維持する。現在のGitHub `main` protectionはrequired check `test`／`verify`、force push禁止、branch deletion禁止を設定済みとしてAPIで確認している。PR必須化、administrator enforcement、strict statusは今回変更していない。
 - Production release開始時に`git fetch origin main`を実行し、現在branchが`main`かつlocal `HEAD == origin/main`であることを確認する。一致しない場合はdeployを開始しない。
-- release gateの`npm ci`、build、check、testは明示的な安全環境allowlistだけを子processへ渡す。`MCP_SMOKE_ACCESS_COOKIE`、Compression smoke token、Gemini key、未知の将来secretは通常子processへ継承せず、WranglerへもCloudflare credentialだけを限定注入する。
+- release gateの`npm ci`、build、check、testは明示的な安全環境allowlistだけを子processへ渡す。`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、Compression smoke token、Gemini key、未知の将来secretは通常子processへ継承せず、WranglerへもCloudflare credentialだけを限定注入する。
 - Cloudflare Workers Builds / Git integrationによるProduction auto-deployは無効化する。`api`のGit連携を再接続せず、Cloudflare側の単独deployと手動release gateを二重化しない。
 - GitHub `main`はrequired check `test`／`verify`を必須とし、force pushとbranch deletionを禁止する。Pull request必須化は初期要件に含めない。
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
 - 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
 - `npm run smoke:production` は、明示した `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` をローカル診断用に使用できる。一方、`npm run deploy:production` のrelease smokeはこれらの環境変数を無視し、`https://api.kinotch.workers.dev`、`https://text-transform.kinotch.workers.dev`、`https://semantic-compression.kinotch.workers.dev`へ固定する。別endpointが正常でもrelease成功とは扱わない。
-- Production operator値はrepository外の固定ファイル `%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。mapperの許可keyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`MCP_SMOKE_ACCESS_COOKIE`、`COMPRESSION_SMOKE_TOKEN`だけで、未知key・必須key不足・固定path以外の指定はfail closedとする。
-- `npm run smoke:mcp:local` は既存`npm run smoke:mcp`のlauncher、`npm run release:local` は既存`npm run deploy:production`のsecret injection用launcherである。正式なProduction authorityや既存release gateを分割・迂回しない。secret値、file本文、`process.env`全体は出力せず、agentはsecret directoryをopaque boundaryとして直接参照しない。
+- Production operator値はrepository外の固定ファイル `%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。mapperの許可keyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`の6つだけで、未知key・必須key不足・固定path以外の指定はfail closedとする。
+- `npm run smoke:mcp:local` は既存`npm run smoke:mcp`のlauncher、`npm run release:local` は既存`npm run deploy:production`のsecret injection用launcherである。正式なProduction authorityや既存release gateを分割・迂回しない。MCP release smokeは専用Cloudflare Access Service Tokenを使用し、Codex Managed OAuthの実利用確認とは別証拠として扱う。secret値、file本文、`process.env`全体は出力せず、agentはsecret directoryをopaque boundaryとして直接参照しない。
 
 ## 本番の基本確認
 
@@ -112,7 +112,7 @@ npx wrangler tail text-transform --format json
 ## リリース後の確認
 
 `npm run deploy:production`を使い、clean worktree検査 → build後のgenerated差分検査 → check／test／dry-run →
-Text Worker → Compression Worker → MCP Worker → Gateway → readiness／境界smoke → 全smokeの順で実行する。成功時は各WorkerのVersion ID、commit、engine／rule／snapshot
+Text Worker → Compression Worker → MCP Worker → MCP Service Token smoke → Gateway → readiness／境界smoke → 全smokeの順で実行する。成功時は各WorkerのVersion ID、commit、engine／rule／snapshot
 metadata、JST時刻を`docs/releases/`へ記録する。個別Workerの手動deployやCloudflare Git連携による自動deployは正式経路としない。
 
 productionのText Worker capabilitiesに返る`sourceRevision`はrelease metadataの`gitRevision`と

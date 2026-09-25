@@ -13,7 +13,8 @@ export const ALLOWED_PRODUCTION_SECRET_KEYS = Object.freeze([
   "TEAM_DOMAIN",
   "POLICY_AUD",
   "MCP_ENDPOINT",
-  "MCP_SMOKE_ACCESS_COOKIE",
+  "CF_ACCESS_CLIENT_ID",
+  "CF_ACCESS_CLIENT_SECRET",
   "COMPRESSION_SMOKE_TOKEN",
   "JEV_AUDIT_MCP_POLICY_AUD",
   "JEV_AUDIT_SMOKE_TOKEN",
@@ -28,7 +29,8 @@ export const MAPPER_MODES = Object.freeze({
 const MODE_KEYS = Object.freeze({
   [MAPPER_MODES.MCP_SMOKE]: Object.freeze([
     "MCP_ENDPOINT",
-    "MCP_SMOKE_ACCESS_COOKIE",
+    "CF_ACCESS_CLIENT_ID",
+    "CF_ACCESS_CLIENT_SECRET",
   ]),
   [MAPPER_MODES.PRODUCTION_RELEASE]: ALLOWED_PRODUCTION_SECRET_KEYS,
 });
@@ -101,7 +103,7 @@ export function mapProductionSecrets(secrets, mode) {
   if (missingKeys.length > 0) {
     throw new Error(`Missing required production secret keys:\n${missingKeys.map((key) => `- ${key}`).join("\n")}`);
   }
-  return Object.freeze(Object.fromEntries(requiredKeys.map((key) => [key, secrets[key]])));
+  return Object.freeze(Object.fromEntries(requiredKeys.map((key) => [key, secrets[key]]));
 }
 
 export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets }) {
