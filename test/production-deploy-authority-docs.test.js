@@ -14,11 +14,12 @@ test("operations documentation defines the single production deploy authority", 
   assert.match(operations, /(?:branch )?delet(?:e|ion).*?(?:禁止|不可|無効)/is);
 });
 
-test("Current State records the Base gate evidence without editing the Base-managed workflow", async () => {
+test("Current State records the Base gate without editing the Base-managed workflow", async () => {
   const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
 
   assert.doesNotMatch(currentState, /Confirm the repository-local Base gate on GitHub Actions/);
-  assert.match(currentState, /GitHub Actions `Verify`: success/);
+  assert.match(currentState, /GitHub main protection currently requires `test` and `verify`/);
+  assert.match(currentState, /Keep GitHub Actions `test` and `Verify` successful/);
 });
 
 test("Current State and development history record the production secret mapper boundary", async () => {
