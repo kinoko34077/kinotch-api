@@ -38,9 +38,12 @@ test("REST smoke sends a tiny authenticated fixture and validates provenance", a
   assert.equal(result.auditSemanticsVersion, "0.2.12");
 });
 
-test("MCP recovery smoke performs handshake and tools/list without a billable audit call", async () => {
+test("MCP recovery smoke uses Access service token and avoids a billable audit call", async () => {
   const methods = [];
   const fetchImpl = async (_url, init) => {
+    assert.equal(init.headers["CF-Access-Client-Id"], "client-id");
+    assert.equal(init.headers["CF-Access-Client-Secret"], "client-secret");
+    assert.equal(init.headers.Cookie, undefined);
     const rpc = JSON.parse(init.body);
     methods.push(rpc.method);
     if (rpc.method === "notifications/initialized") return new Response("", { status: 202 });
@@ -52,17 +55,22 @@ test("MCP recovery smoke performs handshake and tools/list without a billable au
 
   const result = await runJevAuditMcpSmoke({
     endpoint: "https://jev-audit-mcp.kinotch.workers.dev/mcp",
-    accessCookie: "CF_Authorization=session",
+    accessClientId: "client-id",
+    accessClientSecret: "client-secret",
     fetchImpl,
     checkToolCall: false,
   });
   assert.equal(result.status, "passed");
+  assert.equal(result.authMode, "access_service_token");
   assert.deepEqual(methods, ["initialize", "notifications/initialized", "tools/list"]);
 });
 
 test("full MCP smoke calls audit_files only when explicitly enabled", async () => {
   const calls = [];
   const fetchImpl = async (_url, init) => {
+    assert.equal(init.headers["CF-Access-Client-Id"], "client-id");
+    assert.equal(init.headers["CF-Access-Client-Secret"], "client-secret");
+    assert.equal(init.headers.Cookie, undefined);
     const rpc = JSON.parse(init.body);
     calls.push(rpc);
     if (rpc.method === "notifications/initialized") return new Response("", { status: 202 });
@@ -84,12 +92,27 @@ test("full MCP smoke calls audit_files only when explicitly enabled", async () =
 
   const result = await runJevAuditMcpSmoke({
     endpoint: "https://jev-audit-mcp.kinotch.workers.dev/mcp",
-    accessCookie: "CF_Authorization=session",
+    accessClientId: "client-id",
+    accessClientSecret: "client-secret",
     fetchImpl,
     checkToolCall: true,
   });
   const toolCall = calls.find((item) => item.method === "tools/call");
   assert.equal(toolCall.params.name, "audit_files");
   assert.equal(result.status, "passed");
+  assert.equal(result.authMode, "access_service_token");
   assert.equal(result.auditSemanticsVersion, "0.2.12");
+});
+
+test("legacy session cookie alone is rejected for automated MCP smoke", async () => {
+  await assert.rejects(
+    runJevAuditMcpSmoke({
+      endpoint: "https://jev-audit-mcp.kinotch.workers.dev/mcp",
+      accessCookie: "CF_Authorization=session",
+      fetchImpl: async () => {
+        throw new Error("fetch must not run");
+      },
+    }),
+    /CF_ACCESS_CLIENT_ID/,
+  );
 });
