@@ -167,6 +167,7 @@ try {
   });
   console.log(`Jev Audit release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
 } catch (error) {
+  const failureStage = state.stage;
   if (state.coreReleaseCompleted && state.previousGatewayVersionId && !state.gatewayRecovery) {
     try {
       state.stage = "Jev Audit Gateway recovery";
@@ -184,7 +185,7 @@ try {
   try {
     const releasePath = await writeJevAuditReleaseRecord({
       status: "failed",
-      failure: { stage: state.stage, ...safeError(error) },
+      failure: { stage: failureStage, ...safeError(error) },
       previousGatewayVersionId: state.previousGatewayVersionId,
       gatewayRecovery: state.gatewayRecovery,
       ...phase.metadata(),
