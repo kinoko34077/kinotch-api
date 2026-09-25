@@ -36,3 +36,13 @@ test("wrapper runs live smoke after the core release and recovers on any failure
   assert.match(wrapper, /status: "succeeded"/);
   assert.match(wrapper, /status: "failed"/);
 });
+
+test("post-core jev smoke failure rolls the public Gateway back before jev workers", () => {
+  assert.match(wrapper, /previousGatewayVersionId/);
+  assert.match(wrapper, /rollbackAfterSmokeFailure/);
+  assert.match(wrapper, /automatic-jev-audit-gateway-smoke-failure-rollback/);
+  assert.match(wrapper, /runGatewayRecoverySmoke/);
+  const gatewayRecovery = wrapper.indexOf("await recoverGatewayAfterJevFailure");
+  const jevRecovery = wrapper.indexOf("await phase.recover()");
+  assert.ok(gatewayRecovery >= 0 && jevRecovery > gatewayRecovery);
+});
