@@ -10,7 +10,8 @@
     { "binding": "WEATHER_PROXY", "service": "weather-proxy" },
     { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" },
     { "binding": "TEXT_TRANSFORM", "service": "text-transform" },
-    { "binding": "COMPRESSION", "service": "semantic-compression" }
+    { "binding": "COMPRESSION", "service": "semantic-compression" },
+    { "binding": "JEV_AUDIT", "service": "jev-audit" }
   ],
   "ratelimits": [
     {
@@ -36,6 +37,21 @@
     {
       "name": "COMPRESSION_TOKEN_RATE_LIMITER",
       "namespace_id": "26090805",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "JEV_AUDIT_RATE_LIMITER",
+      "namespace_id": "26090809",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "JEV_AUDIT_PREAUTH_RATE_LIMITER",
+      "namespace_id": "26090810",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "JEV_AUDIT_TOKEN_RATE_LIMITER",
+      "namespace_id": "26090811",
       "simple": { "limit": 5, "period": 60 }
     }
   ],

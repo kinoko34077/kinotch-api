@@ -13,18 +13,23 @@ HTTP client
                 ├─ REST route policy / auth / rate limit
                 ├─ Service Binding → text-transform
                 ├─ Service Binding → semantic-compression
+                ├─ Service Binding → jev-audit
                 └─ Service Binding → clock / weather / rokuyo
 
 MCP client / Codex
-  └─ OAuth → Cloudflare Access
-                └─ semantic-compression-mcp /mcp
-                      └─ Service Binding → semantic-compression
-                            └─ Gemini Interactions API
+  └─ OAuth / Access → Cloudflare Access
+                ├─ semantic-compression-mcp /mcp
+                │     └─ Service Binding → semantic-compression
+                │           └─ Gemini Interactions API
+                └─ jev-audit-mcp /mcp
+                      └─ Service Binding → jev-audit
+                            └─ TypeSafe System One API
 ~~~
 
 Compressionの実処理、Prompt、profile、model、usage、hash、文字数検証は
-semantic-compression Workerが正本として持つ。Remote MCPは薄いadapterであり、
-Gemini呼出やPromptを複製しない。
+semantic-compression Workerが正本として持つ。Jev Audit Remoteのsnapshot validation、batching、
+TypeSafe呼出、response validation、deterministic aggregationはprivate jev-audit Workerが所有する。
+各Remote MCPは薄いadapterであり、provider処理を複製しない。
 
 ## 2. 最初に読む資料
 
@@ -33,8 +38,9 @@ Gemini呼出やPromptを複製しない。
 | 人間向け入口 | README.md |
 | 公開Compression API契約 | docs/specs/semantic-compression-api.md |
 | Compressionのsecret・live test・deploy | docs/semantic-compression.md |
-| Remote MCP契約 | docs/specs/semantic-compression-mcp.md |
-| Remote MCPのAccess・Codex・smoke | docs/semantic-compression-mcp.md |
+| Compression Remote MCP契約 | docs/specs/semantic-compression-mcp.md |
+| Compression Remote MCPのAccess・Codex・smoke | docs/semantic-compression-mcp.md |
+| Jev Audit Remote API / MCP・secret・verification state | docs/jev-audit.md |
 | Gateway/Text API運用 | docs/OPERATIONS.md |
 | Text API計画・互換性 | docs/API_PLAN.md |
 | 開発・変更履歴 | docs/DEVELOPMENT_HISTORY.md |
@@ -51,7 +57,7 @@ PowerShellでrepository rootへ移動し、lockfileから依存関係を構築�
 npm ci
 ~~~
 
-通常テストは外部Gemini、Cloudflare、MCP Accessへ接続しない。
+通常テストは外部Gemini、TypeSafe、Cloudflare、MCP Accessへ接続しない。
 
 ~~~powershell
 npm test
@@ -72,11 +78,13 @@ npm run check:text-snapshot
 npx wrangler deploy --config .\wrangler.text-transform.jsonc --dry-run
 npx wrangler deploy --config .\wrangler.semantic-compression.jsonc --dry-run
 npx wrangler deploy --config .\wrangler.semantic-compression-mcp.jsonc --dry-run
+npx wrangler deploy --config .\wrangler.jev-audit.jsonc --dry-run
+npx wrangler deploy --config .\wrangler.jev-audit-mcp.jsonc --dry-run --var TEAM_DOMAIN:https://example.cloudflareaccess.com --var POLICY_AUD:test-aud
 npx wrangler deploy --config .\wrangler.jsonc --dry-run
 ~~~
 
 dry-runはProduction反映ではない。Cloudflare credentialやAccess設定の存在だけで、
-実際のGateway→Worker→Gemini経路が確認済みになるわけではない。
+実際のGateway→Worker→Provider経路が確認済みになるわけではない。
 
 ### 3.3 MCP単体テスト
 
@@ -85,7 +93,7 @@ npm run test:mcp
 ~~~
 
 MCP testはJWT fixture、fake Service Binding、malformed upstream、rate limit、
-privacy境界を検査する。通常のnpm testと同じく外部OAuthや実Geminiは使わない。
+privacy境界を検査する。通常のnpm testと同じく外部OAuthや実Providerは使わない。
 
 ## 4. 公開REST API
 
@@ -109,10 +117,11 @@ https://api.kinotch.workers.dev
 | POST | /v1/transform | Text変換 | JSON |
 | POST | /v1/transform/batch | Text batch変換 | JSON |
 | POST | /v1/compress | 意味保存型圧縮 | JSON + Bearer |
+| POST | /v1/audit | Jev Audit Remote snapshot監査 | JSON + Bearer |
 
 GETの座標はlatが-90〜90、lonが-180〜180、dateは実在する
 YYYY-MM-DDでなければならない。Text APIのprofile・レスポンスは
-docs/API_PLAN.mdとtext-transform Workerの契約を参照する。
+docs/API_PLAN.mdとtext-transform Workerの契約を参照する。Jev Audit Remoteの入力・上限・secret境界はdocs/jev-audit.mdを参照する。
 
 ### 4.2 Text APIの基本例
 
@@ -280,11 +289,11 @@ npx wrangler secret put GEMINI_API_KEY --config .\wrangler.semantic-compression.
 通常testから外部通信なしという運用を維持する。詳細は
 docs/semantic-compression.mdを参照する。
 
-## 7. Remote MCP
+## 7. Compression Remote MCP
 
 ### 7.1 入口と認証
 
-現在のMCP endpointは次である。
+現在のCompression MCP endpointは次である。
 
 ~~~text
 https://semantic-compression-mcp.kinotch.workers.dev/mcp
@@ -323,111 +332,103 @@ Production releaseのService Token smokeはCodex OAuth実呼出とは別証拠�
 MCP Inspector、Service Token smoke、Codex実呼出の詳細とbootstrap順序は
 docs/semantic-compression-mcp.mdを参照する。
 
-## 8. Secretとprivacy
+## 8. Jev Audit Remote
+
+Jev Audit RemoteはローカルPython版を置き換えず、callerが明示的に送信したsnapshotだけを監査するhosted surfaceである。
+
+REST:
+
+~~~text
+POST https://api.kinotch.workers.dev/v1/audit
+~~~
+
+Remote MCP:
+
+~~~text
+https://jev-audit-mcp.kinotch.workers.dev/mcp
+~~~
+
+MCP toolは`audit_files`と`list_profiles`だけである。Remote v1はlocal filesystemやGitを読まず、no `changed_only` supportである。profileは`development` / `generic`、監査意味論provenanceは`0.2.12`で固定する。
+
+request例、上限、status semantics、secret所有境界、production verification stateはdocs/jev-audit.mdを正本とする。live TypeSafe E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは成功証拠が記録されるまでpendingである。
+
+## 9. Secretとprivacy
 
 | 名前 | 用途 | 所有境界 |
 |---|---|---|
 | GEMINI_API_KEY | Gemini Provider credential | semantic-compression Worker Secret |
 | KINOTCH_COMPRESSION_GEMINI_API_KEY | local live test専用 | operatorのローカル環境 |
-| COMPRESSION_API_TOKEN | REST caller認証 | Gateway Secret |
-| COMPRESSION_SMOKE_TOKEN | release smokeの一時caller token | operatorのローカル環境 |
+| COMPRESSION_API_TOKEN | Compression REST caller認証 | Gateway Secret |
+| COMPRESSION_SMOKE_TOKEN | Compression release smoke | operatorのローカル環境 |
+| JEV_AUDIT_API_TOKEN | Jev Audit REST caller認証 | Gateway Secret |
+| TYPESAFE_API_KEY | TypeSafe Provider credential | private jev-audit Worker Secret |
 | TEAM_DOMAIN | MCP Access issuer設定 | MCP Worker vars |
-| POLICY_AUD | MCP Access audience設定 | MCP Worker vars |
-| CF_ACCESS_CLIENT_ID | MCP release smoke用Service Token ID | operatorのローカルsecret file |
-| CF_ACCESS_CLIENT_SECRET | MCP release smoke用Service Token secret | operatorのローカルsecret file |
-| CLOUDFLARE_API_TOKEN | Wrangler Production管理API credential | operatorのローカルsecret file |
+| POLICY_AUD | Compression MCP Access audience設定 | semantic-compression-mcp Worker vars |
+| JEV_AUDIT_MCP_POLICY_AUD | Jev Audit MCP Access audience release input | jev-audit-mcp Worker varへ変換 |
+| CF_ACCESS_CLIENT_ID | Compression/Jev Audit automated MCP smoke用Service Token ID | operatorのローカルsecret file |
+| CF_ACCESS_CLIENT_SECRET | Compression/Jev Audit automated MCP smoke用Service Token secret | operatorのローカルsecret file |
+| JEV_AUDIT_SMOKE_TOKEN | Jev Audit REST release smoke | operatorのローカルsecret file |
+| CLOUDFLARE_API_TOKEN | Wrangler Production deploy credential | operatorのローカルsecret file |
 
-秘密値、Authorization、Access JWT、本文、compressed_text全文、System Prompt全文、
-Gemini raw responseは本番log・release metadata・repositoryへ記録しない。
-custom structured logはrequest ID、route、status、elapsed、safe counts、
-profile/version、safe error categoryに限定する。
+`TYPESAFE_API_KEY`はGatewayやMCP Workerへ設定しない。秘密値、Authorization、Access credential、本文、source/diff、compressed_text全文、System Prompt全文、raw provider responseは本番log・release metadata・repositoryへ記録しない。
+custom structured logはrequest ID、route、status、elapsed、safe counts、profile/version、safe error categoryに限定する。
 
-## 9. Production release
+## 10. Production release
 
-Production authorityは npm run deploy:production だけである。
-main pushだけではProduction deployしない。個別Workerの手動deployや
-Cloudflare Git auto-deployを通常releaseの代替にしない。
+Production authorityは `npm run deploy:production` だけである。
+main pushだけではProduction deployしない。個別Workerの手動deployやCloudflare Git auto-deployを通常releaseの代替にしない。
 
-release gateは概ね次の順序で進む。
+Jev Audit featureを含むreleaseでは、Jev Audit production wrapperがclean source gateを確認したうえでJev private/MCPを準備し、既存core production releaseを起動し、その後REST/MCP live smokeを実行する。既存Text/Compression/MCP/Gatewayのrelease順序・rollback責務は維持する。
 
-~~~text
-fetch origin/main / clean worktree / source revision
-  → npm ci
-  → generated checks / tests
-  → Text・Compression・Gateway・MCP dry-run
-  → active Version capture
-  → Text deploy / smoke
-  → Compression deploy
-  → MCP deploy
-  → authenticated MCP Service Token smoke
-  → Gateway deploy
-  → readiness
-  → Compression smoke / Gateway smoke
-  → release metadata
-  → failure時 rollback
-~~~
-
-直接環境変数を使う場合はoperatorが次を設定する。
+直接環境変数を使う場合、既存Compression release入力に加えてJev Audit用に次が必要となる。
 
 ~~~powershell
-$env:COMPRESSION_SMOKE_TOKEN = "<existing compression caller token>"
-$env:TEAM_DOMAIN = "https://<team>.cloudflareaccess.com"
-$env:POLICY_AUD = "<MCP Access audience tag>"
-$env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
-$env:CF_ACCESS_CLIENT_ID = "<release-smoke service-token client id>"
-$env:CF_ACCESS_CLIENT_SECRET = "<release-smoke service-token client secret>"
-$env:CLOUDFLARE_API_TOKEN = "<Wrangler API token>"
-npm run deploy:production
+$env:JEV_AUDIT_MCP_POLICY_AUD = "<jev-audit MCP Access audience tag>"
+$env:JEV_AUDIT_SMOKE_TOKEN = "<jev-audit REST caller token>"
 ~~~
 
-Service Tokenはrelease smoke専用のService Auth policyへ限定し、Codex Managed OAuth credentialや
-REST tokenへ流用しない。deploy後は一時環境変数を削除する。
+Jev Audit MCPの自動release/recovery smokeは既存の`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`を使用し、session cookieは使用しない。`TYPESAFE_API_KEY`はrelease child environmentへコピーせず、Cloudflare private jev-audit Worker Secretとしてoperatorが事前設定する。Gateway側には`JEV_AUDIT_API_TOKEN` Secretを事前設定する。
 
-release metadataはdocs/releases/へ保存され、gitRevision、各Worker Version、
-smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへ
-rollbackする。
+release metadataはdocs/releases/へ保存され、gitRevision、各Worker Version、smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへrollbackする。
 
-### 9.1 Production secret mapper
+### 10.1 Production secret mapper
 
-毎回の環境変数入力を避ける場合、Production用operator値を次のrepository外固定ファイルへ
-保存し、mapper経由で既存gateへ渡せる。
+毎回の環境変数入力を避ける場合、Production用operator値を次のrepository外固定ファイルへ保存し、mapper経由で既存gateへ渡せる。
 
 ~~~text
 %USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env
 ~~~
 
-Production releaseで使用するkeyは次の7つである。必須key不足は停止するが、同じfile内の未知keyは無視し、子processへは渡さない。
+mapperがProduction releaseで扱うkeyは次の9つで、必須key不足は停止し、未知keyは子processへ渡さず無視する。
 
 ~~~text
 TEAM_DOMAIN=<team-domain>
-POLICY_AUD=<audience-tag>
+POLICY_AUD=<compression-mcp-audience-tag>
 MCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp
 CF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>
 CF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>
 COMPRESSION_SMOKE_TOKEN=<compression-caller-token>
 CLOUDFLARE_API_TOKEN=<wrangler-api-token>
+JEV_AUDIT_MCP_POLICY_AUD=<jev-audit-mcp-audience-tag>
+JEV_AUDIT_SMOKE_TOKEN=<jev-audit-rest-caller-token>
 ~~~
 
-MCP確認は:
+Compression MCP確認は:
 
 ~~~powershell
 npm run smoke:mcp:local
 ~~~
 
-Production releaseは、MCP確認後に:
+Production releaseは:
 
 ~~~powershell
 npm run release:local
 ~~~
 
-`release:local` はsecret injection用launcherであり、正式なProduction release authorityは
-引き続き `npm run deploy:production` である。mapperは値、file本文、`process.env`全体を
-出力せず、実際のdeploy・smoke・rollback・metadata処理は既存scriptへ委譲する。
-Wrangler用`CLOUDFLARE_API_TOKEN`もこの固定secret fileからProduction releaseへ注入する。
-secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり
-しない。
+`release:local` はsecret injection用launcherであり、正式なProduction release authorityは引き続き `npm run deploy:production` である。mapperは値、file本文、`process.env`全体を出力せず、実際のdeploy・smoke・rollback・metadata処理はrelease scriptへ委譲する。
+Wrangler用`CLOUDFLARE_API_TOKEN`もこの固定secret fileから供給し、source environmentに残る古いCloudflare credentialは子processへ継承しない。secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したりしない。
 
-## 10. 変更時の確認
+## 11. 変更時の確認
 
 実装・文書変更後の最低確認:
 
@@ -436,20 +437,20 @@ npm test
 git diff --check
 ~~~
 
-Production release前には対象Workerのdry-runと、main / origin/main一致、
-GitHub Actions test・Verify、Cloudflare Accessとcredentialの外部設定を別々に確認する。
-実Gemini live test、MCP OAuth、Production deployは明示的なoperator判断なしに
-通常testから自動実行しない。
+Production release前には対象Workerのdry-runと、main / origin/main一致、GitHub Actions test・Verify、Cloudflare Accessとcredentialの外部設定を別々に確認する。
+実Gemini live test、TypeSafe live E2E、MCP OAuth、Production deployは明示的なoperator条件を満たさず通常testから自動実行しない。
 
-## 11. Source of truth
+## 12. Source of truth
 
-- API contract: docs/specs/semantic-compression-api.md
+- Compression API contract: docs/specs/semantic-compression-api.md
 - Compression operations: docs/semantic-compression.md
-- MCP contract: docs/specs/semantic-compression-mcp.md
-- MCP operations: docs/semantic-compression-mcp.md
+- Compression MCP contract: docs/specs/semantic-compression-mcp.md
+- Compression MCP operations: docs/semantic-compression-mcp.md
+- Jev Audit Remote API / MCP / operations: docs/jev-audit.md
 - Gateway/Text operations: docs/OPERATIONS.md
 - Development history: docs/DEVELOPMENT_HISTORY.md
 - Release evidence: docs/releases/*.json
 - Prompt: src/semantic-compression/prompt.js
-- Profile/model/limits: src/semantic-compression/contract.js
+- Compression profile/model/limits: src/semantic-compression/contract.js
 - Prompt token metadata: src/semantic-compression/prompt-metadata.js
+- Jev Audit remote contract/limits/profiles: src/jev-audit/contract.js

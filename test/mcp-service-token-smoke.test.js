@@ -64,7 +64,7 @@ test("MCP release requires both service-token credentials and rejects the legacy
   }), /CF_ACCESS_CLIENT_ID/);
 });
 
-test("production secret mapper allowlist separates release credentials from MCP smoke mode", () => {
+test("production secret mapper preserves the core service-token mode while allowing Jev production inputs", () => {
   assert.deepEqual([...ALLOWED_PRODUCTION_SECRET_KEYS], [
     "TEAM_DOMAIN",
     "POLICY_AUD",
@@ -73,6 +73,8 @@ test("production secret mapper allowlist separates release credentials from MCP 
     "CF_ACCESS_CLIENT_SECRET",
     "COMPRESSION_SMOKE_TOKEN",
     "CLOUDFLARE_API_TOKEN",
+    "JEV_AUDIT_MCP_POLICY_AUD",
+    "JEV_AUDIT_SMOKE_TOKEN",
   ]);
   assert.deepEqual(requiredKeysForMode(MAPPER_MODES.MCP_SMOKE), [
     "MCP_ENDPOINT",
@@ -80,4 +82,5 @@ test("production secret mapper allowlist separates release credentials from MCP 
     "CF_ACCESS_CLIENT_SECRET",
   ]);
   assert.equal(ALLOWED_PRODUCTION_SECRET_KEYS.includes("MCP_SMOKE_ACCESS_COOKIE"), false);
+  assert.equal(ALLOWED_PRODUCTION_SECRET_KEYS.includes("JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE"), false);
 });

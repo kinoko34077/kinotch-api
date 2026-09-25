@@ -43,8 +43,17 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 ### 8. Production Secret Mapper（2026-09-25）
 
 - Production operator値の反復入力を減らし、agentがsecret file本文を直接参照しない境界を設けるため、固定外部pathの`production-secret-mapper.mjs`を追加した。
-- mapperはProduction releaseで7 key（`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、`CLOUDFLARE_API_TOKEN`）を扱い、mode別に必要値だけを子processへ渡す。必須key不足・未知modeはfail closed、未知file keyは無視して転送しない。secret値、file本文、`process.env`全体は出力しない。
+- mapperは許可された5 keyだけをmode別に子processへ渡し、未知key・必須key不足・未知modeではfail closedする。secret値、file本文、`process.env`全体は出力しない。
 - `npm run smoke:mcp:local`と`npm run release:local`は既存のMCP smoke／`npm run deploy:production`を起動するlauncherであり、既存release gate（Production release authority、test、dry-run、smoke、rollback）を変更しない。
+
+### 9. Jev Audit Remote feature branch（2026-09-25）
+
+- Jev Audit Remoteを、既存ローカルPython CLI/STDIO MCPを変更せずに追加するfeature branchとして実装した。監査意味論は`jev-audit` v0.2.12、既定modelは`jev-1.13.0`へ固定した。
+- private `jev-audit` Workerへexplicit file snapshot validation、Unicode code-point limit、batching、TypeSafe System One HTTP呼出、provider response validation、deterministic aggregationを集約した。
+- Gateway `POST /v1/audit`とRemote MCP `https://jev-audit-mcp.kinotch.workers.dev/mcp`を追加し、MCPは`audit_files`／`list_profiles`のみを公開する。Remote v1はlocal filesystem/Git/`changed_only`を扱わない。
+- REST token、TypeSafe credential、MCP Access credentialを別責務に分離し、`TYPESAFE_API_KEY`はprivate Workerだけが所有する。source/diff本文やraw credential/provider bodyを通常ログへ残さない。
+- private/MCP deploy、REST/MCP smoke、Version capture、rollback/recoveryをProduction releaseへ統合した。既存Semantic Compression releaseの責務・順序は維持する。
+- 自動testとCI上の実装検証は進行中。live TypeSafe REST E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは未実施であり、実行証拠を得るまでProduction verifiedとは扱わない。
 
 ## 大きな変更段階
 

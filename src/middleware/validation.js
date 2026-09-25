@@ -1,3 +1,4 @@
+import { validateAuditInput } from "../jev-audit/contract.js";
 import {
   countUnicodeCodePoints,
   isSupportedCompressionProfile,
@@ -100,6 +101,12 @@ export function validateCompressionBody(body) {
     return { status: 413, code: "provider_context_limit", message: "text exceeds the provider context safety limit" };
   }
   return null;
+}
+
+export function validateJevAuditBody(body) {
+  const result = validateAuditInput(body);
+  if (result.ok) return null;
+  return { status: result.status, code: result.code, message: result.message };
 }
 
 function validateCoordinate(value, name, minimum, maximum) {

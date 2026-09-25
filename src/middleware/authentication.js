@@ -56,3 +56,30 @@ export async function authenticateCompression(c) {
   }
   return null;
 }
+
+export async function authenticateJevAudit(c) {
+  const expectedToken = c.env?.JEV_AUDIT_API_TOKEN;
+  if (typeof expectedToken !== "string" || expectedToken.length === 0) {
+    return errorResponse(c, 503, "authentication_unavailable", "jev-audit authentication is unavailable");
+  }
+
+  const authorization = c.req.header("Authorization") ?? "";
+  const match = bearerPattern.exec(authorization);
+  if (!match) {
+    return errorResponse(c, 401, "authentication_failed", "jev-audit authentication failed");
+  }
+
+  try {
+    const [presentedFingerprint, expectedFingerprint] = await Promise.all([
+      sha256Fingerprint(match[1]),
+      sha256Fingerprint(expectedToken),
+    ]);
+    if (!timingSafeEqual(presentedFingerprint, expectedFingerprint)) {
+      return errorResponse(c, 401, "authentication_failed", "jev-audit authentication failed");
+    }
+    c.set("jevAuditAuthFingerprint", bytesToHex(presentedFingerprint));
+  } catch {
+    return errorResponse(c, 503, "authentication_unavailable", "jev-audit authentication is unavailable");
+  }
+  return null;
+}

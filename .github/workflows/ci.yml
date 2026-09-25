@@ -19,3 +19,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Base compatibility check
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 base-check
+      - name: Jev Audit private Worker dry-run
+        run: npx wrangler deploy --config wrangler.jev-audit.jsonc --dry-run
+      - name: Jev Audit MCP Worker dry-run
+        run: npx wrangler deploy --config wrangler.jev-audit-mcp.jsonc --dry-run --var TEAM_DOMAIN:https://example.cloudflareaccess.com --var POLICY_AUD:test-aud
+      - name: Gateway dry-run
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run

@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jev-audit-mcp",
+  "account_id": "fb59b3c4a3fb2cda44dad80638390309",
+  "main": "src/jev-audit-mcp-worker.js",
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [
+    { "binding": "JEV_AUDIT", "service": "jev-audit" }
+  ],
+  "ratelimits": [
+    {
+      "name": "JEV_AUDIT_MCP_RATE_LIMITER",
+      "namespace_id": "26090812",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+  "compatibility_date": "2026-09-07",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": false
+    }
+  }
+}

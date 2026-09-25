@@ -75,3 +75,11 @@ registerRoute(apiRoutes, "POST", "/v1/compress", routePolicies.compression, (c) 
     timeoutMs: routePolicies.compression.upstreamTimeoutMs,
   }),
 );
+
+registerRoute(apiRoutes, "POST", "/v1/audit", routePolicies.jevAudit, (c) =>
+  proxyToWorker(c, c.env.JEV_AUDIT, "/v1/audit", {
+    method: "POST",
+    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+    timeoutMs: routePolicies.jevAudit.upstreamTimeoutMs,
+  }),
+);
