@@ -28,7 +28,8 @@ export function resolveJevAuditReleaseInputs(env = process.env) {
     restSmokeToken: requiredEnvValue(env, "JEV_AUDIT_SMOKE_TOKEN"),
     mcpSmoke: {
       endpoint: JEV_AUDIT_MCP_ENDPOINT,
-      accessCookie: requiredEnvValue(env, "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE"),
+      accessClientId: requiredEnvValue(env, "CF_ACCESS_CLIENT_ID"),
+      accessClientSecret: requiredEnvValue(env, "CF_ACCESS_CLIENT_SECRET"),
     },
   };
 }
