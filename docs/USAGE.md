@@ -365,10 +365,10 @@ request例、上限、status semantics、secret所有境界、production verific
 | TEAM_DOMAIN | MCP Access issuer設定 | MCP Worker vars |
 | POLICY_AUD | Compression MCP Access audience設定 | semantic-compression-mcp Worker vars |
 | JEV_AUDIT_MCP_POLICY_AUD | Jev Audit MCP Access audience release input | jev-audit-mcp Worker varへ変換 |
-| CF_ACCESS_CLIENT_ID | Compression MCP release smoke用Service Token ID | operatorのローカルsecret file |
-| CF_ACCESS_CLIENT_SECRET | Compression MCP release smoke用Service Token secret | operatorのローカルsecret file |
+| CF_ACCESS_CLIENT_ID | Compression/Jev Audit automated MCP smoke用Service Token ID | operatorのローカルsecret file |
+| CF_ACCESS_CLIENT_SECRET | Compression/Jev Audit automated MCP smoke用Service Token secret | operatorのローカルsecret file |
 | JEV_AUDIT_SMOKE_TOKEN | Jev Audit REST release smoke | operatorのローカルsecret file |
-| JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE | Jev Audit MCP release smoke | operatorのローカルsecret file |
+| CLOUDFLARE_API_TOKEN | Wrangler Production deploy credential | operatorのローカルsecret file |
 
 `TYPESAFE_API_KEY`はGatewayやMCP Workerへ設定しない。秘密値、Authorization、Access credential、本文、source/diff、compressed_text全文、System Prompt全文、raw provider responseは本番log・release metadata・repositoryへ記録しない。
 custom structured logはrequest ID、route、status、elapsed、safe counts、profile/version、safe error categoryに限定する。
@@ -385,10 +385,9 @@ Jev Audit featureを含むreleaseでは、Jev Audit production wrapperがclean s
 ~~~powershell
 $env:JEV_AUDIT_MCP_POLICY_AUD = "<jev-audit MCP Access audience tag>"
 $env:JEV_AUDIT_SMOKE_TOKEN = "<jev-audit REST caller token>"
-$env:JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE = "<jev-audit MCP smoke Access cookie>"
 ~~~
 
-`TYPESAFE_API_KEY`はrelease child environmentへコピーせず、Cloudflare private jev-audit Worker Secretとしてoperatorが事前設定する。Gateway側には`JEV_AUDIT_API_TOKEN` Secretを事前設定する。
+Jev Audit MCPの自動release/recovery smokeは既存の`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`を使用し、session cookieは使用しない。`TYPESAFE_API_KEY`はrelease child environmentへコピーせず、Cloudflare private jev-audit Worker Secretとしてoperatorが事前設定する。Gateway側には`JEV_AUDIT_API_TOKEN` Secretを事前設定する。
 
 release metadataはdocs/releases/へ保存され、gitRevision、各Worker Version、smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへrollbackする。
 
@@ -400,18 +399,18 @@ release metadataはdocs/releases/へ保存され、gitRevision、各Worker Versi
 %USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env
 ~~~
 
-mapperが受け付けるkeyは次の9つだけで、未知keyや必須key不足は停止する。
+mapperがProduction releaseで扱うkeyは次の9つで、必須key不足は停止し、未知keyは子processへ渡さず無視する。
 
 ~~~text
 TEAM_DOMAIN=<team-domain>
 POLICY_AUD=<compression-mcp-audience-tag>
 MCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp
-CF_ACCESS_CLIENT_ID=<compression-release-smoke-service-token-client-id>
-CF_ACCESS_CLIENT_SECRET=<compression-release-smoke-service-token-client-secret>
+CF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>
+CF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>
 COMPRESSION_SMOKE_TOKEN=<compression-caller-token>
+CLOUDFLARE_API_TOKEN=<wrangler-api-token>
 JEV_AUDIT_MCP_POLICY_AUD=<jev-audit-mcp-audience-tag>
 JEV_AUDIT_SMOKE_TOKEN=<jev-audit-rest-caller-token>
-JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE=<jev-audit-mcp-access-cookie>
 ~~~
 
 Compression MCP確認は:
@@ -427,7 +426,7 @@ npm run release:local
 ~~~
 
 `release:local` はsecret injection用launcherであり、正式なProduction release authorityは引き続き `npm run deploy:production` である。mapperは値、file本文、`process.env`全体を出力せず、実際のdeploy・smoke・rollback・metadata処理はrelease scriptへ委譲する。
-Cloudflare deploy credentialはこの9key fileへ含めず、既存のoperator-managed認証を使用する。secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したりしない。
+Wrangler用`CLOUDFLARE_API_TOKEN`もこの固定secret fileから供給し、source environmentに残る古いCloudflare credentialは子processへ継承しない。secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したりしない。
 
 ## 11. 変更時の確認
 
