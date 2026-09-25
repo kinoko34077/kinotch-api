@@ -155,6 +155,40 @@ test("jev-audit MCP exposes only audit_files and list_profiles", async () => {
   });
 });
 
+test("jev-audit MCP path limit counts Unicode code points like REST", async () => {
+  const longAstralPath = "😀".repeat(REMOTE_AUDIT_LIMITS.maxPathCodePoints);
+  const upstreamCalls = [];
+  const worker = createJevAuditMcpWorker({ verifyAccessJwtImpl: accessApproved });
+  const env = {
+    JEV_AUDIT_MCP_RATE_LIMITER: allowRateLimiter(),
+    JEV_AUDIT: {
+      async fetch(request) {
+        upstreamCalls.push(await request.json());
+        return new Response(JSON.stringify(auditReport()), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    },
+  };
+
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 5,
+    method: "tools/call",
+    params: {
+      name: "audit_files",
+      arguments: { files: [{ path: longAstralPath, content: "x" }], profile: "development" },
+    },
+  }), env, {});
+  const payload = await responseJson(response);
+
+  assert.equal(payload.result.isError, undefined);
+  assert.equal(payload.result.structuredContent.aggregate.overall.status, "clear");
+  assert.equal(upstreamCalls.length, 1);
+  assert.equal(upstreamCalls[0].files[0].path, longAstralPath);
+});
+
 test("jev-audit MCP actor rate limit runs before Service Binding", async () => {
   const events = [];
   const worker = createJevAuditMcpWorker({ verifyAccessJwtImpl: accessApproved });
@@ -169,7 +203,7 @@ test("jev-audit MCP actor rate limit runs before Service Binding", async () => {
 
   const response = await worker.fetch(mcpRequest({
     jsonrpc: "2.0",
-    id: 5,
+    id: 6,
     method: "tools/call",
     params: { name: "audit_files", arguments: { files: [{ path: "a.py", content: "x" }] } },
   }), env, {});
