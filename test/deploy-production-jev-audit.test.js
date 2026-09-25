@@ -46,3 +46,8 @@ test("post-core jev smoke failure rolls the public Gateway back before jev worke
   const jevRecovery = wrapper.indexOf("await phase.recover()");
   assert.ok(gatewayRecovery >= 0 && jevRecovery > gatewayRecovery);
 });
+
+test("recovery preserves the original release failure stage in metadata", () => {
+  assert.match(wrapper, /const failureStage = state\.stage;/);
+  assert.match(wrapper, /failure:\s*\{\s*stage: failureStage,/);
+});
