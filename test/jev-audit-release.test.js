@@ -21,16 +21,18 @@ test("jev-audit release pins worker names configs and MCP endpoint", () => {
   assert.equal(JEV_AUDIT_MCP_ENDPOINT, "https://jev-audit-mcp.kinotch.workers.dev/mcp");
 });
 
-test("release inputs require dedicated smoke and Access values without leaking them into deploy args", () => {
+test("release inputs require dedicated REST smoke and shared Access service-token values without leaking them into deploy args", () => {
   const env = {
     TEAM_DOMAIN: "https://example.cloudflareaccess.com",
     JEV_AUDIT_MCP_POLICY_AUD: "jev-aud",
     JEV_AUDIT_SMOKE_TOKEN: "rest-secret",
-    JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=session",
+    CF_ACCESS_CLIENT_ID: "client-id",
+    CF_ACCESS_CLIENT_SECRET: "client-secret",
   };
   const inputs = resolveJevAuditReleaseInputs(env);
   assert.equal(inputs.restSmokeToken, "rest-secret");
-  assert.equal(inputs.mcpSmoke.accessCookie, "CF_Authorization=session");
+  assert.equal(inputs.mcpSmoke.accessClientId, "client-id");
+  assert.equal(inputs.mcpSmoke.accessClientSecret, "client-secret");
   assert.equal(inputs.mcpSmoke.endpoint, JEV_AUDIT_MCP_ENDPOINT);
 
   const privateArgs = createJevAuditPrivateDeployArgs({ dryRun: true });
@@ -40,22 +42,24 @@ test("release inputs require dedicated smoke and Access values without leaking t
   const joined = mcpArgs.join(" ");
   assert.match(joined, /TEAM_DOMAIN:https:\/\/example\.cloudflareaccess\.com/);
   assert.match(joined, /POLICY_AUD:jev-aud/);
-  assert.doesNotMatch(joined, /rest-secret|CF_Authorization/);
+  assert.doesNotMatch(joined, /rest-secret|client-id|client-secret|CF_Authorization/);
 });
 
-test("release child environments strip jev-audit and TypeSafe secrets", () => {
+test("release child environments strip jev-audit, TypeSafe, and Access service-token secrets", () => {
   const child = createReleaseChildEnv({
     PATH: "/bin",
     TYPESAFE_API_KEY: "provider-secret",
     JEV_AUDIT_API_TOKEN: "gateway-secret",
     JEV_AUDIT_SMOKE_TOKEN: "smoke-secret",
-    JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE: "cookie-secret",
     JEV_AUDIT_MCP_POLICY_AUD: "aud-secret",
+    CF_ACCESS_CLIENT_ID: "client-id",
+    CF_ACCESS_CLIENT_SECRET: "client-secret",
   });
   assert.equal(child.PATH, "/bin");
   assert.equal(child.TYPESAFE_API_KEY, undefined);
   assert.equal(child.JEV_AUDIT_API_TOKEN, undefined);
   assert.equal(child.JEV_AUDIT_SMOKE_TOKEN, undefined);
-  assert.equal(child.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(child.JEV_AUDIT_MCP_POLICY_AUD, undefined);
+  assert.equal(child.CF_ACCESS_CLIENT_ID, undefined);
+  assert.equal(child.CF_ACCESS_CLIENT_SECRET, undefined);
 });
