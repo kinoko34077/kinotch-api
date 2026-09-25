@@ -9,4 +9,5 @@
 - [Semantic Compression Operations](../../docs/semantic-compression.md)
 - [Semantic Compression Remote MCP Specification](../../docs/specs/semantic-compression-mcp.md)
 - [Semantic Compression Remote MCP Operations](../../docs/semantic-compression-mcp.md)
+- [Jev Audit Remote Usage Guide](../../docs/jev-audit-guide.md)
 - [Jev Audit Remote API / MCP Operations](../../docs/jev-audit.md)
