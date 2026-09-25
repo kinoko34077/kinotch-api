@@ -21,6 +21,16 @@ export const ALLOWED_PRODUCTION_SECRET_KEYS = Object.freeze([
   "JEV_AUDIT_SMOKE_TOKEN",
 ]);
 
+export const CODEX_MCP_SECRET_KEYS = Object.freeze([
+  "CODEX_CF_ACCESS_CLIENT_ID",
+  "CODEX_CF_ACCESS_CLIENT_SECRET",
+]);
+
+const SUPPORTED_SECRET_FILE_KEYS = Object.freeze([
+  ...ALLOWED_PRODUCTION_SECRET_KEYS,
+  ...CODEX_MCP_SECRET_KEYS,
+]);
+
 export const MAPPER_MODES = Object.freeze({
   MCP_SMOKE: "mcp-smoke",
   PRODUCTION_RELEASE: "production-release",
@@ -51,7 +61,7 @@ export function parseProductionSecretText(sourceText) {
 
   return Object.freeze({
     ...Object.fromEntries(
-      ALLOWED_PRODUCTION_SECRET_KEYS
+      SUPPORTED_SECRET_FILE_KEYS
         .filter((key) => Object.prototype.hasOwnProperty.call(parsed, key))
         .map((key) => [key, parsed[key]]),
     ),
