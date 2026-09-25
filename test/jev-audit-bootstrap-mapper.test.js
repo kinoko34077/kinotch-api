@@ -33,12 +33,13 @@ test("Jev Audit bootstrap mapper exposes only the Cloudflare deployment credenti
   });
 });
 
-test("Jev Audit bootstrap mapper launches only bootstrap authority", async () => {
+test("Jev Audit bootstrap mapper launches only bootstrap authority and preserves explicit confirmation", async () => {
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.JEV_AUDIT_BOOTSTRAP, {
     secrets: { CLOUDFLARE_API_TOKEN: "cf-fixture" },
     sourceEnv: {
       PATH: "fixture-path",
+      JEV_AUDIT_BOOTSTRAP_CONFIRM: "true",
       CF_ACCESS_CLIENT_SECRET: "must-not-reach-bootstrap",
       JEV_AUDIT_SMOKE_TOKEN: "must-not-reach-bootstrap",
     },
@@ -48,6 +49,7 @@ test("Jev Audit bootstrap mapper launches only bootstrap authority", async () =>
   assert.equal(calls.length, 1);
   assert.equal(calls[0].args.join(" ").includes("bootstrap:jev-audit"), true);
   assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cf-fixture");
+  assert.equal(calls[0].options.env.JEV_AUDIT_BOOTSTRAP_CONFIRM, "true");
   assert.equal(calls[0].options.env.CF_ACCESS_CLIENT_SECRET, undefined);
   assert.equal(calls[0].options.env.JEV_AUDIT_SMOKE_TOKEN, undefined);
 });
