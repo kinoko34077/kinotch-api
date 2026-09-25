@@ -10,6 +10,15 @@ test("normal production deploy authority routes through the jev-audit wrapper", 
   assert.equal(packageJson.scripts.deploy, "npm run deploy:production");
 });
 
+test("wrapper enforces clean main source before any jev-audit deployment side effect", () => {
+  assert.match(wrapper, /assertProductionSourceRevision/);
+  assert.match(wrapper, /status[\s\S]*--porcelain/);
+  const cleanGate = wrapper.indexOf("assertCleanWorktree");
+  const sourceGate = wrapper.indexOf("assertProductionSourceRevision");
+  const deploy = wrapper.indexOf("await phase.deploy()");
+  assert.ok(cleanGate >= 0 && sourceGate >= 0 && deploy > cleanGate && deploy > sourceGate);
+});
+
 test("wrapper prepares and deploys jev-audit before the existing core production release", () => {
   assert.match(wrapper, /createJevAuditProductionPhase/);
   const prepare = wrapper.indexOf("await phase.prepare()");
