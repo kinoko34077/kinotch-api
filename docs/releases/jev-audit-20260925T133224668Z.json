@@ -1,0 +1,56 @@
+{
+  "recordedAtUtc": "2026-09-25T13:32:24.668Z",
+  "status": "failed",
+  "failure": {
+    "stage": "Jev Audit MCP Service Token smoke",
+    "name": "JevAuditSmokeError",
+    "message": "jev-audit MCP smoke returned status 401"
+  },
+  "previousGatewayVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+  "gatewayRecovery": {
+    "status": "verified_rolled_back",
+    "targetVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+    "activeVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+    "recoverySmoke": {
+      "status": "passed",
+      "mode": "non_billable_gateway_smoke"
+    }
+  },
+  "previousJevAuditPrivateVersionId": "bb451d20-7021-4431-b982-7f9b7da2e160",
+  "previousJevAuditMcpVersionId": "23a491ec-0b63-4346-86ff-2da53d424e41",
+  "jevAuditPrivateDeployment": {
+    "status": "deployed",
+    "versionId": "bd44fe5d-8dd7-4f93-94bf-56b3b0a62f37",
+    "needsRollback": false
+  },
+  "jevAuditMcpDeployment": {
+    "status": "deployed",
+    "versionId": "ce027bde-4b0d-455a-961c-8f615beda8ce",
+    "needsRollback": false
+  },
+  "jevAuditPrivateVersionId": "bd44fe5d-8dd7-4f93-94bf-56b3b0a62f37",
+  "jevAuditMcpVersionId": "ce027bde-4b0d-455a-961c-8f615beda8ce",
+  "jevAuditRestEndpoint": "https://api.kinotch.workers.dev/v1/audit",
+  "jevAuditMcpEndpoint": "https://jev-audit-mcp.kinotch.workers.dev/mcp",
+  "jevAuditRestSmoke": {
+    "status": "passed",
+    "endpoint": "https://api.kinotch.workers.dev/v1/audit",
+    "httpStatus": 200,
+    "filesScanned": 2,
+    "batches": 1,
+    "aggregateStatus": "rework",
+    "resolvedModel": "jev-1.13.0",
+    "auditSemanticsVersion": "0.2.12"
+  },
+  "jevAuditMcpSmoke": null,
+  "jevAuditPrivateRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "bb451d20-7021-4431-b982-7f9b7da2e160",
+    "error": "jev-audit REST smoke returned status 404"
+  },
+  "jevAuditMcpRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "23a491ec-0b63-4346-86ff-2da53d424e41",
+    "error": "jev-audit MCP smoke returned status 401"
+  }
+}

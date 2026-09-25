@@ -62,6 +62,22 @@ test("post-core jev smoke failure rolls the public Gateway back before jev worke
   assert.ok(gatewayRecovery >= 0 && jevRecovery > gatewayRecovery);
 });
 
+test("post-core jev smoke failure also recovers every core Worker", () => {
+  for (const field of [
+    "previousTextVersionId",
+    "previousCompressionVersionId",
+    "previousMcpVersionId",
+    "coreRecovery",
+  ]) {
+    assert.match(wrapper, new RegExp(field));
+  }
+  assert.match(wrapper, /recoverCoreAfterJevFailure/);
+  assert.match(wrapper, /automatic-jev-audit-(text|compression|mcp)-smoke-failure-rollback/);
+  const coreRecovery = wrapper.indexOf("await recoverCoreAfterJevFailure");
+  const jevRecovery = wrapper.indexOf("await phase.recover()");
+  assert.ok(coreRecovery >= 0 && jevRecovery > coreRecovery);
+});
+
 test("recovery preserves the original release failure stage in metadata", () => {
   assert.match(wrapper, /const failureStage = state\.stage;/);
   assert.match(wrapper, /failure:\s*\{\s*stage: failureStage,/);

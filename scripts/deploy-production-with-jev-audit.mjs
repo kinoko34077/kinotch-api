@@ -10,7 +10,17 @@ import {
   parseActiveVersionId,
   rollbackAfterSmokeFailure,
 } from "./release-recovery.mjs";
-import { PRODUCTION_SMOKE_TARGETS, runProductionSmoke } from "./smoke-production.mjs";
+import {
+  MCP_RELEASE_CONFIG,
+  MCP_RELEASE_WORKER_NAME,
+  resolveMcpSmokeInputs,
+} from "./mcp-release.mjs";
+import { runMcpSmoke } from "./smoke-mcp.mjs";
+import {
+  PRODUCTION_SMOKE_TARGETS,
+  runCompressionGatewayReadiness,
+  runProductionSmoke,
+} from "./smoke-production.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 import { createWranglerInvocation } from "./wrangler-runner.mjs";
 
@@ -83,6 +93,45 @@ async function getActiveGatewayVersionId() {
   return parseActiveVersionId(output, "Gateway");
 }
 
+async function getActiveTextVersionId() {
+  const output = await runWrangler([
+    "deployments",
+    "status",
+    "--name",
+    "text-transform",
+    "--json",
+    "--config",
+    "wrangler.text-transform.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output, "Text Worker");
+}
+
+async function getActiveCompressionVersionId() {
+  const output = await runWrangler([
+    "deployments",
+    "status",
+    "--name",
+    "semantic-compression",
+    "--json",
+    "--config",
+    "wrangler.semantic-compression.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output, "Compression Worker");
+}
+
+async function getActiveMcpVersionId() {
+  const output = await runWrangler([
+    "deployments",
+    "status",
+    "--name",
+    MCP_RELEASE_WORKER_NAME,
+    "--json",
+    "--config",
+    MCP_RELEASE_CONFIG,
+  ], { capture: true });
+  return parseActiveVersionId(output, "Compression MCP Worker");
+}
+
 async function runGatewayRecoverySmoke() {
   await runProductionSmoke({
     targets: PRODUCTION_SMOKE_TARGETS,
@@ -103,6 +152,72 @@ async function recoverGatewayAfterJevFailure(previousGatewayVersionId) {
     getActiveVersionId: getActiveGatewayVersionId,
     recoverySmoke: runGatewayRecoverySmoke,
   });
+}
+
+async function runCompressionRecoverySmoke() {
+  await runCompressionGatewayReadiness({ targets: PRODUCTION_SMOKE_TARGETS });
+  return { status: "passed", mode: "non_billable_compression_readiness" };
+}
+
+async function runMcpRecoverySmoke() {
+  await runMcpSmoke({ ...resolveMcpSmokeInputs(process.env), checkToolCall: false });
+  return { status: "passed", mode: "non_billable_mcp_handshake" };
+}
+
+async function recoverCoreAfterJevFailure(previousCoreVersions) {
+  const recoveries = {};
+  const recoveryTargets = [
+    {
+      key: "compressionRecovery",
+      previousVersionId: previousCoreVersions.previousCompressionVersionId,
+      workerName: "semantic-compression",
+      config: "wrangler.semantic-compression.jsonc",
+      message: "automatic-jev-audit-compression-smoke-failure-rollback",
+      getActiveVersionId: getActiveCompressionVersionId,
+      recoverySmoke: runCompressionRecoverySmoke,
+    },
+    {
+      key: "mcpRecovery",
+      previousVersionId: previousCoreVersions.previousMcpVersionId,
+      workerName: MCP_RELEASE_WORKER_NAME,
+      config: MCP_RELEASE_CONFIG,
+      message: "automatic-jev-audit-mcp-smoke-failure-rollback",
+      getActiveVersionId: getActiveMcpVersionId,
+      recoverySmoke: runMcpRecoverySmoke,
+    },
+    {
+      key: "textRecovery",
+      previousVersionId: previousCoreVersions.previousTextVersionId,
+      workerName: "text-transform",
+      config: "wrangler.text-transform.jsonc",
+      message: "automatic-jev-audit-text-smoke-failure-rollback",
+      getActiveVersionId: getActiveTextVersionId,
+      recoverySmoke: runGatewayRecoverySmoke,
+    },
+  ];
+
+  for (const target of recoveryTargets) {
+    if (!target.previousVersionId) continue;
+    try {
+      recoveries[target.key] = await rollbackAfterSmokeFailure({
+        previousVersionId: target.previousVersionId,
+        rollback: async (versionId) => runWrangler(createWorkerRollbackArgs(
+          versionId,
+          target.message,
+          { workerName: target.workerName, config: target.config },
+        )),
+        getActiveVersionId: target.getActiveVersionId,
+        recoverySmoke: target.recoverySmoke,
+      });
+    } catch (rollbackError) {
+      recoveries[target.key] = {
+        status: "rollback_failed",
+        targetVersionId: target.previousVersionId,
+        error: rollbackError.message,
+      };
+    }
+  }
+  return recoveries;
 }
 
 async function runCoreProductionRelease() {
@@ -131,9 +246,13 @@ async function writeJevAuditReleaseRecord(record) {
 
 const state = {
   stage: "Jev Audit preflight",
+  previousTextVersionId: null,
+  previousCompressionVersionId: null,
   previousGatewayVersionId: null,
+  previousMcpVersionId: null,
   coreReleaseCompleted: false,
   gatewayRecovery: null,
+  coreRecovery: null,
 };
 const phase = createJevAuditProductionPhase({
   runWrangler,
@@ -154,8 +273,14 @@ try {
   await phase.prepare();
   await phase.deploy();
 
+  state.stage = "capture previous Text Worker version";
+  state.previousTextVersionId = await getActiveTextVersionId();
+  state.stage = "capture previous Compression Worker version";
+  state.previousCompressionVersionId = await getActiveCompressionVersionId();
   state.stage = "capture previous Gateway version";
   state.previousGatewayVersionId = await getActiveGatewayVersionId();
+  state.stage = "capture previous Compression MCP Worker version";
+  state.previousMcpVersionId = await getActiveMcpVersionId();
 
   state.stage = "core production release";
   await runCoreProductionRelease();
@@ -166,8 +291,12 @@ try {
   state.stage = "write Jev Audit release metadata";
   const releasePath = await writeJevAuditReleaseRecord({
     status: "succeeded",
+    previousTextVersionId: state.previousTextVersionId,
+    previousCompressionVersionId: state.previousCompressionVersionId,
     previousGatewayVersionId: state.previousGatewayVersionId,
+    previousMcpVersionId: state.previousMcpVersionId,
     gatewayRecovery: state.gatewayRecovery,
+    coreRecovery: state.coreRecovery,
     ...phase.metadata(),
   });
   console.log(`Jev Audit release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
@@ -186,13 +315,33 @@ try {
     }
   }
 
+  if (state.coreReleaseCompleted && !state.coreRecovery) {
+    try {
+      state.stage = "Jev Audit core Worker recovery";
+      state.coreRecovery = await recoverCoreAfterJevFailure({
+        previousTextVersionId: state.previousTextVersionId,
+        previousCompressionVersionId: state.previousCompressionVersionId,
+        previousMcpVersionId: state.previousMcpVersionId,
+      });
+    } catch (recoveryError) {
+      state.coreRecovery = {
+        status: "recovery_failed",
+        error: recoveryError.message,
+      };
+    }
+  }
+
   const recovery = await phase.recover();
   try {
     const releasePath = await writeJevAuditReleaseRecord({
       status: "failed",
       failure: { stage: failureStage, ...safeError(error) },
+      previousTextVersionId: state.previousTextVersionId,
+      previousCompressionVersionId: state.previousCompressionVersionId,
       previousGatewayVersionId: state.previousGatewayVersionId,
+      previousMcpVersionId: state.previousMcpVersionId,
       gatewayRecovery: state.gatewayRecovery,
+      coreRecovery: state.coreRecovery,
       ...phase.metadata(),
       ...recovery,
     });
