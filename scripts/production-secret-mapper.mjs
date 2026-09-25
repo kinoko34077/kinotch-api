@@ -109,14 +109,31 @@ export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets })
   return Object.freeze({ ...childEnv, ...mappedSecrets });
 }
 
-function childCommand() {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
-}
-
 function childArgsForMode(mode) {
   if (mode === MAPPER_MODES.MCP_SMOKE) return ["run", "smoke:mcp"];
   if (mode === MAPPER_MODES.PRODUCTION_RELEASE) return ["run", "deploy:production"];
   throw new Error(`Unknown production secret mapper mode: ${mode}`);
+}
+
+export function resolveMappedCommandInvocation(
+  mode,
+  {
+    platform = process.platform,
+    sourceEnv = process.env,
+  } = {},
+) {
+  const npmArgs = childArgsForMode(mode);
+  if (platform === "win32") {
+    const command = sourceEnv.ComSpec ?? sourceEnv.COMSPEC ?? "cmd.exe";
+    return Object.freeze({
+      command,
+      args: Object.freeze(["/d", "/s", "/c", `npm.cmd ${npmArgs.join(" ")}`]),
+    });
+  }
+  return Object.freeze({
+    command: "npm",
+    args: Object.freeze(npmArgs),
+  });
 }
 
 function runChild({ command, args, options, spawnImpl }) {
@@ -148,11 +165,11 @@ export async function runMappedCommand(
     cwd = projectRoot,
   } = {},
 ) {
-  const args = childArgsForMode(mode);
+  const invocation = resolveMappedCommandInvocation(mode, { sourceEnv });
   const env = createMappedChildEnv({ mode, sourceEnv, secrets });
   return runChild({
-    command: childCommand(),
-    args,
+    command: invocation.command,
+    args: invocation.args,
     options: { cwd, env, stdio: "inherit" },
     spawnImpl,
   });
