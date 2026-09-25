@@ -64,7 +64,7 @@ test("MCP release requires both service-token credentials and rejects the legacy
   }), /CF_ACCESS_CLIENT_ID/);
 });
 
-test("production secret mapper allowlist and modes use service-token credentials only", () => {
+test("production secret mapper preserves the core service-token mode while allowing Jev production inputs", () => {
   assert.deepEqual([...ALLOWED_PRODUCTION_SECRET_KEYS], [
     "TEAM_DOMAIN",
     "POLICY_AUD",
@@ -72,6 +72,9 @@ test("production secret mapper allowlist and modes use service-token credentials
     "CF_ACCESS_CLIENT_ID",
     "CF_ACCESS_CLIENT_SECRET",
     "COMPRESSION_SMOKE_TOKEN",
+    "JEV_AUDIT_MCP_POLICY_AUD",
+    "JEV_AUDIT_SMOKE_TOKEN",
+    "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE",
   ]);
   assert.deepEqual(requiredKeysForMode(MAPPER_MODES.MCP_SMOKE), [
     "MCP_ENDPOINT",
