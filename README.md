@@ -163,9 +163,9 @@ Cloudflare Workers Builds / Git integrationの単独Production auto-deploy、個
 
 Jev Auditを含む通常releaseはJev Audit release wrapperから既存core production releaseへ接続し、source revision、clean worktree、npm ci、generated checks、tests、Worker dry-run、active Version capture、deploy、authenticated smoke、release metadata、失敗時rollbackを管理します。既存Semantic Compressionのrelease順序・smoke責務は維持されます。
 
-本番実行にはoperator-managedなSecret、Cloudflare Access、release smoke用credential等が
+本番実行にはoperator-managedなSecret、Cloudflare Access、release smoke用Service Token等が
 必要です。実値は入力・ログ・commit・release metadataへ残さないでください。Codexの通常利用は
-Managed OAuthを維持し、release smoke用credentialとは認証責務を分離します。
+Managed OAuthを維持し、release smoke用Service Tokenとは認証責務を分離します。
 
 詳細は docs/OPERATIONS.md、docs/semantic-compression.md、
 docs/semantic-compression-mcp.md、docs/jev-audit.md を参照してください。
@@ -174,11 +174,11 @@ docs/semantic-compression-mcp.md、docs/jev-audit.md を参照してください
 
 Production用のoperator値は、repository外の固定ファイル
 `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` から安全に供給できます。
-mapperが扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
+mapperがProduction releaseで扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
 `CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、
-`JEV_AUDIT_MCP_POLICY_AUD`、`JEV_AUDIT_SMOKE_TOKEN`、`JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE` の9つだけです。
-未知keyや必須key不足はfail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialは
-このファイルへ追加せず、既存のoperator-managed設定を使用します。
+`CLOUDFLARE_API_TOKEN`、`JEV_AUDIT_MCP_POLICY_AUD`、`JEV_AUDIT_SMOKE_TOKEN` の9つです。
+必須key不足はfail-closedで停止し、未知keyは子processへ渡さず無視します。値はログへ出しません。
+Wrangler用Cloudflare credentialもこの固定secret fileから供給します。Compression/Jev Auditの自動MCP smokeは同じAccess Service Tokenを使用し、session cookieは使用しません。
 
 通常の操作は次の2つです。
 
