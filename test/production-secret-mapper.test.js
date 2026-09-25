@@ -27,7 +27,6 @@ const secretValues = Object.freeze({
   COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",
   JEV_AUDIT_MCP_POLICY_AUD: "jev-audit-audience-fixture-value",
   JEV_AUDIT_SMOKE_TOKEN: "jev-audit-token-fixture-value",
-  JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=jev-audit-cookie-fixture-value",
 });
 
 const secretText = Object.entries(secretValues)
@@ -61,7 +60,7 @@ function fakeSpawn(exitCode, capture) {
   };
 }
 
-test("production secret parser accepts exactly the nine allowlisted keys", () => {
+test("production secret parser accepts exactly the eight allowlisted keys", () => {
   assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);
   assert.deepEqual(parseProductionSecretText(secretText), secretValues);
 });
@@ -109,16 +108,14 @@ test("missing service-token credentials fail before a child process can start", 
   assert.equal(calls.length, 0);
 });
 
-test("legacy core MCP cookie and unknown secret keys fail closed without exposing values", () => {
+test("legacy core/Jev MCP cookies and unknown secret keys fail closed without exposing values", () => {
   const unknownValue = "unknown-secret-fixture-value";
-  assert.throws(
-    () => parseProductionSecretText(`${secretText}\nMCP_SMOKE_ACCESS_COOKIE=${unknownValue}`),
-    (error) => error.message.includes("MCP_SMOKE_ACCESS_COOKIE") && !error.message.includes(unknownValue),
-  );
-  assert.throws(
-    () => parseProductionSecretText(`${secretText}\nUNRELATED_SECRET=${unknownValue}`),
-    (error) => error.message.includes("UNRELATED_SECRET") && !error.message.includes(unknownValue),
-  );
+  for (const key of ["MCP_SMOKE_ACCESS_COOKIE", "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE", "UNRELATED_SECRET"]) {
+    assert.throws(
+      () => parseProductionSecretText(`${secretText}\n${key}=${unknownValue}`),
+      (error) => error.message.includes(key) && !error.message.includes(unknownValue),
+    );
+  }
 });
 
 test("unknown mapper mode fails closed", () => {
@@ -150,7 +147,7 @@ test("mapped MCP child environment preserves service token values but excludes J
   assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
 });
 
-test("production-release maps all nine keys and launches the Jev-aware release authority", async () => {
+test("production-release maps all eight keys and launches the Jev-aware release authority", async () => {
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.PRODUCTION_RELEASE, {
     secrets: secretValues,
@@ -162,6 +159,7 @@ test("production-release maps all nine keys and launches the Jev-aware release a
   assert.equal(calls[0].args.join(" ").includes("deploy:production"), true);
   for (const [key, value] of Object.entries(secretValues)) assert.equal(calls[0].options.env[key], value);
   assert.equal(calls[0].options.env.MCP_SMOKE_ACCESS_COOKIE, undefined);
+  assert.equal(calls[0].options.env.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cloudflare-fixture");
 });
 
@@ -239,5 +237,6 @@ test("operator documentation preserves the current main mapper workflow without 
   assert.match(documentation, /CF_ACCESS_CLIENT_SECRET/);
   assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);
   assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
+  assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
   assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });
