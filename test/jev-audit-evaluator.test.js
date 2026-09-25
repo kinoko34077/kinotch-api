@@ -9,14 +9,15 @@ import {
   validateSystemOneResponse,
 } from "../src/jev-audit/evaluator.js";
 
-function providerPayload({
-  local = { clear: 0.7, review: 0.15, rework: 0.05, unknown: 0.1 },
-  concrete = 0.1,
-  mismatch = 0.1,
-  regression = 0.1,
-  model = "jev-1.13.0",
-  usage = { input_tokens: 11, output_tokens: 0 },
-} = {}) {
+function providerPayload(options = {}) {
+  const local = options.local ?? { clear: 0.7, review: 0.15, rework: 0.05, unknown: 0.1 };
+  const concrete = options.concrete ?? 0.1;
+  const mismatch = options.mismatch ?? 0.1;
+  const regression = options.regression ?? 0.1;
+  const model = options.model ?? "jev-1.13.0";
+  const usage = Object.hasOwn(options, "usage")
+    ? options.usage
+    : { input_tokens: 11, output_tokens: 0 };
   const choice = Object.entries(local).sort((a, b) => b[1] - a[1])[0][0];
   return {
     model,
