@@ -457,7 +457,7 @@ async function main() {
     state.mcpDeployed = mcpDeployment.deployed;
     state.mcpVersionId = mcpDeployment.versionId;
     if (mcpDeployment.error) throw mcpDeployment.error;
-    state.stage = "MCP Access session-cookie smoke";
+    state.stage = "MCP Access Service Token smoke";
     state.mcpSmoke = await runMcpSmoke(mcpSmokeInputs);
 
     state.stage = "Gateway deploy";
