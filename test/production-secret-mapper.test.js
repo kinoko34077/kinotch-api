@@ -30,6 +30,14 @@ const secretText = Object.entries(secretValues)
   .map(([key, value]) => `${key}=${value}`)
   .join("\n");
 
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const agentInstructions = await readFile(new URL("../AGENTS.md", import.meta.url), "utf8");
+const operatorDocumentation = await Promise.all([
+  readFile(new URL("../README.md", import.meta.url), "utf8"),
+  readFile(new URL("../docs/USAGE.md", import.meta.url), "utf8"),
+  readFile(new URL("../docs/OPERATIONS.md", import.meta.url), "utf8"),
+]);
+
 async function createSyntheticSecretHome(contents = secretText) {
   const homeDirectory = await mkdtemp(join(tmpdir(), "kinotch-secret-mapper-"));
   const secretPath = join(homeDirectory, PRODUCTION_SECRET_RELATIVE_PATH);
@@ -205,4 +213,34 @@ test("mapper main rejects an alternate path argument before reading any file", a
   }
   assert.equal(calls.length, 0);
   assert.match(stderr.join("\n"), /exactly one supported mode argument/);
+});
+
+test("package scripts expose only the two fixed local mapper modes", () => {
+  assert.equal(packageJson.scripts["smoke:mcp:local"], "node scripts/production-secret-mapper.mjs mcp-smoke");
+  assert.equal(packageJson.scripts["release:local"], "node scripts/production-secret-mapper.mjs production-release");
+  assert.equal(packageJson.scripts["smoke:mcp"], "node scripts/smoke-mcp.mjs");
+  assert.equal(packageJson.scripts["deploy:production"], "node scripts/deploy-production.mjs");
+  assert.equal(packageJson.scripts.deploy, "npm run deploy:production");
+});
+
+test("agent instructions define the opaque production secret boundary", () => {
+  assert.match(agentInstructions, /Production Secret Boundary/);
+  assert.match(agentInstructions, /%USERPROFILE%\\\.kinotch-secrets\\/);
+  assert.match(agentInstructions, /Agents MUST NOT:/);
+  assert.match(agentInstructions, /Get-Content/);
+  assert.match(agentInstructions, /process\.env/);
+  assert.match(agentInstructions, /npm run smoke:mcp:local/);
+  assert.match(agentInstructions, /npm run release:local/);
+});
+
+test("operator documentation explains the fixed mapper workflow without secret values", () => {
+  const documentation = operatorDocumentation.join("\n");
+  assert.match(documentation, /production-secret-mapper\.mjs/);
+  assert.match(documentation, /kinotch-api\.production\.env/);
+  assert.match(documentation, /npm run smoke:mcp:local/);
+  assert.match(documentation, /npm run release:local/);
+  assert.match(documentation, /npm run deploy:production/);
+  assert.match(documentation, /TEAM_DOMAIN/);
+  assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);
+  assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });
