@@ -1,0 +1,267 @@
+{
+  "recordedAtUtc": "2026-09-25T17:02:58.933Z",
+  "recordedAtJst": "2026-09-26 02:02:58",
+  "status": "succeeded",
+  "gitRevision": "df337479187b57241009aa8f237089e17ff55e49",
+  "sourceRevision": "df337479187b57241009aa8f237089e17ff55e49",
+  "textVersionId": "2245a87c-0b70-4302-b815-09bee831f8f4",
+  "compressionVersionId": "07b70ab9-7b4a-42a1-ad37-7ba4a8b8fd86",
+  "previousCompressionVersionId": "7540e3bf-c212-4ed9-b109-9f6aaae19084",
+  "gatewayVersionId": "e37ea972-431a-4b90-8d97-00bb4e9dc402",
+  "textSmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 125.74
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 86.72,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "df337479187b57241009aa8f237089e17ff55e49"
+    },
+    "services": {
+      "time": {
+        "status": 200,
+        "durationMs": 34.61,
+        "serverTime": 1790355714504
+      },
+      "weather": {
+        "status": 200,
+        "durationMs": 294.75,
+        "temp": 23.24,
+        "weather": "Rain"
+      },
+      "rokuyo": {
+        "status": 200,
+        "durationMs": 216.17,
+        "rokuyo": "仏滅"
+      },
+      "moon": {
+        "status": 200,
+        "durationMs": 122,
+        "age": 14.565219907407407
+      }
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Authorization,Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 40.37,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": null,
+    "invalidQuery": null,
+    "oversizedBody": null,
+    "compression": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch",
+      "time": "smoke-time",
+      "weather": "smoke-weather",
+      "rokuyo": "smoke-rokuyo",
+      "moon": "smoke-moon"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    },
+    "directCompressionWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "compressionSmoke": {
+    "compact": {
+      "status": 200,
+      "durationMs": 1504.43,
+      "requestId": "smoke-compression-compact",
+      "inputChars": 36,
+      "outputChars": 55,
+      "model": "gemini-3.5-flash-lite",
+      "promptVersion": "compact-v1.1",
+      "inputSha256": "ba76c8727432bfda5ff67e500d4077af525bf0d4198b0fe7f8d8338b61a32d86",
+      "outputSha256": "34b8da9e160b2d60e9673ec62ca275fcad6e82ace2db8a25cf47662ec153c58f",
+      "usage": {
+        "input_tokens": 566,
+        "system_prompt_tokens": 540,
+        "content_input_tokens": 26,
+        "output_tokens": 39,
+        "thought_tokens": 0,
+        "cached_tokens": 0,
+        "total_tokens": 605
+      }
+    },
+    "semanticDense": {
+      "status": 200,
+      "durationMs": 1250.99,
+      "requestId": "smoke-compression",
+      "inputChars": 36,
+      "outputChars": 52,
+      "model": "gemini-3.5-flash-lite",
+      "promptVersion": "semantic-dense-v1.1",
+      "inputSha256": "ba76c8727432bfda5ff67e500d4077af525bf0d4198b0fe7f8d8338b61a32d86",
+      "outputSha256": "c7e116f622063091cf600658e1df9fc01c3b7ee4110fe4b043381bc20f8e150e",
+      "usage": {
+        "input_tokens": 1849,
+        "system_prompt_tokens": 1823,
+        "content_input_tokens": 26,
+        "output_tokens": 35,
+        "thought_tokens": 0,
+        "cached_tokens": 0,
+        "total_tokens": 1884
+      }
+    }
+  },
+  "gatewaySmoke": {
+    "baseUrl": "https://api.kinotch.workers.dev",
+    "health": {
+      "status": 200,
+      "durationMs": 16.11
+    },
+    "capabilities": {
+      "status": 200,
+      "durationMs": 80.15,
+      "engineVersion": "0.2.0-phase2",
+      "metadataVersion": "snapshot-v1",
+      "ruleSetHash": "31e924e79d21c231a12db31c917f32529c5968bc9148cfce046de6cba249c0ef",
+      "snapshotHash": "98b36d04c8ba4363386409612386ad36d75de15bf8134ac89d2c03eeaeb82612",
+      "dictionaryVersion": "dictionary-v1",
+      "dictionaryHash": "d8cc9fa3f207ab09fb981e4b53d67ca8590a5ee185b9897daffad7d82042be41",
+      "sourceRevision": "df337479187b57241009aa8f237089e17ff55e49"
+    },
+    "services": {
+      "time": {
+        "status": 200,
+        "durationMs": 33.63,
+        "serverTime": 1790355776337
+      },
+      "weather": {
+        "status": 200,
+        "durationMs": 250.44,
+        "temp": 23.17,
+        "weather": "Rain"
+      },
+      "rokuyo": {
+        "status": 200,
+        "durationMs": 283.26,
+        "rokuyo": "仏滅"
+      },
+      "moon": {
+        "status": 200,
+        "durationMs": 98.86,
+        "age": 14.565914351851852
+      }
+    },
+    "preflight": {
+      "status": 204,
+      "allowHeaders": "Authorization,Content-Type,X-Request-ID"
+    },
+    "batch": {
+      "status": 200,
+      "durationMs": 28.86,
+      "itemCount": 2
+    },
+    "cors": {
+      "exposedHeaders": "X-Request-ID,Retry-After,RateLimit-Limit,RateLimit-Policy,ETag"
+    },
+    "invalidProfile": {
+      "status": 400
+    },
+    "invalidQuery": {
+      "status": 400
+    },
+    "oversizedBody": {
+      "status": 413
+    },
+    "compression": null,
+    "requestIds": {
+      "health": "smoke-health",
+      "capabilities": "smoke-capabilities",
+      "batch": "smoke-batch",
+      "time": "smoke-time",
+      "weather": "smoke-weather",
+      "rokuyo": "smoke-rokuyo",
+      "moon": "smoke-moon"
+    },
+    "directTextWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    },
+    "directCompressionWorker": {
+      "status": 404,
+      "reachable": false,
+      "statuses": [
+        404
+      ]
+    }
+  },
+  "textDeployment": {
+    "status": "deployed",
+    "versionId": "2245a87c-0b70-4302-b815-09bee831f8f4",
+    "needsRollback": false
+  },
+  "compressionDeployment": {
+    "status": "deployed",
+    "versionId": "07b70ab9-7b4a-42a1-ad37-7ba4a8b8fd86",
+    "needsRollback": false
+  },
+  "mcpDeployment": {
+    "status": "deployed",
+    "versionId": "7ea7e453-aadb-41a0-83ce-2b677806bcc9",
+    "needsRollback": false
+  },
+  "gatewayDeployment": {
+    "status": "deployed",
+    "versionId": "e37ea972-431a-4b90-8d97-00bb4e9dc402",
+    "needsRollback": false
+  },
+  "compressionRecovery": null,
+  "mcpVersionId": "7ea7e453-aadb-41a0-83ce-2b677806bcc9",
+  "previousMcpVersionId": "44aab539-9743-4e00-b644-e558aaa291c6",
+  "mcpEndpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
+  "mcpProtocol": "streamable-http",
+  "mcpToolVersion": "compress_text/v1",
+  "mcpSmoke": {
+    "status": "passed",
+    "httpStatus": 200,
+    "authMode": "access_service_token",
+    "endpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
+    "tool": "compress_text",
+    "profile": "semantic-dense-v1",
+    "model": "gemini-3.5-flash-lite",
+    "inputChars": 14,
+    "outputChars": 61
+  },
+  "mcpOAuthSmoke": {
+    "status": "operator_required",
+    "reason": "Codex Managed OAuth client flow must be verified separately"
+  },
+  "mcpRecovery": null,
+  "compressionModel": "gemini-3.5-flash-lite",
+  "compressionPromptVersion": "semantic-dense-v1.1",
+  "compressionPromptVersions": {
+    "compact": "compact-v1.1",
+    "semanticDense": "semantic-dense-v1.1"
+  }
+}
