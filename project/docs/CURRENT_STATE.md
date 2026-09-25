@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` and Codex Managed OAuth MCP E2E verified; Jev Audit Remote feature implementation/release hardening verified on branch, live Jev production verification pending
+Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` and Codex Managed OAuth MCP E2E verified; Jev Audit Remote feature implementation/release hardening verified on branch, live Jev production verification pending; Codex Service Auth helper repository implementation verified, live Service Auth E2E pending
 
 ## Implemented
 
@@ -14,8 +14,10 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Detailed usage, operations, and first-parent development history are documented under docs/ and linked from this index
 - Production smoke uses fixed Gateway, Text Worker, and Compression Worker targets; standalone diagnostic smoke keeps local endpoint overrides separate.
 - Production release verifies `main == origin/main`, rebuilds dependencies with `npm ci`, and isolates release-only secrets from build/test child processes.
-- Production operator secrets are supplied through the fixed external `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; the Jev Audit feature extends the supported release mapping to the documented Jev Audit keys while preserving unknown-key rejection/ignore behavior, and `smoke:mcp:local` / `release:local` remain launchers rather than alternate production authorities.
+- Production operator secrets are supplied through the fixed external `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; the Jev Audit feature extends the Production required-key set to the documented Jev Audit keys while unknown file keys remain ignored and unforwarded, and `smoke:mcp:local` / `release:local` remain launchers rather than alternate production authorities.
 - MCP automated release/recovery smoke uses dedicated Cloudflare Access Service Token credentials and does not use a browser session cookie. Codex interactive use remains a separate Managed OAuth path and is recorded independently as operator evidence.
+- The fixed external secret-file parser also recognizes optional Codex-only `CODEX_CF_ACCESS_CLIENT_ID` / `CODEX_CF_ACCESS_CLIENT_SECRET` values without adding them to either Production release or release-smoke required-key sets.
+- `scripts/codex-mcp-access-headers.mjs` implements the Codex `http_headers_helper` boundary: it accepts no alternate path, requires only the Codex-specific pair, and emits only `CF-Access-Client-Id` / `CF-Access-Client-Secret` as the machine-consumed JSON header object. Missing credentials fail before connection without printing secret values.
 - Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` succeeded on 2026-09-25 and is recorded by `docs/releases/20260925T094316840Z.json`; Text, Compression, MCP, and Gateway deployments all report `needsRollback: false`, Gateway/Text/Compression smoke passed, and Compression MCP Service Token smoke passed.
 - Codex CLI 0.155.1 separately verified the interactive Managed OAuth path against the Production Compression MCP endpoint: OAuth, tool discovery, `compress_text`, and returned `semantic-dense-v1` / `semantic-dense-v1.1` / `gemini-3.5-flash-lite` contract all passed without using the Service Token. This is operator E2E evidence separate from release metadata.
 - Worker deploy results are reconciled against remote active versions; rollback verifies the active version and runs non-billable recovery smoke.
@@ -45,6 +47,8 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Node 26 is the repository-selected runtime. `@rolldown/plugin-babel@0.2.4`, pulled transitively through the current Agents dependency set, still declares an upstream Node engine range that does not explicitly list Node 26; repository installation, tests, and all Worker dry-runs nevertheless pass on Node 26.10.0. Treat an upstream engine-range change as dependency metadata to re-check rather than as production proof by itself.
 - Cloudflare Access Service Token creation and its `Service Auth` policies are external operator-managed state; repository tests verify only request/header contracts, not dashboard configuration itself.
 - The generated release metadata intentionally keeps `mcpOAuthSmoke.status = operator_required`; it is immutable evidence of what that release process itself verified. The later Codex Managed OAuth E2E PASS is recorded separately in this Current State rather than rewriting the release record.
+- Codex Service Auth helper code is repository-verified, but the Codex-dedicated Cloudflare Service Token, matching Access `Service Auth` policy, machine-local Codex `http_headers_helper` configuration, and real Service Auth `compress_text` E2E remain external operator evidence until performed.
+- The Codex helper provides an operational secret-isolation boundary, not a hard OS privilege boundary against arbitrary same-user shell access.
 - The latest tracked Production release predates the Jev Audit Remote feature. Jev Audit live E2E / production verification is pending; unit/integration tests and release wiring do not count as evidence that the live TypeSafe REST path, deployed private Worker, Cloudflare Access policy, or authenticated Jev Audit MCP tool call has succeeded.
 
 ## Next work
@@ -53,8 +57,9 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 2. Confirm the operator-managed Cloudflare/TypeSafe production configuration required by the Jev Audit surface without moving secret values into the repository.
 3. From synchronized clean `main`, run the formal Jev Audit-aware production release gate.
 4. Confirm one live TypeSafe REST E2E and one authenticated Jev Audit MCP tool-call E2E, then record deployed version IDs and smoke evidence.
-5. After production verification, use the feature in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
-6. Track any future Codex Service Token helper work separately from this Jev Audit rollout so the existing Managed OAuth and release-smoke credential responsibilities remain independently revocable.
+5. Create/select a Codex-dedicated Cloudflare Access Service Token, add the exact-token `Service Auth` policy, add the two `CODEX_CF_ACCESS_*` values to the fixed secret file, configure Codex `http_headers_helper`, and run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
+6. Record the Codex Service Auth E2E as operator evidence and close Work Order #9 after its PR review/merge.
+7. After production verification, use the features in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
 
 ## Verification
 
@@ -63,6 +68,9 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Gateway/Text/Compression production smoke: passed
 - Compression MCP release Service Token smoke: passed (`authMode = access_service_token`)
 - Codex CLI 0.155.1 Managed OAuth E2E for Compression MCP: OAuth PASS, `tools/list` PASS, `compress_text` discovery/call PASS, Service Token not used
+- Codex Service Auth helper unit/regression coverage: shared file recognizes Codex-only keys, Production modes do not forward them, helper JSON contains only the two Access headers, missing-pair and alternate-path cases fail safely
+- Codex Service Auth documentation contract: `http_headers_helper`, fixed secret path, Codex-only key names, Service Auth headers, and Managed OAuth coexistence are documented without real credentials
+- Real Codex Service Auth E2E: pending external Codex-dedicated Service Token / Access policy / local config setup
 - `knt doctor`
 - `knt base-check`
 - `knt setup`
