@@ -95,7 +95,7 @@ Cloudflare Access Managed OAuthで保護され、公開toolはcompress_textだ�
 }
 ~~~
 
-Codex登録、Access bootstrap、MCP Inspector、OAuth login、cookie smoke、
+Codex登録、Access bootstrap、MCP Inspector、OAuth login、release smoke用Service Token、
 initialize lifecycle、トラブルシュートは docs/semantic-compression-mcp.md を参照してください。
 REST用のCOMPRESSION_API_TOKENをMCP認証へ流用しないでください。
 
@@ -151,8 +151,9 @@ release gateは、source revision、clean worktree、npm ci、generated checks�
 tests、Worker dry-run、active Version capture、Text → Compression → MCP → Gatewayの
 deploy、readiness、authenticated smoke、release metadata、失敗時rollbackを管理します。
 
-本番実行にはoperator-managedなSecret、Cloudflare Access、MCP smoke cookie等が
-必要です。実値は入力・ログ・commit・release metadataへ残さないでください。
+本番実行にはoperator-managedなSecret、Cloudflare Access、release smoke専用Service Token等が
+必要です。実値は入力・ログ・commit・release metadataへ残さないでください。Codexの通常利用は
+Managed OAuthを維持し、release smoke用Service Tokenとは認証責務を分離します。
 
 詳細は docs/OPERATIONS.md、docs/semantic-compression.md、
 docs/semantic-compression-mcp.md を参照してください。
@@ -162,9 +163,9 @@ docs/semantic-compression-mcp.md を参照してください。
 Production用のoperator値は、repository外の固定ファイル
 `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` から安全に供給できます。
 mapperが扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
-`MCP_SMOKE_ACCESS_COOKIE`、`COMPRESSION_SMOKE_TOKEN` だけです。未知keyや必須key不足は
-fail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialはこのファイルへ
-追加せず、既存のoperator-managed設定を使用します。
+`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN` の6つだけです。
+未知keyや必須key不足はfail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialは
+このファイルへ追加せず、既存のoperator-managed設定を使用します。
 
 通常の操作は次の2つです。
 
@@ -183,7 +184,7 @@ clean worktree、`main == origin/main`、test、dry-run、smoke、rollback、rel
 
 - Compressionは汎用LLM proxy、chat、agent、任意Prompt APIではありません。
 - MCPは一つの固定toolだけを公開し、任意profileや任意providerを受け付けません。
-- Gemini API key、REST caller token、local live-test key、MCP OAuthは別の責務です。
+- Gemini API key、REST caller token、local live-test key、MCP OAuth、release smoke用Service Tokenは別の責務です。
 - 本文、compressed_text全文、Authorization、Access JWT、Gemini key、System Prompt全文、
   raw provider responseを本番ログへ記録しません。
 - private Workerはworkers.dev直公開を無効化し、GatewayまたはMCP Service Bindingだけで
