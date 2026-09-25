@@ -62,6 +62,13 @@ function parseMcpEndpoint(endpoint) {
   return parsed.toString();
 }
 
+function accessServiceTokenHeaders({ accessClientId, accessClientSecret }) {
+  return {
+    "CF-Access-Client-Id": requireSecret(accessClientId, "CF_ACCESS_CLIENT_ID"),
+    "CF-Access-Client-Secret": requireSecret(accessClientSecret, "CF_ACCESS_CLIENT_SECRET"),
+  };
+}
+
 async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
   const controller = new AbortController();
   const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -131,13 +138,14 @@ async function readRpcResult(response) {
 
 export async function runJevAuditMcpSmoke({
   endpoint = JEV_AUDIT_MCP_ENDPOINT,
-  accessCookie,
+  accessClientId,
+  accessClientSecret,
   fetchImpl = globalThis.fetch,
   timeoutMs = JEV_AUDIT_SMOKE_TIMEOUT_MS,
   checkToolCall = false,
 } = {}) {
   const target = parseMcpEndpoint(endpoint);
-  const cookie = requireSecret(accessCookie, "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE");
+  const accessHeaders = accessServiceTokenHeaders({ accessClientId, accessClientSecret });
   let id = 0;
 
   async function request(method, params) {
@@ -147,7 +155,7 @@ export async function runJevAuditMcpSmoke({
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
         "MCP-Protocol-Version": "2025-06-18",
-        Cookie: cookie,
+        ...accessHeaders,
       },
       body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }),
     }, timeoutMs);
@@ -161,7 +169,7 @@ export async function runJevAuditMcpSmoke({
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
         "MCP-Protocol-Version": "2025-06-18",
-        Cookie: cookie,
+        ...accessHeaders,
       },
       body: JSON.stringify({ jsonrpc: "2.0", method, params }),
     }, timeoutMs);
@@ -184,7 +192,7 @@ export async function runJevAuditMcpSmoke({
     return {
       status: "passed",
       endpoint: target,
-      authMode: "access_session_cookie",
+      authMode: "access_service_token",
       toolCall: false,
     };
   }
@@ -198,7 +206,7 @@ export async function runJevAuditMcpSmoke({
   return {
     status: "passed",
     endpoint: target,
-    authMode: "access_session_cookie",
+    authMode: "access_service_token",
     toolCall: true,
     tool: "audit_files",
     filesScanned: report.files_scanned,
@@ -213,7 +221,8 @@ if (process.argv[1]?.endsWith("smoke-jev-audit.mjs")) {
   const mode = process.env.JEV_AUDIT_SMOKE_MODE ?? "rest";
   const result = mode === "mcp"
     ? await runJevAuditMcpSmoke({
-        accessCookie: process.env.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE,
+        accessClientId: process.env.CF_ACCESS_CLIENT_ID,
+        accessClientSecret: process.env.CF_ACCESS_CLIENT_SECRET,
         checkToolCall: process.env.JEV_AUDIT_MCP_TOOL_CALL === "1",
       })
     : await runJevAuditRestSmoke({ token: process.env.JEV_AUDIT_SMOKE_TOKEN });
