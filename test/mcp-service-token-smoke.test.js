@@ -72,9 +72,9 @@ test("production secret mapper preserves the core service-token mode while allow
     "CF_ACCESS_CLIENT_ID",
     "CF_ACCESS_CLIENT_SECRET",
     "COMPRESSION_SMOKE_TOKEN",
+    "CLOUDFLARE_API_TOKEN",
     "JEV_AUDIT_MCP_POLICY_AUD",
     "JEV_AUDIT_SMOKE_TOKEN",
-    "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE",
   ]);
   assert.deepEqual(requiredKeysForMode(MAPPER_MODES.MCP_SMOKE), [
     "MCP_ENDPOINT",
@@ -82,4 +82,5 @@ test("production secret mapper preserves the core service-token mode while allow
     "CF_ACCESS_CLIENT_SECRET",
   ]);
   assert.equal(ALLOWED_PRODUCTION_SECRET_KEYS.includes("MCP_SMOKE_ACCESS_COOKIE"), false);
+  assert.equal(ALLOWED_PRODUCTION_SECRET_KEYS.includes("JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE"), false);
 });
