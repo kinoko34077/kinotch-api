@@ -98,7 +98,7 @@ https://api.kinotch.workers.dev
 ### 4.1 一般route
 
 | Method | Path | 用途 | 主な入力 |
-|---|---|---|---|
+|---|---|---|
 | GET | /health | Gateway health | なし |
 | GET | /v1/time | 時刻中継 | なし |
 | GET | /v1/weather | 天気中継 | lat, lon |
@@ -290,7 +290,8 @@ docs/semantic-compression.mdを参照する。
 https://semantic-compression-mcp.kinotch.workers.dev/mcp
 ~~~
 
-MCPはCloudflare Access Managed OAuthで保護する。MCP Worker内でも
+MCPはCloudflare Accessで保護する。Codex通常利用はManaged OAuth、Production release smokeは
+専用Service Tokenを使う。MCP Worker内ではどちらの経路でもCloudflareが付与した
 Cf-Access-Jwt-Assertionの署名、issuer、audience、expirationを検証する。
 RESTのCOMPRESSION_API_TOKENをMCP認証や内部Service Binding呼出へ流用しない。
 
@@ -318,8 +319,8 @@ stateless Streamable HTTP lifecycleを使う。
 codex mcp login semantic_compressor
 ~~~
 
-MCPのAccess cookie smokeはCodex OAuth実呼出とは別証拠である。
-MCP Inspector、cookie smoke、Codex実呼出の詳細とbootstrap順序は
+Production releaseのService Token smokeはCodex OAuth実呼出とは別証拠である。
+MCP Inspector、Service Token smoke、Codex実呼出の詳細とbootstrap順序は
 docs/semantic-compression-mcp.mdを参照する。
 
 ## 8. Secretとprivacy
@@ -332,6 +333,8 @@ docs/semantic-compression-mcp.mdを参照する。
 | COMPRESSION_SMOKE_TOKEN | release smokeの一時caller token | operatorのローカル環境 |
 | TEAM_DOMAIN | MCP Access issuer設定 | MCP Worker vars |
 | POLICY_AUD | MCP Access audience設定 | MCP Worker vars |
+| CF_ACCESS_CLIENT_ID | MCP release smoke用Service Token ID | operatorのローカルsecret file |
+| CF_ACCESS_CLIENT_SECRET | MCP release smoke用Service Token secret | operatorのローカルsecret file |
 
 秘密値、Authorization、Access JWT、本文、compressed_text全文、System Prompt全文、
 Gemini raw responseは本番log・release metadata・repositoryへ記録しない。
@@ -355,26 +358,28 @@ fetch origin/main / clean worktree / source revision
   → Text deploy / smoke
   → Compression deploy
   → MCP deploy
+  → authenticated MCP Service Token smoke
   → Gateway deploy
   → readiness
-  → authenticated MCP smoke / Compression smoke / Gateway smoke
+  → Compression smoke / Gateway smoke
   → release metadata
   → failure時 rollback
 ~~~
 
-実行前にoperatorが必要な値を設定する。
+直接環境変数を使う場合はoperatorが次を設定する。
 
 ~~~powershell
 $env:COMPRESSION_SMOKE_TOKEN = "<existing compression caller token>"
 $env:TEAM_DOMAIN = "https://<team>.cloudflareaccess.com"
 $env:POLICY_AUD = "<MCP Access audience tag>"
 $env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
-$env:MCP_SMOKE_ACCESS_COOKIE = "CF_Authorization=<temporary Access session cookie>"
+$env:CF_ACCESS_CLIENT_ID = "<release-smoke service-token client id>"
+$env:CF_ACCESS_CLIENT_SECRET = "<release-smoke service-token client secret>"
 npm run deploy:production
 ~~~
 
-CookieはMCP Access application発行のものを使い、REST tokenや別applicationの
-cookieへ置き換えない。deploy後は一時環境変数を削除する。
+Service Tokenはrelease smoke専用のService Auth policyへ限定し、Codex Managed OAuth credentialや
+REST tokenへ流用しない。deploy後は一時環境変数を削除する。
 
 release metadataはdocs/releases/へ保存され、gitRevision、各Worker Version、
 smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへ
@@ -389,13 +394,14 @@ rollbackする。
 %USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env
 ~~~
 
-mapperが受け付けるkeyは次の5つだけで、未知keyや必須key不足は停止する。
+mapperが受け付けるkeyは次の6つだけで、未知keyや必須key不足は停止する。
 
 ~~~text
 TEAM_DOMAIN=<team-domain>
 POLICY_AUD=<audience-tag>
 MCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp
-MCP_SMOKE_ACCESS_COOKIE=<temporary-access-cookie>
+CF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>
+CF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>
 COMPRESSION_SMOKE_TOKEN=<compression-caller-token>
 ~~~
 
@@ -412,11 +418,11 @@ npm run release:local
 ~~~
 
 `release:local` はsecret injection用launcherであり、正式なProduction release authorityは
-引き続き `npm run deploy:production` です。mapperは値、file本文、`process.env`全体を
-出力せず、実際のdeploy・smoke・rollback・metadata処理は既存scriptへ委譲します。
-Cloudflare deploy credentialはこの5key fileへ含めず、既存のoperator-managed認証を使用します。
+引き続き `npm run deploy:production` である。mapperは値、file本文、`process.env`全体を
+出力せず、実際のdeploy・smoke・rollback・metadata処理は既存scriptへ委譲する。
+Cloudflare deploy credentialはこの6key fileへ含めず、既存のoperator-managed認証を使用する。
 secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり
-しません。
+しない。
 
 ## 10. 変更時の確認
 
