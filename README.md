@@ -108,7 +108,8 @@ Jev Audit Remoteは`jev-audit` v0.2.12の監査意味論を、明示的に送信
 REST入口は `POST /v1/audit`、Remote MCP入口は `https://jev-audit-mcp.kinotch.workers.dev/mcp` です。
 Remote MCPは `audit_files` と `list_profiles` のみを公開します。Remote v1はlocal filesystemやGitを読まず、`changed_only`も提供しません。
 
-実装・自動test・release/smoke wiringはfeature branchで完了していますが、live TypeSafe E2EとProduction deploy、authenticated MCP tool-call E2Eは実行証拠が得られるまでpendingです。
+Jev Audit Remoteは2026-09-25の正式releaseで **Production verified** です。source revision `84e8109ef43064efd72fd1012054dc7787de6a8e` から、live TypeSafe REST E2EとCloudflare Access Service Token経由のauthenticated MCP `audit_files` tool callが成功し、rollback不要で完了した証跡を `docs/releases/20260925T144351192Z.json` と `docs/releases/jev-audit-20260925T144353075Z.json` に保持しています。
+Jev Audit MCPではService Token経路を通常Production認証として採用します。Jev固有のManaged OAuth E2Eは完了条件ではなく、将来interactive利用が必要になった場合の任意拡張です。
 詳細は docs/jev-audit.md を参照してください。
 
 ## ローカル開発
@@ -164,8 +165,7 @@ Cloudflare Workers Builds / Git integrationの単独Production auto-deploy、個
 Jev Auditを含む通常releaseはJev Audit release wrapperから既存core production releaseへ接続し、source revision、clean worktree、npm ci、generated checks、tests、Worker dry-run、active Version capture、deploy、authenticated smoke、release metadata、失敗時rollbackを管理します。既存Semantic Compressionのrelease順序・smoke責務は維持されます。
 
 本番実行にはoperator-managedなSecret、Cloudflare Access、release smoke用Service Token等が
-必要です。実値は入力・ログ・commit・release metadataへ残さないでください。Codexの通常利用は
-Managed OAuthを維持し、release smoke用Service Tokenとは認証責務を分離します。
+必要です。実値は入力・ログ・commit・release metadataへ残さないでください。Compression MCPのinteractive Codex利用は既存Managed OAuthを維持しますが、Jev Audit MCPはCloudflare Access Service Tokenを通常Production経路として使用し、Jev固有のManaged OAuthを必須としません。
 
 詳細は docs/OPERATIONS.md、docs/semantic-compression.md、
 docs/semantic-compression-mcp.md、docs/jev-audit.md を参照してください。
