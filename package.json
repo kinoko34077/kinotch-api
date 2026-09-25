@@ -24,6 +24,8 @@
     "smoke:mcp:local": "node scripts/production-secret-mapper.mjs mcp-smoke",
     "release:local": "node scripts/production-secret-mapper.mjs production-release",
     "bootstrap:mcp": "node scripts/mcp-bootstrap.mjs",
+    "bootstrap:jev-audit": "node scripts/jev-audit-bootstrap.mjs",
+    "bootstrap:jev-audit:local": "node scripts/production-secret-mapper.mjs jev-audit-bootstrap",
     "test:compression:live": "node --test test/semantic-compression-live.test.js",
     "test:mcp": "node --test test/semantic-compression-mcp-*.test.js",
     "evaluate:compression": "node scripts/evaluate-compression.mjs",
