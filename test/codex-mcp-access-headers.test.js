@@ -31,6 +31,10 @@ const codexSecrets = Object.freeze({
   CODEX_CF_ACCESS_CLIENT_SECRET: "codex-client-secret-fixture",
 });
 
+const releaseSecretText = Object.entries(releaseSecrets)
+  .map(([key, value]) => `${key}=${value}`)
+  .join("\n");
+
 const sharedSecretText = Object.entries({ ...releaseSecrets, ...codexSecrets })
   .map(([key, value]) => `${key}=${value}`)
   .join("\n");
@@ -66,7 +70,22 @@ test("production release mapping never forwards Codex-only credentials", () => {
   assert.equal(mapped.CODEX_CF_ACCESS_CLIENT_SECRET, undefined);
 });
 
-test("Codex MCP helper emits exactly the two Cloudflare Access headers as JSON", async () => {
+test("Codex MCP helper reuses the release Service Token when no Codex override exists", async () => {
+  const homeDirectory = await createSecretHome(`${releaseSecretText}\nUNRELATED_SECRET=ignored-value`);
+  try {
+    const result = runHelper(homeDirectory);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, "");
+    assert.deepEqual(JSON.parse(result.stdout), {
+      "CF-Access-Client-Id": releaseSecrets.CF_ACCESS_CLIENT_ID,
+      "CF-Access-Client-Secret": releaseSecrets.CF_ACCESS_CLIENT_SECRET,
+    });
+  } finally {
+    await rm(homeDirectory, { recursive: true, force: true });
+  }
+});
+
+test("Codex MCP helper prefers a complete Codex-specific override when present", async () => {
   const homeDirectory = await createSecretHome(`${sharedSecretText}\nUNRELATED_SECRET=ignored-value`);
   try {
     const result = runHelper(homeDirectory);
@@ -81,9 +100,8 @@ test("Codex MCP helper emits exactly the two Cloudflare Access headers as JSON",
   }
 });
 
-test("Codex MCP helper fails safely when either Codex credential is missing", async () => {
-  const releaseText = Object.entries(releaseSecrets).map(([key, value]) => `${key}=${value}`).join("\n");
-  const homeDirectory = await createSecretHome(`${releaseText}\nCODEX_CF_ACCESS_CLIENT_ID=${codexSecrets.CODEX_CF_ACCESS_CLIENT_ID}`);
+test("Codex MCP helper fails safely on a partial Codex-specific override instead of falling back", async () => {
+  const homeDirectory = await createSecretHome(`${releaseSecretText}\nCODEX_CF_ACCESS_CLIENT_ID=${codexSecrets.CODEX_CF_ACCESS_CLIENT_ID}`);
   try {
     const result = runHelper(homeDirectory);
     assert.equal(result.status, 1);
