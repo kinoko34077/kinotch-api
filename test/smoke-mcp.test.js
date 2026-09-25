@@ -9,11 +9,16 @@ function rpcResult(id, result) {
   });
 }
 
+const credentials = {
+  accessClientId: "client-id-fixture",
+  accessClientSecret: "client-secret-fixture",
+};
+
 test("MCP smoke completes initialize lifecycle before tools/list and compress_text call", async () => {
   const calls = [];
   const result = await runMcpSmoke({
     endpoint: "https://mcp.example.test/mcp",
-    accessCookie: "CF_Authorization=secret-cookie",
+    ...credentials,
     fetchImpl: async (url, init) => {
       calls.push({ url, init, body: JSON.parse(init.body) });
       const body = JSON.parse(init.body);
@@ -40,7 +45,7 @@ test("MCP smoke completes initialize lifecycle before tools/list and compress_te
   assert.deepEqual(result, {
     status: "passed",
     httpStatus: 200,
-    authMode: "access_session_cookie",
+    authMode: "access_service_token",
     endpoint: "https://mcp.example.test/mcp",
     tool: "compress_text",
     profile: "semantic-dense-v1",
@@ -54,7 +59,9 @@ test("MCP smoke completes initialize lifecycle before tools/list and compress_te
     "tools/list",
     "tools/call",
   ]);
-  assert.equal(calls[0].init.headers.Cookie, "CF_Authorization=secret-cookie");
+  assert.equal(calls[0].init.headers["CF-Access-Client-Id"], credentials.accessClientId);
+  assert.equal(calls[0].init.headers["CF-Access-Client-Secret"], credentials.accessClientSecret);
+  assert.equal(calls[0].init.headers.Cookie, undefined);
   assert.equal(calls[0].init.headers.Authorization, undefined);
   assert.deepEqual(calls[3].body.params.arguments, { text: "MCP smoke text" });
 });
@@ -63,7 +70,7 @@ test("MCP recovery smoke stops after tools/list without calling compression", as
   const methods = [];
   const result = await runMcpSmoke({
     endpoint: "https://mcp.example.test/mcp",
-    accessCookie: "CF_Authorization=secret-cookie",
+    ...credentials,
     checkToolCall: false,
     fetchImpl: async (_url, init) => {
       const body = JSON.parse(init.body);
@@ -77,7 +84,7 @@ test("MCP recovery smoke stops after tools/list without calling compression", as
   assert.deepEqual(result, {
     status: "passed",
     httpStatus: 200,
-    authMode: "access_session_cookie",
+    authMode: "access_service_token",
     endpoint: "https://mcp.example.test/mcp",
     tool: null,
     profile: null,
@@ -88,14 +95,18 @@ test("MCP recovery smoke stops after tools/list without calling compression", as
   assert.deepEqual(methods, ["initialize", "notifications/initialized", "tools/list"]);
 });
 
-test("MCP smoke fails safely without endpoint or Access session cookie", async () => {
+test("MCP smoke fails safely without endpoint or complete Access service-token credentials", async () => {
   await assert.rejects(
-    runMcpSmoke({ endpoint: "", accessCookie: "" }),
+    runMcpSmoke({ endpoint: "", ...credentials }),
     /MCP_ENDPOINT is required/,
   );
   await assert.rejects(
-    runMcpSmoke({ endpoint: "https://mcp.example.test/mcp", accessCookie: "" }),
-    (error) => error.message.includes("MCP_SMOKE_ACCESS_COOKIE") && !error.message.includes("secret"),
+    runMcpSmoke({ endpoint: "https://mcp.example.test/mcp", accessClientId: "", accessClientSecret: "secret" }),
+    (error) => error.message.includes("CF_ACCESS_CLIENT_ID") && !error.message.includes("secret"),
+  );
+  await assert.rejects(
+    runMcpSmoke({ endpoint: "https://mcp.example.test/mcp", accessClientId: "client", accessClientSecret: "" }),
+    (error) => error.message.includes("CF_ACCESS_CLIENT_SECRET") && !error.message.includes("client-id-fixture"),
   );
 });
 
@@ -113,7 +124,7 @@ test("MCP smoke rejects non-HTTPS or credential-ambiguous endpoints before fetch
     "https://mcp.example.test:8443/mcp",
   ]) {
     await assert.rejects(
-      runMcpSmoke({ endpoint, accessCookie: "CF_Authorization=secret-cookie", fetchImpl }),
+      runMcpSmoke({ endpoint, ...credentials, fetchImpl }),
       /MCP_ENDPOINT must use HTTPS|MCP_ENDPOINT must not include credentials|MCP_ENDPOINT must not include query or fragment|MCP_ENDPOINT must not include an explicit port/,
     );
   }
@@ -125,7 +136,7 @@ test("MCP smoke rejects unsafe protocol results without echoing response bodies"
   await assert.rejects(
     runMcpSmoke({
       endpoint: "https://mcp.example.test/mcp",
-      accessCookie: "CF_Authorization=secret-cookie",
+      ...credentials,
       fetchImpl: async () => new Response(JSON.stringify({ error: secret }), {
         status: 502,
         headers: { "Content-Type": "application/json" },
@@ -140,7 +151,7 @@ test("MCP smoke reports safe HTTP diagnostics without echoing an Access error bo
   await assert.rejects(
     runMcpSmoke({
       endpoint: "https://mcp.example.test/mcp",
-      accessCookie: "CF_Authorization=secret-cookie",
+      ...credentials,
       fetchImpl: async () => new Response(JSON.stringify({
         errors: [{ code: 1003, message: secret }],
       }), {
@@ -160,7 +171,7 @@ test("MCP smoke reports notification HTTP status and content type safely", async
   await assert.rejects(
     runMcpSmoke({
       endpoint: "https://mcp.example.test/mcp",
-      accessCookie: "CF_Authorization=secret-cookie",
+      ...credentials,
       fetchImpl: async () => {
         calls += 1;
         if (calls === 1) return rpcResult(1, { protocolVersion: "2025-06-18" });
