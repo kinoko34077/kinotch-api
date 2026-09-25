@@ -49,6 +49,7 @@ const MODE_KEYS = Object.freeze({
   [MAPPER_MODES.PRODUCTION_RELEASE]: ALLOWED_PRODUCTION_SECRET_KEYS,
 });
 
+const JEV_AUDIT_BOOTSTRAP_CONFIRMATION = "JEV_AUDIT_BOOTSTRAP_CONFIRM";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
 export function getProductionSecretPath({ homeDirectory = homedir() } = {}) {
@@ -109,6 +110,12 @@ export function mapProductionSecrets(secrets, mode) {
 export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets }) {
   const mappedSecrets = mapProductionSecrets(secrets, mode);
   const childEnv = createReleaseChildEnv(sourceEnv);
+  if (
+    mode === MAPPER_MODES.JEV_AUDIT_BOOTSTRAP
+    && sourceEnv?.[JEV_AUDIT_BOOTSTRAP_CONFIRMATION] === "true"
+  ) {
+    childEnv[JEV_AUDIT_BOOTSTRAP_CONFIRMATION] = "true";
+  }
   return Object.freeze({ ...childEnv, ...mappedSecrets });
 }
 
