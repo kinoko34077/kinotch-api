@@ -49,9 +49,9 @@ test("production release records the validated MCP endpoint", () => {
 
 test("production release reinstalls the lockfile dependency tree before build and tests", () => {
   assert.match(source, /state\.stage = "clean dependency install"/);
-  assert.match(source, /await run\(npmCommand, \["ci"\]\)/);
-  assert.match(source, /await run\(npmCommand, \["run", "build:text-snapshot"\]\)/);
-  assert.ok(source.indexOf('await run(npmCommand, ["ci"])') < source.indexOf('await run(npmCommand, ["run", "build:text-snapshot"])'));
+  assert.match(source, /await runNpm\(\["ci"\]\)/);
+  assert.match(source, /await runNpm\(\["run", "build:text-snapshot"\]\)/);
+  assert.ok(source.indexOf('await runNpm(["ci"])') < source.indexOf('await runNpm(["run", "build:text-snapshot"])'));
 });
 
 test("production release sanitizes child environments and scopes Cloudflare credentials to Wrangler", () => {
@@ -65,6 +65,12 @@ test("production Wrangler calls use the local CLI without shell re-interpretatio
   assert.match(source, /createWranglerInvocation/);
   assert.match(source, /shell:\s*invocation\.shell/);
   assert.doesNotMatch(source, /npxCommand|npx\.cmd/);
+});
+
+test("production release does not default child processes to the Windows shell", () => {
+  assert.match(source, /shell = false/);
+  assert.match(source, /createNpmInvocation/);
+  assert.doesNotMatch(source, /npmCommand/);
 });
 
 test("production release fails closed before deployment without Compression smoke token", () => {

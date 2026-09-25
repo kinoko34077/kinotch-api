@@ -38,16 +38,15 @@ import { runMcpSmoke } from "./smoke-mcp.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import { deployWithReconciliation } from "./release-deploy.mjs";
-import { createWranglerInvocation } from "./wrangler-runner.mjs";
+import { createNpmInvocation, createWranglerInvocation } from "./wrangler-runner.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 function run(command, args, {
   capture = false,
   allowFailure = false,
   env = createReleaseChildEnv(),
-  shell = process.platform === "win32",
+  shell = false,
 } = {}) {
   return new Promise((resolve, reject) => {
     let output = "";
@@ -90,6 +89,14 @@ function runWrangler(args, options = {}) {
     ...options,
     shell: invocation.shell,
     env: createReleaseChildEnv(process.env, { includeCloudflareCredentials: true }),
+  });
+}
+
+function runNpm(args, options = {}) {
+  const invocation = createNpmInvocation(args);
+  return run(invocation.command, invocation.args, {
+    ...options,
+    shell: invocation.shell,
   });
 }
 
@@ -356,15 +363,15 @@ async function main() {
     }
 
     state.stage = "clean dependency install";
-    await run(npmCommand, ["ci"]);
+    await runNpm(["ci"]);
     state.stage = "build snapshot";
-    await run(npmCommand, ["run", "build:text-snapshot"]);
+    await runNpm(["run", "build:text-snapshot"]);
     state.stage = "generated file stability assertion";
     await assertBuildDidNotChangeTrackedFiles();
     state.stage = "snapshot checks";
-    await run(npmCommand, ["run", "check:text-snapshot"]);
+    await runNpm(["run", "check:text-snapshot"]);
     state.stage = "test suite";
-    await run(npmCommand, ["test"]);
+    await runNpm(["test"]);
     state.stage = "Text Worker dry-run";
     await runWrangler([
       "deploy",

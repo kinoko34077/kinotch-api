@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
-import { createWranglerInvocation } from "../scripts/wrangler-runner.mjs";
+import { createNpmInvocation, createWranglerInvocation } from "../scripts/wrangler-runner.mjs";
 import { createWorkerRollbackArgs } from "../scripts/release-recovery.mjs";
 
 test("Wrangler runs through process.execPath without a shell", () => {
@@ -35,4 +35,20 @@ test("rollback message remains one noninteractive argument on a spaced Windows p
   assert.equal(invocation.shell, false);
   assert.deepEqual(invocation.args.slice(1), rollbackArgs.slice(1));
   assert.equal(invocation.args[invocation.args.indexOf("--message") + 1], message);
+});
+
+test("Windows npm runs through the Node executable without a shell", () => {
+  const invocation = createNpmInvocation(["run", "deploy:production"], {
+    platform: "win32",
+    execPath: "C:\\Users\\Author Software\\node.exe",
+    npmExecPath: "C:\\Users\\Author Software\\node_modules\\npm\\bin\\npm-cli.js",
+  });
+
+  assert.equal(invocation.command, "C:\\Users\\Author Software\\node.exe");
+  assert.equal(invocation.shell, false);
+  assert.deepEqual(invocation.args, [
+    "C:\\Users\\Author Software\\node_modules\\npm\\bin\\npm-cli.js",
+    "run",
+    "deploy:production",
+  ]);
 });
