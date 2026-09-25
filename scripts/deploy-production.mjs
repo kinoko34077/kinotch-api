@@ -38,15 +38,16 @@ import { runMcpSmoke } from "./smoke-mcp.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import { deployWithReconciliation } from "./release-deploy.mjs";
+import { createWranglerInvocation } from "./wrangler-runner.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function run(command, args, {
   capture = false,
   allowFailure = false,
   env = createReleaseChildEnv(),
+  shell = process.platform === "win32",
 } = {}) {
   return new Promise((resolve, reject) => {
     let output = "";
@@ -56,7 +57,7 @@ function run(command, args, {
       cwd: projectRoot,
       env,
       stdio: collectOutput ? ["inherit", "pipe", allowFailure ? "pipe" : "inherit"] : "inherit",
-      shell: process.platform === "win32",
+      shell,
     });
     if (collectOutput) {
       child.stdout.on("data", (chunk) => {
@@ -84,9 +85,10 @@ function run(command, args, {
 }
 
 function runWrangler(args, options = {}) {
-  const normalizedArgs = args[0] === "wrangler" ? args.slice(1) : args;
-  return run(npxCommand, ["wrangler", ...normalizedArgs], {
+  const invocation = createWranglerInvocation(args, { projectRoot });
+  return run(invocation.command, invocation.args, {
     ...options,
+    shell: invocation.shell,
     env: createReleaseChildEnv(process.env, { includeCloudflareCredentials: true }),
   });
 }

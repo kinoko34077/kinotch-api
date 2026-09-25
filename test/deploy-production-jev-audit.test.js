@@ -19,6 +19,16 @@ test("wrapper enforces clean main source before any jev-audit deployment side ef
   assert.ok(cleanGate >= 0 && sourceGate >= 0 && deploy > cleanGate && deploy > sourceGate);
 });
 
+test("wrapper Wrangler calls use the local CLI without shell re-interpretation", () => {
+  assert.match(wrapper, /createWranglerInvocation/);
+  assert.match(wrapper, /shell:\s*invocation\.shell/);
+  assert.doesNotMatch(wrapper, /npxCommand|npx\.cmd/);
+});
+
+test("wrapper invokes the nested core release without shell re-interpretation", () => {
+  assert.match(wrapper, /runCoreProductionRelease[\s\S]*shell:\s*false/);
+});
+
 test("wrapper prepares and deploys jev-audit before the existing core production release", () => {
   assert.match(wrapper, /createJevAuditProductionPhase/);
   const prepare = wrapper.indexOf("await phase.prepare()");
