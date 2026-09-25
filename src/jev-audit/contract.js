@@ -97,7 +97,7 @@ export function validateAuditInput(body) {
       return invalid("invalid_path", "file path must be a non-empty string");
     }
     if (countCodePoints(file.path) > REMOTE_AUDIT_LIMITS.maxPathCodePoints) {
-      return invalid("invalid_path", `file path exceeds ${REMOTE_AUDIT_LIMITS.maxPathCodePoints} code points");
+      return invalid("invalid_path", `file path exceeds ${REMOTE_AUDIT_LIMITS.maxPathCodePoints} code points`);
     }
     if (paths.has(file.path)) return invalid("duplicate_path", `duplicate file path: ${file.path}`);
     paths.add(file.path);
