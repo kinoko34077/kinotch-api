@@ -49,9 +49,9 @@ test("production release records the validated MCP endpoint", () => {
 
 test("production release reinstalls the lockfile dependency tree before build and tests", () => {
   assert.match(source, /state\.stage = "clean dependency install"/);
-  assert.match(source, /await runNpm\(\["ci"\]\)/);
+  assert.match(source, /await runNpm\(\["ci", "--foreground-scripts"\]\)/);
   assert.match(source, /await runNpm\(\["run", "build:text-snapshot"\]\)/);
-  assert.ok(source.indexOf('await runNpm(["ci"])') < source.indexOf('await runNpm(["run", "build:text-snapshot"])'));
+  assert.ok(source.indexOf('await runNpm(["ci", "--foreground-scripts"])') < source.indexOf('await runNpm(["run", "build:text-snapshot"])'));
 });
 
 test("production release sanitizes child environments and scopes Cloudflare credentials to Wrangler", () => {

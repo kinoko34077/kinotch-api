@@ -1,0 +1,39 @@
+{
+  "recordedAtUtc": "2026-09-25T13:15:25.293Z",
+  "status": "failed",
+  "failure": {
+    "stage": "core production release",
+    "name": "Error",
+    "message": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe scripts/deploy-production.mjs exited with 1"
+  },
+  "previousGatewayVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+  "gatewayRecovery": null,
+  "previousJevAuditPrivateVersionId": "e1f877b4-0e8a-47a7-8607-2ad30b13558d",
+  "previousJevAuditMcpVersionId": "0092fa6e-c6eb-4f28-b93c-6743cd7165f0",
+  "jevAuditPrivateDeployment": {
+    "status": "deployed",
+    "versionId": "8e196f90-3af4-4478-be74-935d41c66a2b",
+    "needsRollback": false
+  },
+  "jevAuditMcpDeployment": {
+    "status": "deployed",
+    "versionId": "3f966ed9-4a78-416c-998d-a7273b1da3a6",
+    "needsRollback": false
+  },
+  "jevAuditPrivateVersionId": "8e196f90-3af4-4478-be74-935d41c66a2b",
+  "jevAuditMcpVersionId": "3f966ed9-4a78-416c-998d-a7273b1da3a6",
+  "jevAuditRestEndpoint": "https://api.kinotch.workers.dev/v1/audit",
+  "jevAuditMcpEndpoint": "https://jev-audit-mcp.kinotch.workers.dev/mcp",
+  "jevAuditRestSmoke": null,
+  "jevAuditMcpSmoke": null,
+  "jevAuditPrivateRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "e1f877b4-0e8a-47a7-8607-2ad30b13558d",
+    "error": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe C:\\Users\\kinok\\Documents\\Programs\\kinotch-api\\node_modules\\wrangler\\bin\\wrangler.js rollback e1f877b4-0e8a-47a7-8607-2ad30b13558d --name jev-audit --message automatic-jev-audit-private-smoke-failure-rollback --config wrangler.jev-audit.jsonc exited with 1"
+  },
+  "jevAuditMcpRecovery": {
+    "status": "rollback_failed",
+    "targetVersionId": "0092fa6e-c6eb-4f28-b93c-6743cd7165f0",
+    "error": "C:\\Users\\kinok\\AppData\\Local\\Author Software\\nvm\\installs\\v26.10.0\\node.exe C:\\Users\\kinok\\Documents\\Programs\\kinotch-api\\node_modules\\wrangler\\bin\\wrangler.js rollback 0092fa6e-c6eb-4f28-b93c-6743cd7165f0 --name jev-audit-mcp --message automatic-jev-audit-mcp-smoke-failure-rollback --config wrangler.jev-audit-mcp.jsonc exited with 1"
+  }
+}
