@@ -63,6 +63,19 @@ function parseEndpoint(endpoint) {
   return url.toString();
 }
 
+function accessServiceTokenHeaders({ accessClientId, accessClientSecret }) {
+  if (typeof accessClientId !== "string" || accessClientId.length === 0) {
+    throw new Error("CF_ACCESS_CLIENT_ID is required for authenticated MCP smoke");
+  }
+  if (typeof accessClientSecret !== "string" || accessClientSecret.length === 0) {
+    throw new Error("CF_ACCESS_CLIENT_SECRET is required for authenticated MCP smoke");
+  }
+  return {
+    "CF-Access-Client-Id": accessClientId,
+    "CF-Access-Client-Secret": accessClientSecret,
+  };
+}
+
 async function readRpcResponse(response) {
   if (response.status !== 200) await throwSafeHttpFailure(response);
   const body = await response.text();
@@ -85,15 +98,14 @@ function assertRpcResult(payload) {
 
 export async function runMcpSmoke({
   endpoint,
-  accessCookie,
+  accessClientId,
+  accessClientSecret,
   fetchImpl = globalThis.fetch,
   timeoutMs = MCP_SMOKE_TIMEOUT_MS,
   checkToolCall = true,
 } = {}) {
   const target = parseEndpoint(endpoint);
-  if (typeof accessCookie !== "string" || accessCookie.length === 0) {
-    throw new Error("MCP_SMOKE_ACCESS_COOKIE is required for authenticated MCP smoke");
-  }
+  const accessHeaders = accessServiceTokenHeaders({ accessClientId, accessClientSecret });
 
   let id = 0;
   async function request(method, params) {
@@ -106,7 +118,7 @@ export async function runMcpSmoke({
           "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
           "MCP-Protocol-Version": "2025-06-18",
-          Cookie: accessCookie,
+          ...accessHeaders,
         },
         body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }),
         signal: controller.signal,
@@ -130,7 +142,7 @@ export async function runMcpSmoke({
           "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
           "MCP-Protocol-Version": "2025-06-18",
-          Cookie: accessCookie,
+          ...accessHeaders,
         },
         body: JSON.stringify({ jsonrpc: "2.0", method, params }),
         signal: controller.signal,
@@ -158,7 +170,7 @@ export async function runMcpSmoke({
     return {
       status: "passed",
       httpStatus: 200,
-      authMode: "access_session_cookie",
+      authMode: "access_service_token",
       endpoint: target,
       tool: null,
       profile: null,
@@ -190,7 +202,7 @@ export async function runMcpSmoke({
   return {
     status: "passed",
     httpStatus: 200,
-    authMode: "access_session_cookie",
+    authMode: "access_service_token",
     endpoint: target,
     tool: "compress_text",
     profile: provenance.profile,
@@ -203,7 +215,8 @@ export async function runMcpSmoke({
 if (process.argv[1]?.endsWith("smoke-mcp.mjs")) {
   const result = await runMcpSmoke({
     endpoint: process.env.MCP_ENDPOINT,
-    accessCookie: process.env.MCP_SMOKE_ACCESS_COOKIE,
+    accessClientId: process.env.CF_ACCESS_CLIENT_ID,
+    accessClientSecret: process.env.CF_ACCESS_CLIENT_SECRET,
   });
   console.log(JSON.stringify(result, null, 2));
 }
