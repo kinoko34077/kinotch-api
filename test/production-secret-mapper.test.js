@@ -158,7 +158,13 @@ test("production-release maps seven keys and launches the existing release autho
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.PRODUCTION_RELEASE, {
     secrets: secretValues,
-    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "stale-source-env-token" },
+    sourceEnv: {
+      PATH: "fixture-path",
+      CLOUDFLARE_API_TOKEN: "stale-source-env-token",
+      CLOUDFLARE_API_KEY: "stale-global-api-key",
+      CLOUDFLARE_EMAIL: "stale-email@example.test",
+      WRANGLER_API_TOKEN: "stale-wrangler-token",
+    },
     spawnImpl: fakeSpawn(0, calls),
   });
   assert.equal(exitCode, 0);
@@ -172,6 +178,9 @@ test("production-release maps seven keys and launches the existing release autho
   assert.equal(calls[0].options.env.COMPRESSION_SMOKE_TOKEN, secretValues.COMPRESSION_SMOKE_TOKEN);
   assert.equal(calls[0].options.env.MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);
+  assert.equal(calls[0].options.env.CLOUDFLARE_API_KEY, undefined);
+  assert.equal(calls[0].options.env.CLOUDFLARE_EMAIL, undefined);
+  assert.equal(calls[0].options.env.WRANGLER_API_TOKEN, undefined);
 });
 
 test("mcp-smoke launches the existing smoke authority and propagates child failure", async () => {

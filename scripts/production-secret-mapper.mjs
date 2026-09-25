@@ -92,9 +92,7 @@ export function mapProductionSecrets(secrets, mode) {
 
 export function createMappedChildEnv({ mode, sourceEnv = process.env, secrets }) {
   const mappedSecrets = mapProductionSecrets(secrets, mode);
-  const childEnv = createReleaseChildEnv(sourceEnv, {
-    includeCloudflareCredentials: mode === MAPPER_MODES.PRODUCTION_RELEASE,
-  });
+  const childEnv = createReleaseChildEnv(sourceEnv);
   return Object.freeze({ ...childEnv, ...mappedSecrets });
 }
 
