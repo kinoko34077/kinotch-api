@@ -14,6 +14,11 @@ import {
 } from "../scripts/mcp-release.mjs";
 
 const versionId = "12345678-1234-4234-8234-123456789abc";
+const serviceTokenEnv = {
+  MCP_ENDPOINT: "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
+  CF_ACCESS_CLIENT_ID: "client-id-fixture",
+  CF_ACCESS_CLIENT_SECRET: "client-secret-fixture",
+};
 
 test("MCP release metadata uses the dedicated Worker config and protocol", () => {
   assert.equal(MCP_RELEASE_CONFIG, "wrangler.semantic-compression-mcp.jsonc");
@@ -65,45 +70,65 @@ test("MCP production deploy requires worker vars and authenticated smoke inputs"
   ]);
 });
 
-test("MCP release smoke rejects an endpoint for another Worker", () => {
+test("MCP release smoke requires both Access service-token credentials", () => {
   assert.throws(
-    () => resolveMcpSmokeInputs({
-      MCP_ENDPOINT: "https://other-worker.kinotch.workers.dev/mcp",
-      MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
-    }),
-    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+    () => resolveMcpSmokeInputs({ MCP_ENDPOINT: MCP_RELEASE_ENDPOINT }),
+    /CF_ACCESS_CLIENT_ID/,
   );
   assert.throws(
-    () => resolveMcpSmokeInputs({
-      MCP_ENDPOINT: "https://semantic-compression-mcp.kinotch.workers.dev:8443/mcp",
-      MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
-    }),
-    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+    () => resolveMcpSmokeInputs({ MCP_ENDPOINT: MCP_RELEASE_ENDPOINT, CF_ACCESS_CLIENT_ID: "client-id" }),
+    /CF_ACCESS_CLIENT_SECRET/,
   );
-  assert.deepEqual(resolveMcpSmokeInputs({
-    MCP_ENDPOINT: MCP_RELEASE_ENDPOINT,
-    MCP_SMOKE_ACCESS_COOKIE: "CF_Authorization=<fixture-cookie>",
-  }), {
+  assert.deepEqual(resolveMcpSmokeInputs(serviceTokenEnv), {
     endpoint: MCP_RELEASE_ENDPOINT,
-    accessCookie: "CF_Authorization=<fixture-cookie>",
+    accessClientId: "client-id-fixture",
+    accessClientSecret: "client-secret-fixture",
   });
 });
 
-test("MCP smoke remains incomplete until the authenticated session-cookie smoke runs", () => {
+test("MCP release smoke rejects an endpoint for another Worker", () => {
+  assert.throws(
+    () => resolveMcpSmokeInputs({
+      ...serviceTokenEnv,
+      MCP_ENDPOINT: "https://other-worker.kinotch.workers.dev/mcp",
+    }),
+    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+  );
+  assert.throws(
+    () => resolveMcpSmokeInputs({
+      ...serviceTokenEnv,
+      MCP_ENDPOINT: "https://semantic-compression-mcp.kinotch.workers.dev:8443/mcp",
+    }),
+    /MCP_ENDPOINT must target https:\/\/semantic-compression-mcp\.kinotch\.workers\.dev\/mcp/,
+  );
+});
+
+test("MCP smoke remains incomplete until the authenticated service-token smoke runs", () => {
   assert.deepEqual(resolveMcpSmokeState({}), {
     status: "incomplete",
     reason: "MCP production release requires MCP_ENDPOINT",
-    authMode: "access_session_cookie",
+    authMode: "access_service_token",
     endpoint: null,
   });
   assert.deepEqual(resolveMcpSmokeState({
     MCP_ENDPOINT: MCP_RELEASE_ENDPOINT,
+    CF_ACCESS_CLIENT_ID: "client-id-fixture",
     TEAM_DOMAIN: "team.example.com",
     POLICY_AUD: "audience-tag",
   }), {
     status: "incomplete",
-    reason: "MCP production release requires MCP_SMOKE_ACCESS_COOKIE",
-    authMode: "access_session_cookie",
+    reason: "MCP production release requires CF_ACCESS_CLIENT_SECRET",
+    authMode: "access_service_token",
+    endpoint: MCP_RELEASE_ENDPOINT,
+  });
+  assert.deepEqual(resolveMcpSmokeState({
+    ...serviceTokenEnv,
+    TEAM_DOMAIN: "team.example.com",
+    POLICY_AUD: "audience-tag",
+  }), {
+    status: "incomplete",
+    reason: "Authenticated Access service-token smoke has not completed",
+    authMode: "access_service_token",
     endpoint: MCP_RELEASE_ENDPOINT,
   });
 });
