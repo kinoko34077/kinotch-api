@@ -46,6 +46,15 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - mapperは許可された5 keyだけをmode別に子processへ渡し、未知key・必須key不足・未知modeではfail closedする。secret値、file本文、`process.env`全体は出力しない。
 - `npm run smoke:mcp:local`と`npm run release:local`は既存のMCP smoke／`npm run deploy:production`を起動するlauncherであり、既存release gate（Production release authority、test、dry-run、smoke、rollback）を変更しない。
 
+### 9. Jev Audit Remote feature branch（2026-09-25）
+
+- Jev Audit Remoteを、既存ローカルPython CLI/STDIO MCPを変更せずに追加するfeature branchとして実装した。監査意味論は`jev-audit` v0.2.12、既定modelは`jev-1.13.0`へ固定した。
+- private `jev-audit` Workerへexplicit file snapshot validation、Unicode code-point limit、batching、TypeSafe System One HTTP呼出、provider response validation、deterministic aggregationを集約した。
+- Gateway `POST /v1/audit`とRemote MCP `https://jev-audit-mcp.kinotch.workers.dev/mcp`を追加し、MCPは`audit_files`／`list_profiles`のみを公開する。Remote v1はlocal filesystem/Git/`changed_only`を扱わない。
+- REST token、TypeSafe credential、MCP Access credentialを別責務に分離し、`TYPESAFE_API_KEY`はprivate Workerだけが所有する。source/diff本文やraw credential/provider bodyを通常ログへ残さない。
+- private/MCP deploy、REST/MCP smoke、Version capture、rollback/recoveryをProduction releaseへ統合した。既存Semantic Compression releaseの責務・順序は維持する。
+- 自動testとCI上の実装検証は進行中。live TypeSafe REST E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは未実施であり、実行証拠を得るまでProduction verifiedとは扱わない。
+
 ## 大きな変更段階
 
 ### 1. GatewayとText APIの基盤化（2026-09-07〜09-08）
@@ -177,7 +186,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 24 | 2026-09-08 | 42be3b32303c2f217d50deaf37b6d2c188c1a1ae | Fix Windows release gate process spawning |
 | 25 | 2026-09-08 | 488aad3225fe756b9338d9040effe80fdc36aab5 | Harden private worker boundary smoke |
 | 26 | 2026-09-08 | f4a4907de2ae006bef04e5cd8a38e9f61be19e39 | Harden body limits and release metadata |
-| 27 | 2026-09-08 | 39d5bb255c9ae722b7bce6f82323e72f5307e084 | Record guarded production release |
+| 27 | 2026-09-08 | 39d5bb255c9ae3a68e2a02af7f75facf6d36e0e84 | Record guarded production release |
 | 28 | 2026-09-08 | a6770daeac4e3a68e2a02af7f75facf6d36e0e84 | Generate browser client and classify upstream failures |
 | 29 | 2026-09-08 | 871e1596aa67e4a7451515a43d896a5778ba474e | Document final guard verification |
 | 30 | 2026-09-08 | 3bad1c80d2d11b400c34240b0b2020bba7802fc7 | Enforce actual request body byte limits |
