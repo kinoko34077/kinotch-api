@@ -40,6 +40,12 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - 2da4440 はGemini生成requestをInteractions API安定版 `v1/interactions`へ移行した。固定Promptの`countTokens`測定endpointは`v1beta`のまま維持し、生成endpointとの責務を文書化した。focused regression 34件を通過したが、Production deployはまだ行っていない。
 - 088943a はCurrent State、Operations、履歴スナップショットを現行release境界へ更新した。現行mainとProduction metadataの差分を明示し、Production deployはまだ行っていない。
 
+### 8. Production Secret Mapper（2026-09-25）
+
+- Production operator値の反復入力を減らし、agentがsecret file本文を直接参照しない境界を設けるため、固定外部pathの`production-secret-mapper.mjs`を追加した。
+- mapperは許可された5 keyだけをmode別に子processへ渡し、未知key・必須key不足・未知modeではfail closedする。secret値、file本文、`process.env`全体は出力しない。
+- `npm run smoke:mcp:local`と`npm run release:local`は既存のMCP smoke／`npm run deploy:production`を起動するlauncherであり、既存release gate（Production release authority、test、dry-run、smoke、rollback）を変更しない。
+
 ## 大きな変更段階
 
 ### 1. GatewayとText APIの基盤化（2026-09-07〜09-08）
