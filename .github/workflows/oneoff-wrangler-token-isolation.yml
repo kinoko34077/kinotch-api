@@ -1,0 +1,53 @@
+name: One-off Wrangler token isolation fix
+
+on:
+  push:
+    branches:
+      - chore/wrangler-token-mapper
+
+permissions:
+  contents: write
+
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/wrangler-token-mapper
+          fetch-depth: 0
+      - name: Isolate Cloudflare deploy credential to mapped secret file
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('scripts/production-secret-mapper.mjs')
+          s = p.read_text(encoding='utf-8')
+          old = '''  const childEnv = createReleaseChildEnv(sourceEnv, {\n    includeCloudflareCredentials: mode === MAPPER_MODES.PRODUCTION_RELEASE,\n  });'''
+          new = '''  const childEnv = createReleaseChildEnv(sourceEnv);'''
+          if s.count(old) != 1:
+            raise SystemExit(f'expected mapper child-env block once, got {s.count(old)}')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+
+          p = Path('test/production-secret-mapper.test.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "stale-source-env-token" },'''
+          new = '''    sourceEnv: {\n      PATH: "fixture-path",\n      CLOUDFLARE_API_TOKEN: "stale-source-env-token",\n      CLOUDFLARE_API_KEY: "stale-global-api-key",\n      CLOUDFLARE_EMAIL: "stale-email@example.test",\n      WRANGLER_API_TOKEN: "stale-wrangler-token",\n    },'''
+          if s.count(old) != 1:
+            raise SystemExit('production sourceEnv fixture not found once')
+          s = s.replace(old, new)
+          old = '''  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);'''
+          new = '''  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);\n  assert.equal(calls[0].options.env.CLOUDFLARE_API_KEY, undefined);\n  assert.equal(calls[0].options.env.CLOUDFLARE_EMAIL, undefined);\n  assert.equal(calls[0].options.env.WRANGLER_API_TOKEN, undefined);'''
+          if s.count(old) != 1:
+            raise SystemExit('Cloudflare token assertion not found once')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
+          node --test test/production-secret-mapper.test.js test/production-secret-mapper-windows.test.js
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/production-secret-mapper.mjs test/production-secret-mapper.test.js
+          git commit -m "chore: isolate Wrangler token to mapped secret file"
+          git push origin HEAD:chore/wrangler-token-mapper
