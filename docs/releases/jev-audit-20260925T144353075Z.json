@@ -1,0 +1,50 @@
+{
+  "recordedAtUtc": "2026-09-25T14:43:53.075Z",
+  "status": "succeeded",
+  "previousTextVersionId": "46471bc4-0f56-4cd2-85dc-98153a15cbe5",
+  "previousCompressionVersionId": "66a8afbe-3c5f-4594-8ced-54b4eda3d747",
+  "previousGatewayVersionId": "f27aabc3-263b-4851-88e4-15b81d6dd6b3",
+  "previousMcpVersionId": "ae3fb6ee-93d8-44f9-9398-afe3de44d037",
+  "gatewayRecovery": null,
+  "coreRecovery": null,
+  "previousJevAuditPrivateVersionId": "bb451d20-7021-4431-b982-7f9b7da2e160",
+  "previousJevAuditMcpVersionId": "23a491ec-0b63-4346-86ff-2da53d424e41",
+  "jevAuditPrivateDeployment": {
+    "status": "deployed",
+    "versionId": "aedb81fd-58ef-4296-93bb-a538511bdbcb",
+    "needsRollback": false
+  },
+  "jevAuditMcpDeployment": {
+    "status": "deployed",
+    "versionId": "cd45c6cc-aaf1-453a-831c-d4ff83a16339",
+    "needsRollback": false
+  },
+  "jevAuditPrivateVersionId": "aedb81fd-58ef-4296-93bb-a538511bdbcb",
+  "jevAuditMcpVersionId": "cd45c6cc-aaf1-453a-831c-d4ff83a16339",
+  "jevAuditRestEndpoint": "https://api.kinotch.workers.dev/v1/audit",
+  "jevAuditMcpEndpoint": "https://jev-audit-mcp.kinotch.workers.dev/mcp",
+  "jevAuditRestSmoke": {
+    "status": "passed",
+    "endpoint": "https://api.kinotch.workers.dev/v1/audit",
+    "httpStatus": 200,
+    "filesScanned": 2,
+    "batches": 1,
+    "aggregateStatus": "rework",
+    "resolvedModel": "jev-1.13.0",
+    "auditSemanticsVersion": "0.2.12"
+  },
+  "jevAuditMcpSmoke": {
+    "status": "passed",
+    "endpoint": "https://jev-audit-mcp.kinotch.workers.dev/mcp",
+    "authMode": "access_service_token",
+    "toolCall": true,
+    "tool": "audit_files",
+    "filesScanned": 2,
+    "batches": 1,
+    "aggregateStatus": "rework",
+    "resolvedModel": "jev-1.13.0",
+    "auditSemanticsVersion": "0.2.12"
+  },
+  "jevAuditPrivateRecovery": null,
+  "jevAuditMcpRecovery": null
+}
