@@ -53,6 +53,6 @@ Last verified: 2026-09-25 — Node 26 runtime migration verification
 - `npm test`
 - Node 26.10.0 migration result: 238 test cases, 237 passed, 0 failed, 1 skipped (opt-in live Gemini test)
 - Node 26.10.0 Worker dry-runs: Text, Compression, MCP, and Gateway all succeeded
-- GitHub Actions `test`: required on `main`
-- GitHub Actions `Verify`: required on `main`
+- GitHub Actions `test`: success
+- GitHub Actions `Verify`: success
 - Documentation links and source-of-truth references reviewed with the current repository layout
