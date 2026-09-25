@@ -5,6 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import { createJevAuditProductionPhase } from "./jev-audit-production-phase.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
+import {
+  createWorkerRollbackArgs,
+  parseActiveVersionId,
+  rollbackAfterSmokeFailure,
+} from "./release-recovery.mjs";
+import { PRODUCTION_SMOKE_TARGETS, runProductionSmoke } from "./smoke-production.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -62,6 +68,41 @@ function runWrangler(args, options = {}) {
   });
 }
 
+async function getActiveGatewayVersionId() {
+  const output = await runWrangler([
+    "deployments",
+    "status",
+    "--name",
+    "api",
+    "--json",
+    "--config",
+    "wrangler.jsonc",
+  ], { capture: true });
+  return parseActiveVersionId(output, "Gateway");
+}
+
+async function runGatewayRecoverySmoke() {
+  await runProductionSmoke({
+    targets: PRODUCTION_SMOKE_TARGETS,
+    checkDirect: true,
+    checkCompression: false,
+  });
+  return { status: "passed", mode: "non_billable_gateway_smoke" };
+}
+
+async function recoverGatewayAfterJevFailure(previousGatewayVersionId) {
+  return rollbackAfterSmokeFailure({
+    previousVersionId: previousGatewayVersionId,
+    rollback: async (versionId) => runWrangler(createWorkerRollbackArgs(
+      versionId,
+      "automatic-jev-audit-gateway-smoke-failure-rollback",
+      { workerName: "api", config: "wrangler.jsonc" },
+    )),
+    getActiveVersionId: getActiveGatewayVersionId,
+    recoverySmoke: runGatewayRecoverySmoke,
+  });
+}
+
 async function runCoreProductionRelease() {
   return run(process.execPath, ["scripts/deploy-production.mjs"], { env: process.env });
 }
@@ -83,7 +124,12 @@ async function writeJevAuditReleaseRecord(record) {
   return filePath;
 }
 
-const state = { stage: "Jev Audit preflight" };
+const state = {
+  stage: "Jev Audit preflight",
+  previousGatewayVersionId: null,
+  coreReleaseCompleted: false,
+  gatewayRecovery: null,
+};
 const phase = createJevAuditProductionPhase({
   runWrangler,
   env: process.env,
@@ -103,22 +149,44 @@ try {
   await phase.prepare();
   await phase.deploy();
 
+  state.stage = "capture previous Gateway version";
+  state.previousGatewayVersionId = await getActiveGatewayVersionId();
+
   state.stage = "core production release";
   await runCoreProductionRelease();
+  state.coreReleaseCompleted = true;
 
+  state.stage = "Jev Audit post-core smoke";
   await phase.smoke();
   state.stage = "write Jev Audit release metadata";
   const releasePath = await writeJevAuditReleaseRecord({
     status: "succeeded",
+    previousGatewayVersionId: state.previousGatewayVersionId,
+    gatewayRecovery: state.gatewayRecovery,
     ...phase.metadata(),
   });
   console.log(`Jev Audit release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
 } catch (error) {
+  if (state.coreReleaseCompleted && state.previousGatewayVersionId && !state.gatewayRecovery) {
+    try {
+      state.stage = "Jev Audit Gateway recovery";
+      state.gatewayRecovery = await recoverGatewayAfterJevFailure(state.previousGatewayVersionId);
+    } catch (rollbackError) {
+      state.gatewayRecovery = {
+        status: "rollback_failed",
+        targetVersionId: state.previousGatewayVersionId,
+        error: rollbackError.message,
+      };
+    }
+  }
+
   const recovery = await phase.recover();
   try {
     const releasePath = await writeJevAuditReleaseRecord({
       status: "failed",
       failure: { stage: state.stage, ...safeError(error) },
+      previousGatewayVersionId: state.previousGatewayVersionId,
+      gatewayRecovery: state.gatewayRecovery,
       ...phase.metadata(),
       ...recovery,
     });
