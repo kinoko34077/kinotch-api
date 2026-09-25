@@ -162,10 +162,10 @@ docs/semantic-compression-mcp.md を参照してください。
 
 Production用のoperator値は、repository外の固定ファイル
 `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` から安全に供給できます。
-mapperが扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
-`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN` の6つだけです。
-未知keyや必須key不足はfail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialは
-このファイルへ追加せず、既存のoperator-managed設定を使用します。
+mapperがProduction releaseで扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
+`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、
+`CLOUDFLARE_API_TOKEN` の7つです。必須key不足はfail-closedで停止し、未知keyは子processへ渡さず
+無視します。値はログへ出しません。Wrangler用Cloudflare credentialもこの固定secret fileから供給します。
 
 通常の操作は次の2つです。
 

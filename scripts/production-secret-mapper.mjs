@@ -16,6 +16,7 @@ export const ALLOWED_PRODUCTION_SECRET_KEYS = Object.freeze([
   "CF_ACCESS_CLIENT_ID",
   "CF_ACCESS_CLIENT_SECRET",
   "COMPRESSION_SMOKE_TOKEN",
+  "CLOUDFLARE_API_TOKEN",
 ]);
 
 export const MAPPER_MODES = Object.freeze({
@@ -34,18 +35,6 @@ const MODE_KEYS = Object.freeze({
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
-function safeKeyName(key) {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ? key : "<invalid-key-name>";
-}
-
-function assertKnownKeys(secrets) {
-  const allowed = new Set(ALLOWED_PRODUCTION_SECRET_KEYS);
-  const unknownKeys = Object.keys(secrets).filter((key) => !allowed.has(key));
-  if (unknownKeys.length > 0) {
-    throw new Error(`Unknown production secret key: ${unknownKeys.map(safeKeyName).join(", ")}`);
-  }
-}
-
 export function getProductionSecretPath({ homeDirectory = homedir() } = {}) {
   return join(homeDirectory, PRODUCTION_SECRET_RELATIVE_PATH);
 }
@@ -58,7 +47,6 @@ export function parseProductionSecretText(sourceText) {
     throw new Error("Could not parse production secret file");
   }
 
-  assertKnownKeys(parsed);
   return Object.freeze({
     ...Object.fromEntries(
       ALLOWED_PRODUCTION_SECRET_KEYS
@@ -92,7 +80,6 @@ export function requiredKeysForMode(mode) {
 }
 
 export function mapProductionSecrets(secrets, mode) {
-  assertKnownKeys(secrets);
   const requiredKeys = requiredKeysForMode(mode);
   const missingKeys = requiredKeys.filter(
     (key) => typeof secrets[key] !== "string" || secrets[key].length === 0,

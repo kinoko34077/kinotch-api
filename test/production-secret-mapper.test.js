@@ -25,6 +25,7 @@ const secretValues = Object.freeze({
   CF_ACCESS_CLIENT_ID: "client-id-fixture-value",
   CF_ACCESS_CLIENT_SECRET: "client-secret-fixture-value",
   COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",
+  CLOUDFLARE_API_TOKEN: "cloudflare-api-token-fixture-value",
 });
 
 const secretText = Object.entries(secretValues)
@@ -58,9 +59,12 @@ function fakeSpawn(exitCode, capture) {
   };
 }
 
-test("production secret parser accepts exactly the six allowlisted keys", () => {
+test("production secret parser accepts the seven supported keys and ignores unrelated keys", () => {
   assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);
-  assert.deepEqual(parseProductionSecretText(secretText), secretValues);
+  assert.deepEqual(
+    parseProductionSecretText(`${secretText}\nUNRELATED_SECRET=ignored-fixture-value`),
+    secretValues,
+  );
 });
 
 test("production secret path is fixed below the supplied home directory", () => {
@@ -112,16 +116,13 @@ test("missing service-token credentials fail before a child process can start", 
   assert.equal(calls.length, 0);
 });
 
-test("legacy cookie and unknown secret keys fail closed without exposing values", () => {
-  const unknownValue = "unknown-secret-fixture-value";
-  assert.throws(
-    () => parseProductionSecretText(`${secretText}\nMCP_SMOKE_ACCESS_COOKIE=${unknownValue}`),
-    (error) => error.message.includes("MCP_SMOKE_ACCESS_COOKIE") && !error.message.includes(unknownValue),
+test("legacy and unrelated keys are ignored and never mapped", () => {
+  const parsed = parseProductionSecretText(
+    `${secretText}\nMCP_SMOKE_ACCESS_COOKIE=legacy-cookie-fixture\nUNRELATED_SECRET=unknown-secret-fixture-value`,
   );
-  assert.throws(
-    () => parseProductionSecretText(`${secretText}\nUNRELATED_SECRET=${unknownValue}`),
-    (error) => error.message.includes("UNRELATED_SECRET") && !error.message.includes(unknownValue),
-  );
+  assert.deepEqual(parsed, secretValues);
+  assert.equal(parsed.MCP_SMOKE_ACCESS_COOKIE, undefined);
+  assert.equal(parsed.UNRELATED_SECRET, undefined);
 });
 
 test("unknown mapper mode fails closed", () => {
@@ -153,11 +154,11 @@ test("mapped child environment preserves safe runtime values but not unrelated s
   assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
 });
 
-test("production-release maps six keys and launches the existing release authority", async () => {
+test("production-release maps seven keys and launches the existing release authority", async () => {
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.PRODUCTION_RELEASE, {
     secrets: secretValues,
-    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "cloudflare-fixture" },
+    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "stale-source-env-token" },
     spawnImpl: fakeSpawn(0, calls),
   });
   assert.equal(exitCode, 0);
@@ -170,7 +171,7 @@ test("production-release maps six keys and launches the existing release authori
   assert.equal(calls[0].options.env.CF_ACCESS_CLIENT_SECRET, secretValues.CF_ACCESS_CLIENT_SECRET);
   assert.equal(calls[0].options.env.COMPRESSION_SMOKE_TOKEN, secretValues.COMPRESSION_SMOKE_TOKEN);
   assert.equal(calls[0].options.env.MCP_SMOKE_ACCESS_COOKIE, undefined);
-  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cloudflare-fixture");
+  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);
 });
 
 test("mcp-smoke launches the existing smoke authority and propagates child failure", async () => {
@@ -247,6 +248,7 @@ test("operator documentation explains the fixed mapper workflow without secret v
   assert.match(documentation, /CF_ACCESS_CLIENT_ID/);
   assert.match(documentation, /CF_ACCESS_CLIENT_SECRET/);
   assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);
+  assert.match(documentation, /CLOUDFLARE_API_TOKEN/);
   assert.doesNotMatch(documentation, /MCP_SMOKE_ACCESS_COOKIE/);
   assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });

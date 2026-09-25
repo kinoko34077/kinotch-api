@@ -43,7 +43,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 ### 8. Production Secret Mapper（2026-09-25）
 
 - Production operator値の反復入力を減らし、agentがsecret file本文を直接参照しない境界を設けるため、固定外部pathの`production-secret-mapper.mjs`を追加した。
-- mapperは許可された5 keyだけをmode別に子processへ渡し、未知key・必須key不足・未知modeではfail closedする。secret値、file本文、`process.env`全体は出力しない。
+- mapperはProduction releaseで7 key（`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`CF_ACCESS_CLIENT_ID`、`CF_ACCESS_CLIENT_SECRET`、`COMPRESSION_SMOKE_TOKEN`、`CLOUDFLARE_API_TOKEN`）を扱い、mode別に必要値だけを子processへ渡す。必須key不足・未知modeはfail closed、未知file keyは無視して転送しない。secret値、file本文、`process.env`全体は出力しない。
 - `npm run smoke:mcp:local`と`npm run release:local`は既存のMCP smoke／`npm run deploy:production`を起動するlauncherであり、既存release gate（Production release authority、test、dry-run、smoke、rollback）を変更しない。
 
 ## 大きな変更段階
