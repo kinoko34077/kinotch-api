@@ -86,7 +86,7 @@ Remote MCPもfilesystem/Gitを読まず、`changed_only`、repository path、任
 `TEAM_DOMAIN` は jev-audit-mcp WorkerのCloudflare Access issuer設定に使う。
 `JEV_AUDIT_MCP_POLICY_AUD` は jev-audit-mcp Workerへdeploy時に `POLICY_AUD` として渡す専用audienceである。
 
-Production smoke用の `JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE` はoperator入力であり、Worker varやrepositoryへ保存しない。
+Codex等の通常利用はCloudflare Access Managed OAuth、Production release / recoveryの自動MCP smokeは既存のCloudflare Access Service Tokenを使用する。自動smokeは `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` をHTTP headerとして送り、session cookieを使用しない。Service Token値はWorker varやrepositoryへ保存しない。
 
 ## 5. Secret / var ownership
 
@@ -97,11 +97,12 @@ Production smoke用の `JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE` はoperator入力で�
 | `TEAM_DOMAIN` | jev-audit-mcp Worker var | Cloudflare Access issuer |
 | `JEV_AUDIT_MCP_POLICY_AUD` | operator release input → jev-audit-mcp `POLICY_AUD` var | Cloudflare Access audience |
 | `JEV_AUDIT_SMOKE_TOKEN` | operator local secret input | Production REST smoke |
-| `JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE` | operator local secret input | Production MCP smoke |
+| `CF_ACCESS_CLIENT_ID` | operator local secret input | Compression/Jev Audit automated MCP smoke用Service Token ID |
+| `CF_ACCESS_CLIENT_SECRET` | operator local secret input | Compression/Jev Audit automated MCP smoke用Service Token secret |
 
 `TYPESAFE_API_KEY` must not be configured on the Gateway or MCP Worker; TypeSafe credentialはprivate jev-audit Workerだけが所有する。
 
-Production secret mapperではJev Audit用3値を既存のoperator secret fileからproduction release時だけchild processへ渡す。値そのものをrelease metadataや通常ログへ保存しない。
+Production secret mapperではJev Audit専用の `JEV_AUDIT_MCP_POLICY_AUD` / `JEV_AUDIT_SMOKE_TOKEN` と、既存のAccess Service Token 2値をproduction releaseへ渡す。値そのものをrelease metadataや通常ログへ保存しない。
 
 ## 6. Logging / privacy
 
@@ -124,15 +125,14 @@ private `jev-audit` Workerは `workers_dev: false` でpublic endpointを持た�
 
 通常のProduction deploy authorityはrepository既存のproduction release経路であり、Jev Auditだけを独立した正式release authorityにはしない。releaseはdry-run、active version capture、deploy、smoke、失敗時rollbackを既存gateへ統合する。
 
-Jev Audit production releaseに必要なoperator入力:
+Jev Audit production releaseに追加で必要なoperator入力:
 
 ```text
 JEV_AUDIT_MCP_POLICY_AUD
 JEV_AUDIT_SMOKE_TOKEN
-JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE
 ```
 
-加えてCloudflare側で、Gatewayの `JEV_AUDIT_API_TOKEN` Secret、private Workerの `TYPESAFE_API_KEY` Secret、jev-audit-mcp Access application/policy、専用rate-limit namespaceが必要である。
+MCP自動smokeには既存release用の `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を共用する。加えてCloudflare側で、Gatewayの `JEV_AUDIT_API_TOKEN` Secret、private Workerの `TYPESAFE_API_KEY` Secret、jev-audit-mcp Access application/policy、Service Tokenを許可するAccess policy、専用rate-limit namespaceが必要である。
 
 ## 8. Verification state
 
