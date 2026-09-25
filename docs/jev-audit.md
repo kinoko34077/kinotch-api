@@ -9,10 +9,10 @@ Remote版はローカルのPython CLI / STDIO MCPを置き換えない。ロー�
 | Surface | Endpoint / tool | 認証 | 役割 |
 |---|---|---|---|
 | REST | POST `/v1/audit` | `Authorization: Bearer <JEV_AUDIT_API_TOKEN>` | 明示的なfile snapshotを監査する |
-| Remote MCP | `https://jev-audit-mcp.kinotch.workers.dev/mcp` | Cloudflare Access | `audit_files` / `list_profiles` を公開する |
+| Remote MCP | `https://jev-audit-mcp.kinotch.workers.dev/mcp` | Cloudflare Access Service Token | `audit_files` / `list_profiles` を公開する |
 | Private Worker | Service Binding `JEV_AUDIT` | public accessなし | validation、batching、TypeSafe呼出、集約を所有する |
 
-Remoteの監査意味論provenanceは `0.2.12`、既定modelは `jev-1.13.0` で固定される。callerからmodel overrideや任意profile pathは指定できない。
+Remoteの監査意味論provenanceは `0.2.12`、既定modelは `jev-1.13.0` で固定される。callerからmodel overrideや任意profile pathは指定できない。providerが別modelを返した場合も固定契約からのdriftとしてfail-closedする。
 
 ## 2. Local版との境界
 
@@ -81,12 +81,14 @@ Remote MCPはCloudflare Accessで保護し、公開toolは次の2個だけであ
 - `audit_files`: explicit file snapshotsを監査し、full audit reportをstructuredContentで返す。
 - `list_profiles`: Remote v1で利用可能な固定profileを返す。
 
-Remote MCPもfilesystem/Gitを読まず、`changed_only`、repository path、任意model、任意profile fileは受け付けない。
+Remote MCPもfilesystem/Gitを読まず、`changed_only`、repository path、任意model、任意profile fileは受け付けない。MCPとRESTはpath上限を同じUnicode code point基準で判定する。
 
 `TEAM_DOMAIN` は jev-audit-mcp WorkerのCloudflare Access issuer設定に使う。
 `JEV_AUDIT_MCP_POLICY_AUD` は jev-audit-mcp Workerへdeploy時に `POLICY_AUD` として渡す専用audienceである。
 
-Codex等の通常利用はCloudflare Access Managed OAuth、Production release / recoveryの自動MCP smokeは既存のCloudflare Access Service Tokenを使用する。自動smokeは `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` をHTTP headerとして送り、session cookieを使用しない。Service Token値はWorker varやrepositoryへ保存しない。
+Jev Audit MCPの通常Production認証はCloudflare Access Service Tokenとする。callerは `CF-Access-Client-Id` / `CF-Access-Client-Secret` をHTTP headerとして送り、session cookieは使用しない。Service Token値はWorker varやrepositoryへ保存しない。Jev固有のManaged OAuthは完了条件ではなく、将来interactive operator loginが必要になった場合のみ追加検証する任意経路である。
+
+Production releaseのfull MCP smokeは同じService Token経路で`tools/list`を確認し、`list_profiles`が `development` / `generic` を返すことと、`audit_files`の実tool callを検証する。rollback recoveryではprovider課金を避けるためtool discoveryまでに留める。
 
 ## 5. Secret / var ownership
 
@@ -97,8 +99,8 @@ Codex等の通常利用はCloudflare Access Managed OAuth、Production release /
 | `TEAM_DOMAIN` | jev-audit-mcp Worker var | Cloudflare Access issuer |
 | `JEV_AUDIT_MCP_POLICY_AUD` | operator release input → jev-audit-mcp `POLICY_AUD` var | Cloudflare Access audience |
 | `JEV_AUDIT_SMOKE_TOKEN` | operator local secret input | Production REST smoke |
-| `CF_ACCESS_CLIENT_ID` | operator local secret input | Compression/Jev Audit automated MCP smoke用Service Token ID |
-| `CF_ACCESS_CLIENT_SECRET` | operator local secret input | Compression/Jev Audit automated MCP smoke用Service Token secret |
+| `CF_ACCESS_CLIENT_ID` | operator local secret input | Compression/Jev Audit automated MCP Service Token ID |
+| `CF_ACCESS_CLIENT_SECRET` | operator local secret input | Compression/Jev Audit automated MCP Service Token secret |
 
 `TYPESAFE_API_KEY` must not be configured on the Gateway or MCP Worker; TypeSafe credentialはprivate jev-audit Workerだけが所有する。
 
@@ -141,10 +143,12 @@ bootstrap後、通常release前にoperatorが外部設定を完了する。
 
 1. private `jev-audit` Workerへ`TYPESAFE_API_KEY` Secretを登録する。値をrepository、Issue、release metadataへ記録しない。
 2. existing `api` Gatewayへ256-bit以上の暗号学的にランダムな`JEV_AUDIT_API_TOKEN` Secretを登録する。同じ値をopaque local production inputの`JEV_AUDIT_SMOKE_TOKEN`として保持する。
-3. Cloudflare Zero Trustで`jev-audit-mcp.kinotch.workers.dev`用Access self-hosted applicationを作成し、意図したoperator identity用Managed OAuth policyを設定する。
+3. Cloudflare Zero Trustで`jev-audit-mcp.kinotch.workers.dev`用Access self-hosted applicationを作成する。
 4. 既存release Service Tokenをそのapplicationのexact-token `Service Auth` policyで許可する。`Bypass`は使用しない。
 5. application Audience Tagを`JEV_AUDIT_MCP_POLICY_AUD`としてopaque local production inputへ記録する。
 6. その後だけ`npm run release:local`を実行し、通常release gateでvars、Gateway binding/route、smoke、rollback、metadataをまとめて検証する。
+
+Managed OAuth policyはJev Audit Remoteのbootstrap/release要件ではない。将来interactive OAuth利用を追加する場合も、Service Token Production経路を弱めたり`Bypass`へ置換したりしない。
 
 ## 8. Deployment
 
@@ -166,12 +170,27 @@ JEV_AUDIT_MCP_POLICY_AUD
 JEV_AUDIT_SMOKE_TOKEN
 ```
 
-MCP自動smokeには既存release用の `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を共用する。加えてCloudflare側で、Gatewayの `JEV_AUDIT_API_TOKEN` Secret、private Workerの `TYPESAFE_API_KEY` Secret、jev-audit-mcp Access application/policy、Service Tokenを許可するAccess policy、専用rate-limit namespaceが必要である。
+MCP自動smokeには既存release用の `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を共用する。加えてCloudflare側で、Gatewayの `JEV_AUDIT_API_TOKEN` Secret、private Workerの `TYPESAFE_API_KEY` Secret、jev-audit-mcp Access application、Service Tokenを許可するexact-token `Service Auth` policy、専用rate-limit namespaceが必要である。
+
+private Workerのprovider timeoutはRemote v1契約の45秒に固定し、存在しないruntime configurabilityをWrangler varとして公開しない。通常source loggingも無効のまま維持する。
 
 ## 9. Verification state
 
-Remote implementation、unit/integration test、Wrangler設定、release/smoke helper、およびone-time bootstrap helperはrepository上で検証対象に含める。
+Jev Audit Remoteは **Production verified** である。
 
-ただし、bootstrap Worker deploy、live TypeSafe REST E2E、Production deploy、authenticated Remote MCP tool-call E2Eは、実際にoperator-managed secretsとCloudflare設定を用いて成功するまで **pending** と扱う。dry-runやfake binding testだけでProduction verifiedへ昇格しない。
+2026-09-25、source revision `84e8109ef43064efd72fd1012054dc7787de6a8e` から正式 `npm run release:local` がexit 0で完了し、次を実Productionで確認した。
 
-live E2E完了後にだけ、deployed Worker version id、smoke result、実施日を`project/docs/CURRENT_STATE.md`と`docs/releases/`へ証跡として記録する。
+- live TypeSafe REST E2E: HTTP 200、2 files / 1 batch、resolved model `jev-1.13.0`、audit semantics `0.2.12`
+- authenticated Remote MCP Service Token E2E: HTTP 200、`audit_files`実tool call成功
+- Jev private Worker / MCP Worker deploy成功、`needsRollback: false`
+- Core Text / Compression / Compression MCP / Gateway deploy・smoke成功
+- rollback不要
+
+証跡:
+
+- `docs/releases/20260925T144351192Z.json`
+- `docs/releases/jev-audit-20260925T144353075Z.json`
+
+production releaseで使ったJev version IDsはprivate `aedb81fd-58ef-4296-93bb-a538511bdbcb`、MCP `cd45c6cc-aaf1-453a-831c-d4ff83a16339`。release後のrepository-only hardeningは次回の正式releaseまではProductionへ反映された証拠として扱わない。
+
+post-release監査では、MCP/RESTのUnicode path length契約統一、provider model driftのfail-closed、Service Token full smokeでの`list_profiles`実call追加、未使用Wrangler var除去をrepository側で追加した。これらはunit/regression/CI/Verifyで検証し、次回通常releaseからProductionへ適用する。

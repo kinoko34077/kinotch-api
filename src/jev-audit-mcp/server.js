@@ -2,7 +2,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-import { AUDIT_PROFILES, REMOTE_AUDIT_LIMITS, validateAuditInput } from "../jev-audit/contract.js";
+import {
+  AUDIT_PROFILES,
+  REMOTE_AUDIT_LIMITS,
+  countUnicodeCodePoints,
+  validateAuditInput,
+} from "../jev-audit/contract.js";
 import { enforceJevAuditMcpRateLimit } from "./rate-limit.js";
 import { callJevAuditService, JevAuditMcpError } from "./upstream.js";
 
@@ -15,7 +20,10 @@ function safeToolError(error) {
 
 function fileSchema() {
   return z.object({
-    path: z.string().min(1).max(REMOTE_AUDIT_LIMITS.maxPathCodePoints),
+    path: z.string().min(1).refine(
+      (value) => countUnicodeCodePoints(value) <= REMOTE_AUDIT_LIMITS.maxPathCodePoints,
+      { message: `path must not exceed ${REMOTE_AUDIT_LIMITS.maxPathCodePoints} Unicode code points` },
+    ),
     content: z.string().min(1),
     change: z.string().optional(),
   }).strict();

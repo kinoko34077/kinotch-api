@@ -348,9 +348,11 @@ Remote MCP:
 https://jev-audit-mcp.kinotch.workers.dev/mcp
 ~~~
 
-MCP toolは`audit_files`と`list_profiles`だけである。Remote v1はlocal filesystemやGitを読まず、no `changed_only` supportである。profileは`development` / `generic`、監査意味論provenanceは`0.2.12`で固定する。
+MCP toolは`audit_files`と`list_profiles`だけである。Remote v1はlocal filesystemやGitを読まず、no `changed_only` supportである。profileは`development` / `generic`、監査意味論provenanceは`0.2.12`、modelは`jev-1.13.0`で固定する。
 
-request例、上限、status semantics、secret所有境界、production verification stateはdocs/jev-audit.mdを正本とする。live TypeSafe E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは成功証拠が記録されるまでpendingである。
+Jev Audit Remoteは2026-09-25の正式releaseで **Production verified** である。live TypeSafe REST E2EはHTTP 200、authenticated Remote MCPはCloudflare Access Service Token経由でHTTP 200となり、実`audit_files` tool callまで成功した。releaseはrollback不要で完了し、証跡を`docs/releases/20260925T144351192Z.json`と`docs/releases/jev-audit-20260925T144353075Z.json`へ保持する。
+
+Jev Audit MCPではService Tokenを通常Production認証として採用する。Jev固有のManaged OAuthは完了条件ではなく、将来interactive-human利用が必要になった場合の任意経路である。request例、上限、status semantics、secret所有境界、release evidenceの詳細はdocs/jev-audit.mdを正本とする。
 
 ## 9. Secretとprivacy
 
@@ -438,7 +440,7 @@ git diff --check
 ~~~
 
 Production release前には対象Workerのdry-runと、main / origin/main一致、GitHub Actions test・Verify、Cloudflare Accessとcredentialの外部設定を別々に確認する。
-実Gemini live test、TypeSafe live E2E、MCP OAuth、Production deployは明示的なoperator条件を満たさず通常testから自動実行しない。
+実Gemini live test、TypeSafe live E2E、Compression MCP OAuth、Production deployは明示的なoperator条件を満たさず通常testから自動実行しない。Jev AuditはService Token経路を正式なProduction MCP検証経路とし、Jev固有のManaged OAuthを必須確認へ含めない。
 
 ## 12. Source of truth
 

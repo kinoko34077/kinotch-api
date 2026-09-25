@@ -48,14 +48,27 @@ test("jev-audit secrets are assigned to the correct worker boundaries without ex
   assert.match(docs.jev, /`TYPESAFE_API_KEY`[^\n]*(not configured|must not be configured)[^\n]*(Gateway|MCP)/i);
 });
 
-test("jev-audit documentation keeps source bodies out of logs and live E2E pending until executed", async () => {
+test("jev-audit documentation records production verification and Service Token as the accepted Jev MCP path", async () => {
   const docs = await loadDocumentation();
   assert.match(docs.jev, /(source|diff)[^\n]*(not[^\n]*log|must not[^\n]*log)/i);
-  assert.match(docs.currentState, /Jev Audit Remote[^\n]*implemented/i);
-  assert.match(docs.currentState, /Jev Audit[^\n]*(live E2E|production)[^\n]*pending/i);
+  assert.match(docs.jev, /Production verified/i);
+  assert.match(docs.jev, /Service Token[^\n]*(accepted|required|production)/i);
+
+  assert.match(docs.currentState, /Jev Audit Production release[^\n]*completed/i);
+  assert.match(docs.currentState, /Jev Audit MCP Service Token E2E:\s*PASS/i);
+  assert.doesNotMatch(docs.currentState, /Jev Audit[^\n]*(live E2E|production)[^\n]*pending/i);
+
+  assert.match(docs.usage, /Jev Audit Remote[^\n]*(Production verified|production verified)/i);
+  assert.match(docs.usage, /Service Token[^\n]*(normal|accepted|Production)/i);
+  assert.doesNotMatch(docs.usage, /Jev Audit[^\n]*(live TypeSafe|Production deploy|authenticated Jev Audit MCP)[^\n]*pending/i);
+
+  assert.match(docs.operations, /\*\*Production verified\*\*:[^\n]*source revision/i);
+  assert.match(docs.operations, /authenticated Jev MCP Service Token E2E[^\n]*HTTP 200/i);
+  assert.match(docs.operations, /JEV_AUDIT_SMOKE_TOKEN/);
+  assert.doesNotMatch(docs.operations, /Jev Audit[^\n]*(live TypeSafe|Production deploy|authenticated MCP)[^\n]*pending/i);
+
   assert.match(docs.history, /Jev Audit Remote/i);
   assert.match(docs.changelog, /Jev Audit Remote/i);
-  assert.match(docs.operations, /JEV_AUDIT_SMOKE_TOKEN/);
   assert.match(docs.readme, /docs\/jev-audit\.md/);
-  assert.match(docs.usage, /docs\/jev-audit\.md/);
+  assert.match(docs.readme, /Jev Audit[^\n]*(Production verified|production verified)/i);
 });

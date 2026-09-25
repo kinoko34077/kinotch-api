@@ -89,8 +89,8 @@ export function makeAuditBatches(files) {
 }
 
 export function validateSystemOneResponse(payload) {
-  if (!isPlainObject(payload) || typeof payload.model !== "string" || payload.model.trim() === "") {
-    throw new AuditRemoteError("provider_response_invalid", 502, "provider response model is invalid");
+  if (!isPlainObject(payload) || typeof payload.model !== "string" || payload.model.trim() !== DEFAULT_JEV_MODEL) {
+    throw new AuditRemoteError("provider_response_invalid", 502, "provider response model does not match the pinned model");
   }
   if (!isPlainObject(payload.answers) ||
       payload.answers === null ||
@@ -147,7 +147,7 @@ export function validateSystemOneResponse(payload) {
       })();
 
   return {
-    model: payload.model.trim(),
+    model: DEFAULT_JEV_MODEL,
     usage,
     choices: {
       local_status: {

@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53b8c38b27f55ca4e4587` and Codex Managed OAuth MCP E2E verified; Jev Audit Remote implementation/release hardening and one-time bootstrap repository path verified, live Jev production verification pending; Codex Service Auth helper and bounded machine-local setup repository implementation verified, live Service Auth E2E pending
+Last verified: 2026-09-26 — Production release source `84e8109ef43064efd72fd1012054dc7787de6a8e` completed successfully with Jev Audit live TypeSafe REST E2E and Cloudflare Access Service Token MCP `audit_files` E2E; release evidence was merged on `main` by `40eb67448deef5cd711b106dc27977236207af09`; Compression Managed OAuth E2E remains separately verified; Jev Audit uses Service Token as its accepted normal Production MCP authentication path and does not require Jev-specific Managed OAuth completion
 
 ## Implemented
 
@@ -16,7 +16,7 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Production release verifies `main == origin/main`, rebuilds dependencies with `npm ci`, and isolates release-only secrets from build/test child processes.
 - Production operator secrets are supplied through the fixed external `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; the Jev Audit feature extends the Production required-key set to the documented Jev Audit keys while unknown file keys remain ignored and unforwarded, and `smoke:mcp:local` / `release:local` remain launchers rather than alternate production authorities.
 - Jev Audit first deployment has a separate one-time bootstrap path matching the Semantic Compression MCP responsibility split. `bootstrap:jev-audit:local` maps only `CLOUDFLARE_API_TOKEN` from the fixed opaque secret file plus the explicit non-secret `JEV_AUDIT_BOOTSTRAP_CONFIRM=true` signal, then creates only the private `jev-audit` and public `jev-audit-mcp` Workers in fail-closed state. It does not deploy the Gateway/core release, run live TypeSafe traffic, or perform authenticated MCP smoke. A private-only partial bootstrap can safely resume the MCP creation step; a completed two-Worker bootstrap refuses normal re-execution.
-- MCP automated release/recovery smoke uses Cloudflare Access Service Token credentials and does not use a browser session cookie. Codex interactive use remains a separate Managed OAuth path and is recorded independently as operator evidence.
+- MCP automated release/recovery smoke uses Cloudflare Access Service Token credentials and does not use a browser session cookie. Compression interactive Codex Managed OAuth remains a separate operator path. Jev Audit accepts the Service Token path as its normal Production MCP authentication path; Jev-specific Managed OAuth is optional and not a completion requirement.
 - The fixed external secret-file parser recognizes optional Codex-only `CODEX_CF_ACCESS_CLIENT_ID` / `CODEX_CF_ACCESS_CLIENT_SECRET` values without adding them to either Production release or release-smoke required-key sets.
 - `scripts/codex-mcp-access-headers.mjs` implements the Codex `http_headers_helper` boundary. By default it reuses the existing release-smoke `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`; if both Codex-specific override keys exist they take precedence; if only one override key exists or either override value is empty the helper fails closed. It accepts no alternate path and emits only `CF-Access-Client-Id` / `CF-Access-Client-Secret` as the machine-consumed JSON header object without printing secret values.
 - The selected default Codex Service Auth mode therefore requires no duplicate secret values and no additional Cloudflare Service Token or Access policy for the existing Compression MCP application. The existing release-smoke exact-token `Service Auth` policy is reused. A separate Codex token remains an optional future override if independent revocation becomes necessary.
@@ -34,6 +34,8 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Jev Audit Access JWT verification, MCP body-limit ordering, actor-fingerprint/IP rate limiting, stateless Streamable HTTP MCP handler, and private Service Binding pattern are aligned with the current Semantic Compression Remote MCP implementation while using dedicated bindings/namespaces.
 - Jev Audit release hardening captures the pre-release Gateway version. If the existing core release succeeds but Jev Audit post-core smoke fails, the public Gateway is rolled back and recovery-smoked before the Jev Audit MCP/private Workers are recovered. If the core release itself fails, the existing core rollback remains authoritative and the wrapper does not perform a second Gateway rollback.
 - Release failure metadata preserves the original failure stage even while rollback/recovery updates the live release stage.
+- Jev Audit Production release sourced from `84e8109ef43064efd72fd1012054dc7787de6a8e` completed on 2026-09-25 and is recorded by `docs/releases/20260925T144351192Z.json` and `docs/releases/jev-audit-20260925T144353075Z.json`. Jev REST returned HTTP 200 through live TypeSafe with model `jev-1.13.0` / semantics `0.2.12`; Jev MCP Service Token authentication returned HTTP 200 and completed a real `audit_files` call; private/MCP deployments reported `needsRollback: false`; no rollback was required.
+- Post-release Jev hardening aligns MCP path validation with the REST Unicode code-point contract, rejects provider model drift from the pinned `jev-1.13.0`, makes the Service Token full smoke call and validate `list_profiles` before `audit_files`, and removes unused private Worker vars that falsely implied runtime timeout/log configurability. These repository changes require the next normal formal release before they are claimed as deployed Production behavior.
 
 ## Default state
 
@@ -49,23 +51,21 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Runtime Action contracts are not required by this adoption.
 - GitHub main protection currently requires `test` and `verify`; force push and branch deletion are disabled. PR review, administrator enforcement, strict status, Cloudflare Workers Builds state, and Cloudflare Access state remain external/operator-managed choices.
 - Node 26 is the repository-selected runtime. `@rolldown/plugin-babel@0.2.4`, pulled transitively through the current Agents dependency set, still declares an upstream Node engine range that does not explicitly list Node 26; repository installation, tests, and all Worker dry-runs nevertheless pass on Node 26.10.0. Treat an upstream engine-range change as dependency metadata to re-check rather than as production proof by itself.
-- Cloudflare Access Service Token creation and its `Service Auth` policies are external operator-managed state; repository tests verify request/header contracts, not dashboard configuration itself.
-- The generated release metadata intentionally keeps `mcpOAuthSmoke.status = operator_required`; it is immutable evidence of what that release process itself verified. The later Codex Managed OAuth E2E PASS is recorded separately in this Current State rather than rewriting the release record.
+- Cloudflare Access Service Token creation and its `Service Auth` policies are external operator-managed state; repository tests verify request/header contracts, not dashboard configuration itself. Jev Audit Production evidence proves the configured Service Token path worked at release time, but repository tests do not independently query the dashboard policy state.
+- The generated Compression release metadata intentionally keeps `mcpOAuthSmoke.status = operator_required`; it is immutable evidence of what that release process itself verified. The later Compression Codex Managed OAuth E2E PASS is recorded separately in this Current State rather than rewriting the release record. This does not impose a Managed OAuth requirement on Jev Audit.
 - Codex Service Auth defaults to sharing the release-smoke Service Token. This intentionally couples credential rotation, revocation, and compromise scope between automated release smoke and local Codex Service Auth. The optional complete `CODEX_CF_ACCESS_*` override restores independent revocation when needed.
 - Codex Service Auth helper and machine-local setup code are repository-verified, but execution of `npm run setup:codex-mcp-service-auth`, inspection of the resulting live Codex registration, and a real Service Auth `compress_text` E2E remain external machine evidence until performed.
 - The Codex helper provides an operational secret-isolation boundary, not a hard OS privilege boundary against arbitrary same-user shell access.
-- The latest tracked Production release predates the Jev Audit Remote feature. Jev Audit one-time bootstrap, Cloudflare Worker Secret registration, Access application/policy setup, live TypeSafe REST E2E, and authenticated Jev Audit MCP E2E remain external production evidence until performed; repository tests/dry-runs do not count as that evidence.
+- The latest Jev Audit tracked Production evidence is successful, but post-release repository hardening is not Production evidence until a later authorized formal release carries those changes. No ad-hoc deploy is required solely to close the rollout Issue.
+- Service Token Access JWTs may not provide a stable subject/email claim; Jev MCP rate limiting then falls back to `CF-Connecting-IP`. This is acceptable for the current low-volume single-operator automation path but can group callers sharing one egress IP into the same 5 requests / 60 seconds bucket.
 
 ## Next work
 
-1. Keep GitHub Actions `test` and `Verify` successful while completing the Jev Audit production rollout.
-2. From clean synchronized `main`, run the one-time Jev Audit bootstrap through `JEV_AUDIT_BOOTSTRAP_CONFIRM=true` + `npm run bootstrap:jev-audit:local` if the two Jev Workers do not yet exist.
-3. Register `TYPESAFE_API_KEY` only on the private `jev-audit` Worker and `JEV_AUDIT_API_TOKEN` only on the existing Gateway; use the same REST token value only as the opaque local `JEV_AUDIT_SMOKE_TOKEN` release input.
-4. Create the `jev-audit-mcp.kinotch.workers.dev` Cloudflare Access application, enable the intended Managed OAuth policy, allow the existing release Service Token through an exact-token `Service Auth` policy, and record its Audience as `JEV_AUDIT_MCP_POLICY_AUD` in the opaque local inputs.
-5. From synchronized clean `main`, run the formal Jev Audit-aware production release gate with `npm run release:local`.
-6. Confirm one live TypeSafe REST E2E and authenticated Jev Audit MCP `list_profiles` / `audit_files` E2E, then record deployed version IDs and smoke evidence.
-7. On the authorized Codex machine, synchronize `main` and run `npm run setup:codex-mcp-service-auth`. This configures machine-local `semantic_compressor` with an absolute `http_headers_helper` path and reuses the existing release Service Token without adding `CODEX_CF_ACCESS_*` values or a new Cloudflare policy. Confirm `codex mcp list`, then run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
-8. Record external E2E evidence separately, then use the features in normal operation and add only lightweight log accumulation / benchmark checks if they provide practical value.
+1. Keep GitHub Actions `test` and `Verify` successful while using the verified Jev REST / Service Token MCP surfaces in normal operation.
+2. Do not require Jev-specific Managed OAuth. If a future interactive-human Jev MCP flow needs OAuth, treat it as a separate optional feature rather than a production-readiness blocker.
+3. Carry the post-release Jev hardening into Production only through the next authorized normal `npm run release:local`; do not perform an ad-hoc deploy solely for the hardening.
+4. On the authorized Codex machine, if Compression Service Auth use is still desired, synchronize `main` and run `npm run setup:codex-mcp-service-auth`. This configures machine-local `semantic_compressor` with an absolute `http_headers_helper` path and reuses the existing release Service Token without adding `CODEX_CF_ACCESS_*` values or a new Cloudflare policy. Confirm `codex mcp list`, then run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
+5. Add only lightweight log accumulation / 5–10 fixed-fixture benchmark checks if they provide practical value; do not build a large eval platform, dashboard, billing, account system, remote Git clone, or filesystem layer without a concrete requirement.
 
 ## Verification
 
@@ -77,9 +77,14 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - Codex Service Auth helper unit/regression coverage: default release-token fallback, complete Codex-specific override precedence, partial override fail-closed behavior, Production-mode isolation, exact two-header JSON output, and alternate-path rejection
 - Codex Service Auth setup unit/regression coverage: fixed machine-local config path, absolute helper command, bounded target-section replacement, unrelated-section preservation, duplicate-target rejection, alternate-path rejection, and no Service Token literals in config
 - Codex Service Auth documentation contract: `http_headers_helper`, fixed secret path, default release-token reuse, optional Codex override, one-command machine-local setup, Service Auth headers, and Managed OAuth coexistence are documented without real credentials
-- Real Codex Service Auth E2E: pending execution of the machine-local setup plus one synthetic `compress_text` call; no additional Cloudflare token/policy is required for the selected reuse mode
+- Real Codex Service Auth E2E for Compression remains optional/pending machine evidence; no additional Cloudflare token/policy is required for the selected reuse mode
 - Jev Audit one-time bootstrap TDD: missing bootstrap module and confirmation-propagation regressions were observed RED before implementation; current contract covers explicit confirmation, private→MCP safe resume, completed-bootstrap rejection, dedicated Wrangler configs, opaque Cloudflare-only secret mapping, and package launchers.
-- Jev Audit bootstrap implementation head: GitHub Actions `CI` PASS and `Verify` PASS; CI includes `npm test`, Base compatibility, private Worker dry-run, Remote MCP Worker dry-run, and Gateway dry-run.
+- Jev Audit successful Production release evidence: `docs/releases/20260925T144351192Z.json` and `docs/releases/jev-audit-20260925T144353075Z.json`
+- Jev Audit live TypeSafe REST E2E: PASS, HTTP 200, model `jev-1.13.0`, semantics `0.2.12`, 2 files / 1 batch
+- Jev Audit MCP Service Token E2E: PASS, HTTP 200, authenticated `audit_files` tool call; Service Token is the accepted Jev MCP Production path
+- Jev Audit deployed versions recorded at successful release: private `aedb81fd-58ef-4296-93bb-a538511bdbcb`, MCP `cd45c6cc-aaf1-453a-831c-d4ff83a16339`, both `needsRollback: false`
+- Jev Audit successful release required no rollback; core Text / Compression / MCP / Gateway deploy and smoke also passed
+- Post-release Jev hardening TDD/regression coverage: pinned-model mismatch rejection, REST/MCP Unicode path-count alignment, Service Token `list_profiles` + `audit_files` full smoke, and unused Wrangler-var rejection
 - `knt doctor`
 - `knt base-check`
 - `knt setup`
@@ -87,4 +92,4 @@ Last verified: 2026-09-25 — existing Production release `058628f9b28648f897c53
 - `npm test`
 - Node 26.10.0 Worker dry-runs are included in the project CI/release verification boundaries.
 - Service Token contract tests cover header injection, missing credential failure, legacy cookie rejection, mapper allowlist/mode boundaries, and secret non-disclosure.
-- Jev Audit Remote automated coverage includes contract, evaluator, private Worker, REST, MCP, release, smoke, Gateway rollback recovery, failure-stage provenance, bootstrap boundaries, and documentation contracts; live provider/deployment evidence remains pending.
+- Jev Audit Remote automated coverage includes contract, evaluator, private Worker, REST, MCP, release, smoke, Gateway rollback recovery, failure-stage provenance, bootstrap boundaries, documentation contracts, and post-release hardening checks.
