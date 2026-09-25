@@ -25,6 +25,7 @@ const secretValues = Object.freeze({
   CF_ACCESS_CLIENT_ID: "client-id-fixture-value",
   CF_ACCESS_CLIENT_SECRET: "client-secret-fixture-value",
   COMPRESSION_SMOKE_TOKEN: "compression-token-fixture-value",
+  CLOUDFLARE_API_TOKEN: "cloudflare-api-token-fixture-value",
   JEV_AUDIT_MCP_POLICY_AUD: "jev-audit-audience-fixture-value",
   JEV_AUDIT_SMOKE_TOKEN: "jev-audit-token-fixture-value",
 });
@@ -60,9 +61,12 @@ function fakeSpawn(exitCode, capture) {
   };
 }
 
-test("production secret parser accepts exactly the eight allowlisted keys", () => {
+test("production secret parser accepts supported core/Jev keys and ignores unrelated keys", () => {
   assert.deepEqual(Object.keys(secretValues), [...ALLOWED_PRODUCTION_SECRET_KEYS]);
-  assert.deepEqual(parseProductionSecretText(secretText), secretValues);
+  assert.deepEqual(
+    parseProductionSecretText(`${secretText}\nUNRELATED_SECRET=ignored-fixture-value`),
+    secretValues,
+  );
 });
 
 test("production secret path is fixed below the supplied home directory", () => {
@@ -70,7 +74,7 @@ test("production secret path is fixed below the supplied home directory", () => 
   assert.equal(getProductionSecretPath({ homeDirectory }), join(homeDirectory, PRODUCTION_SECRET_RELATIVE_PATH));
 });
 
-test("mode mapping preserves main MCP service-token inputs and adds Jev release inputs only to production", () => {
+test("mode mapping exposes only the required keys and adds Jev inputs only to production", () => {
   assert.deepEqual(requiredKeysForMode(MAPPER_MODES.MCP_SMOKE), [
     "MCP_ENDPOINT",
     "CF_ACCESS_CLIENT_ID",
@@ -108,21 +112,21 @@ test("missing service-token credentials fail before a child process can start", 
   assert.equal(calls.length, 0);
 });
 
-test("legacy core/Jev MCP cookies and unknown secret keys fail closed without exposing values", () => {
-  const unknownValue = "unknown-secret-fixture-value";
-  for (const key of ["MCP_SMOKE_ACCESS_COOKIE", "JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE", "UNRELATED_SECRET"]) {
-    assert.throws(
-      () => parseProductionSecretText(`${secretText}\n${key}=${unknownValue}`),
-      (error) => error.message.includes(key) && !error.message.includes(unknownValue),
-    );
-  }
+test("legacy cookie and unrelated keys are ignored and never mapped", () => {
+  const parsed = parseProductionSecretText(
+    `${secretText}\nMCP_SMOKE_ACCESS_COOKIE=legacy-core-cookie\nJEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE=legacy-jev-cookie\nUNRELATED_SECRET=unknown-secret-fixture-value`,
+  );
+  assert.deepEqual(parsed, secretValues);
+  assert.equal(parsed.MCP_SMOKE_ACCESS_COOKIE, undefined);
+  assert.equal(parsed.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
+  assert.equal(parsed.UNRELATED_SECRET, undefined);
 });
 
 test("unknown mapper mode fails closed", () => {
   assert.throws(() => requiredKeysForMode("arbitrary-command"), /Unknown production secret mapper mode: arbitrary-command/);
 });
 
-test("mapped MCP child environment preserves service token values but excludes Jev release secrets", () => {
+test("mapped MCP child environment preserves service-token values but excludes release-only secrets", () => {
   const childEnv = createMappedChildEnv({
     mode: MAPPER_MODES.MCP_SMOKE,
     sourceEnv: {
@@ -139,19 +143,25 @@ test("mapped MCP child environment preserves service token values but excludes J
   assert.equal(childEnv.CF_ACCESS_CLIENT_ID, secretValues.CF_ACCESS_CLIENT_ID);
   assert.equal(childEnv.CF_ACCESS_CLIENT_SECRET, secretValues.CF_ACCESS_CLIENT_SECRET);
   assert.equal(childEnv.COMPRESSION_SMOKE_TOKEN, undefined);
+  assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
   assert.equal(childEnv.JEV_AUDIT_MCP_POLICY_AUD, undefined);
   assert.equal(childEnv.JEV_AUDIT_SMOKE_TOKEN, undefined);
-  assert.equal(childEnv.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(childEnv.MCP_SMOKE_ACCESS_COOKIE, undefined);
+  assert.equal(childEnv.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(childEnv.UNRELATED_SECRET, undefined);
-  assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
 });
 
-test("production-release maps all eight keys and launches the Jev-aware release authority", async () => {
+test("production-release maps all supported keys and launches the Jev-aware release authority", async () => {
   const calls = [];
   const exitCode = await runMappedCommand(MAPPER_MODES.PRODUCTION_RELEASE, {
     secrets: secretValues,
-    sourceEnv: { PATH: "fixture-path", CLOUDFLARE_API_TOKEN: "cloudflare-fixture" },
+    sourceEnv: {
+      PATH: "fixture-path",
+      CLOUDFLARE_API_TOKEN: "stale-source-env-token",
+      CLOUDFLARE_API_KEY: "stale-global-api-key",
+      CLOUDFLARE_EMAIL: "stale-email@example.test",
+      WRANGLER_API_TOKEN: "stale-wrangler-token",
+    },
     spawnImpl: fakeSpawn(0, calls),
   });
   assert.equal(exitCode, 0);
@@ -160,7 +170,9 @@ test("production-release maps all eight keys and launches the Jev-aware release 
   for (const [key, value] of Object.entries(secretValues)) assert.equal(calls[0].options.env[key], value);
   assert.equal(calls[0].options.env.MCP_SMOKE_ACCESS_COOKIE, undefined);
   assert.equal(calls[0].options.env.JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE, undefined);
-  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, "cloudflare-fixture");
+  assert.equal(calls[0].options.env.CLOUDFLARE_API_KEY, undefined);
+  assert.equal(calls[0].options.env.CLOUDFLARE_EMAIL, undefined);
+  assert.equal(calls[0].options.env.WRANGLER_API_TOKEN, undefined);
 });
 
 test("mcp-smoke launches the existing smoke authority and propagates child failure", async () => {
@@ -225,7 +237,7 @@ test("package scripts preserve fixed mapper modes and route production through t
   assert.equal(packageJson.scripts.deploy, "npm run deploy:production");
 });
 
-test("operator documentation preserves the current main mapper workflow without secret values", () => {
+test("operator documentation preserves the mapper workflow and service-token auth without secret values", () => {
   const documentation = operatorDocumentation.join("\n");
   assert.match(documentation, /production-secret-mapper\.mjs/);
   assert.match(documentation, /kinotch-api\.production\.env/);
@@ -236,6 +248,9 @@ test("operator documentation preserves the current main mapper workflow without 
   assert.match(documentation, /CF_ACCESS_CLIENT_ID/);
   assert.match(documentation, /CF_ACCESS_CLIENT_SECRET/);
   assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);
+  assert.match(documentation, /CLOUDFLARE_API_TOKEN/);
+  assert.match(documentation, /JEV_AUDIT_MCP_POLICY_AUD/);
+  assert.match(documentation, /JEV_AUDIT_SMOKE_TOKEN/);
   assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
   assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
   assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
