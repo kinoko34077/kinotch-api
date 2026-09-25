@@ -62,7 +62,8 @@ test("jev-audit documentation records production verification and Service Token 
   assert.match(docs.usage, /Service Token[^\n]*(normal|accepted|Production)/i);
   assert.doesNotMatch(docs.usage, /Jev Audit[^\n]*(live TypeSafe|Production deploy|authenticated Jev Audit MCP)[^\n]*pending/i);
 
-  assert.match(docs.operations, /Jev Audit[^\n]*(Production verified|production verified)/i);
+  assert.match(docs.operations, /\*\*Production verified\*\*:[^\n]*source revision/i);
+  assert.match(docs.operations, /authenticated Jev MCP Service Token E2E[^\n]*HTTP 200/i);
   assert.match(docs.operations, /JEV_AUDIT_SMOKE_TOKEN/);
   assert.doesNotMatch(docs.operations, /Jev Audit[^\n]*(live TypeSafe|Production deploy|authenticated MCP)[^\n]*pending/i);
 
