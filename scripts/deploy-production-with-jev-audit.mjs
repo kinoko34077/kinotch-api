@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { createJevAuditProductionPhase } from "./jev-audit-production-phase.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
+import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
@@ -40,6 +41,17 @@ function run(command, args, {
       reject(new Error(`${command} ${args.join(" ")} exited with ${signal ?? code}`));
     });
   });
+}
+
+function runGit(args, options = {}) {
+  return run("git", args, options);
+}
+
+async function assertCleanWorktree() {
+  const status = await runGit(["status", "--porcelain"], { capture: true });
+  if (status.trim()) {
+    throw new Error("Jev Audit production release requires a clean worktree before deployment");
+  }
 }
 
 function runWrangler(args, options = {}) {
@@ -83,6 +95,11 @@ const phase = createJevAuditProductionPhase({
 });
 
 try {
+  state.stage = "Jev Audit clean worktree assertion";
+  await assertCleanWorktree();
+  state.stage = "Jev Audit production source revision assertion";
+  await assertProductionSourceRevision({ runGit });
+
   await phase.prepare();
   await phase.deploy();
 
