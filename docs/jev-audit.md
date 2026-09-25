@@ -112,7 +112,41 @@ source or diff contents must not be logged by normal Gateway, private Worker, MC
 
 Remote監査対象は外部providerへ送信されるため、callerは送信可能なsourceだけをsnapshotとして構成する必要がある。filename/extensionによるDLPをRemote serviceが保証するものではない。
 
-## 7. Deployment
+## 7. One-time production bootstrap
+
+Semantic Compression MCPと同様に、Jev Audit Remoteも最初の1回だけbootstrap段階を分ける。理由は、Cloudflare Access application / Audienceを作るには`jev-audit-mcp`の実hostnameが必要であり、private `jev-audit` Workerへ`TYPESAFE_API_KEY` Secretを所有させるにも先にWorkerを作成する必要があるためである。
+
+bootstrapは正式なProduction releaseではない。Gateway/coreをdeployせず、live TypeSafe requestやauthenticated MCP smokeも行わない。private Workerは`workers_dev: false`のまま、MCP WorkerはAccess vars未設定で`authentication_unavailable`になるfail-closed状態として作成する。
+
+cleanかつ同期済み`main`で、固定secret mapper経由のCloudflare credentialだけを渡し、明示確認を付けて実行する。
+
+```powershell
+$env:JEV_AUDIT_BOOTSTRAP_CONFIRM = "true"
+npm run bootstrap:jev-audit:local
+Remove-Item Env:JEV_AUDIT_BOOTSTRAP_CONFIRM -ErrorAction SilentlyContinue
+```
+
+`bootstrap:jev-audit:local`は固定`%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env`から`CLOUDFLARE_API_TOKEN`だけを子processへ渡す。Access Service Token、REST smoke token、TypeSafe key等はbootstrap子processへ渡さない。
+
+bootstrapは次を行う。
+
+1. explicit confirmation、clean worktree、`main == origin/main`を確認する。
+2. private `jev-audit` / public `jev-audit-mcp`の既存deploymentを確認する。
+3. testsと対象Worker dry-runを実行する。
+4. 未作成のprivate WorkerとMCP Workerだけをdeployする。
+5. private Workerだけ作成済みでMCP作成前に中断した場合は、安全にMCP側だけ再開できる。
+6. 両Workerが既に存在する場合は通常bootstrap再実行を拒否する。
+
+bootstrap後、通常release前にoperatorが外部設定を完了する。
+
+1. private `jev-audit` Workerへ`TYPESAFE_API_KEY` Secretを登録する。値をrepository、Issue、release metadataへ記録しない。
+2. existing `api` Gatewayへ256-bit以上の暗号学的にランダムな`JEV_AUDIT_API_TOKEN` Secretを登録する。同じ値をopaque local production inputの`JEV_AUDIT_SMOKE_TOKEN`として保持する。
+3. Cloudflare Zero Trustで`jev-audit-mcp.kinotch.workers.dev`用Access self-hosted applicationを作成し、意図したoperator identity用Managed OAuth policyを設定する。
+4. 既存release Service Tokenをそのapplicationのexact-token `Service Auth` policyで許可する。`Bypass`は使用しない。
+5. application Audience Tagを`JEV_AUDIT_MCP_POLICY_AUD`としてopaque local production inputへ記録する。
+6. その後だけ`npm run release:local`を実行し、通常release gateでvars、Gateway binding/route、smoke、rollback、metadataをまとめて検証する。
+
+## 8. Deployment
 
 専用Worker config:
 
@@ -123,7 +157,7 @@ wrangler.jev-audit-mcp.jsonc
 
 private `jev-audit` Workerは `workers_dev: false` でpublic endpointを持たない。Gateway RESTとRemote MCPはService Binding `JEV_AUDIT`を通じてのみ到達する。
 
-通常のProduction deploy authorityはrepository既存のproduction release経路であり、Jev Auditだけを独立した正式release authorityにはしない。releaseはdry-run、active version capture、deploy、smoke、失敗時rollbackを既存gateへ統合する。
+通常のProduction deploy authorityはrepository既存のproduction release経路であり、Jev Auditだけを独立した正式release authorityにはしない。one-time bootstrapは初回external設定のためだけの準備経路であり、通常releaseの代替にしない。releaseはdry-run、active version capture、deploy、smoke、失敗時rollbackを既存gateへ統合する。
 
 Jev Audit production releaseに追加で必要なoperator入力:
 
@@ -134,10 +168,10 @@ JEV_AUDIT_SMOKE_TOKEN
 
 MCP自動smokeには既存release用の `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を共用する。加えてCloudflare側で、Gatewayの `JEV_AUDIT_API_TOKEN` Secret、private Workerの `TYPESAFE_API_KEY` Secret、jev-audit-mcp Access application/policy、Service Tokenを許可するAccess policy、専用rate-limit namespaceが必要である。
 
-## 8. Verification state
+## 9. Verification state
 
-Remote implementation、unit/integration test、Wrangler設定、release/smoke helperは実装済みである。
+Remote implementation、unit/integration test、Wrangler設定、release/smoke helper、およびone-time bootstrap helperはrepository上で検証対象に含める。
 
-ただし、live TypeSafe REST E2E、Production deploy、authenticated Remote MCP tool-call E2Eは、実際にoperator-managed secretsとCloudflare設定を用いて成功するまで **pending** と扱う。dry-runやfake binding testだけでProduction verifiedへ昇格しない。
+ただし、bootstrap Worker deploy、live TypeSafe REST E2E、Production deploy、authenticated Remote MCP tool-call E2Eは、実際にoperator-managed secretsとCloudflare設定を用いて成功するまで **pending** と扱う。dry-runやfake binding testだけでProduction verifiedへ昇格しない。
 
 live E2E完了後にだけ、deployed Worker version id、smoke result、実施日を`project/docs/CURRENT_STATE.md`と`docs/releases/`へ証跡として記録する。
