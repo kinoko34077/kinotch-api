@@ -64,7 +64,7 @@ test("MCP release requires both service-token credentials and rejects the legacy
   }), /CF_ACCESS_CLIENT_ID/);
 });
 
-test("production secret mapper allowlist and modes use service-token credentials only", () => {
+test("production secret mapper allowlist separates release credentials from MCP smoke mode", () => {
   assert.deepEqual([...ALLOWED_PRODUCTION_SECRET_KEYS], [
     "TEAM_DOMAIN",
     "POLICY_AUD",
@@ -72,6 +72,7 @@ test("production secret mapper allowlist and modes use service-token credentials
     "CF_ACCESS_CLIENT_ID",
     "CF_ACCESS_CLIENT_SECRET",
     "COMPRESSION_SMOKE_TOKEN",
+    "CLOUDFLARE_API_TOKEN",
   ]);
   assert.deepEqual(requiredKeysForMode(MAPPER_MODES.MCP_SMOKE), [
     "MCP_ENDPOINT",

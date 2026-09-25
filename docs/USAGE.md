@@ -335,6 +335,7 @@ docs/semantic-compression-mcp.mdを参照する。
 | POLICY_AUD | MCP Access audience設定 | MCP Worker vars |
 | CF_ACCESS_CLIENT_ID | MCP release smoke用Service Token ID | operatorのローカルsecret file |
 | CF_ACCESS_CLIENT_SECRET | MCP release smoke用Service Token secret | operatorのローカルsecret file |
+| CLOUDFLARE_API_TOKEN | Wrangler Production管理API credential | operatorのローカルsecret file |
 
 秘密値、Authorization、Access JWT、本文、compressed_text全文、System Prompt全文、
 Gemini raw responseは本番log・release metadata・repositoryへ記録しない。
@@ -375,6 +376,7 @@ $env:POLICY_AUD = "<MCP Access audience tag>"
 $env:MCP_ENDPOINT = "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
 $env:CF_ACCESS_CLIENT_ID = "<release-smoke service-token client id>"
 $env:CF_ACCESS_CLIENT_SECRET = "<release-smoke service-token client secret>"
+$env:CLOUDFLARE_API_TOKEN = "<Wrangler API token>"
 npm run deploy:production
 ~~~
 
@@ -394,7 +396,7 @@ rollbackする。
 %USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env
 ~~~
 
-mapperが受け付けるkeyは次の6つだけで、未知keyや必須key不足は停止する。
+Production releaseで使用するkeyは次の7つである。必須key不足は停止するが、同じfile内の未知keyは無視し、子processへは渡さない。
 
 ~~~text
 TEAM_DOMAIN=<team-domain>
@@ -403,6 +405,7 @@ MCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp
 CF_ACCESS_CLIENT_ID=<release-smoke-service-token-client-id>
 CF_ACCESS_CLIENT_SECRET=<release-smoke-service-token-client-secret>
 COMPRESSION_SMOKE_TOKEN=<compression-caller-token>
+CLOUDFLARE_API_TOKEN=<wrangler-api-token>
 ~~~
 
 MCP確認は:
@@ -420,7 +423,7 @@ npm run release:local
 `release:local` はsecret injection用launcherであり、正式なProduction release authorityは
 引き続き `npm run deploy:production` である。mapperは値、file本文、`process.env`全体を
 出力せず、実際のdeploy・smoke・rollback・metadata処理は既存scriptへ委譲する。
-Cloudflare deploy credentialはこの6key fileへ含めず、既存のoperator-managed認証を使用する。
+Wrangler用`CLOUDFLARE_API_TOKEN`もこの固定secret fileからProduction releaseへ注入する。
 secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり
 しない。
 
