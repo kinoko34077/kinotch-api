@@ -29,6 +29,11 @@ test("wrapper invokes the nested core release without shell re-interpretation", 
   assert.match(wrapper, /runCoreProductionRelease[\s\S]*shell:\s*false/);
 });
 
+test("wrapper does not default Git and release child processes to the Windows shell", () => {
+  assert.match(wrapper, /shell = false/);
+  assert.doesNotMatch(wrapper, /shell = process\.platform/);
+});
+
 test("wrapper prepares and deploys jev-audit before the existing core production release", () => {
   assert.match(wrapper, /createJevAuditProductionPhase/);
   const prepare = wrapper.indexOf("await phase.prepare()");

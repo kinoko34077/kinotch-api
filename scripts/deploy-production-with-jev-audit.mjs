@@ -20,7 +20,7 @@ function run(command, args, {
   capture = false,
   allowFailure = false,
   env = process.env,
-  shell = process.platform === "win32",
+  shell = false,
 } = {}) {
   return new Promise((resolve, reject) => {
     let output = "";

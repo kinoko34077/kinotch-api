@@ -1,0 +1,49 @@
+{
+  "recordedAtUtc": "2026-09-25T12:57:56.481Z",
+  "recordedAtJst": "2026-09-25 21:57:56",
+  "status": "failed",
+  "gitRevision": "4343bbdcca136f3fe022042d45ae50ebc6721ace",
+  "sourceRevision": "4343bbdcca136f3fe022042d45ae50ebc6721ace",
+  "previousTextVersionId": null,
+  "previousCompressionVersionId": null,
+  "previousGatewayVersionId": null,
+  "textVersionId": null,
+  "compressionVersionId": null,
+  "gatewayVersionId": null,
+  "textSmoke": null,
+  "compressionSmoke": null,
+  "mcpVersionId": null,
+  "previousMcpVersionId": null,
+  "mcpEndpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp",
+  "mcpProtocol": "streamable-http",
+  "mcpToolVersion": "compress_text/v1",
+  "mcpSmoke": {
+    "status": "incomplete",
+    "reason": "Authenticated Access service-token smoke has not completed",
+    "authMode": "access_service_token",
+    "endpoint": "https://semantic-compression-mcp.kinotch.workers.dev/mcp"
+  },
+  "mcpOAuthSmoke": {
+    "status": "operator_required",
+    "reason": "Codex Managed OAuth client flow must be verified separately"
+  },
+  "mcpRecovery": null,
+  "gatewaySmoke": null,
+  "textRecovery": null,
+  "compressionRecovery": null,
+  "gatewayRecovery": null,
+  "textDeployment": null,
+  "compressionDeployment": null,
+  "mcpDeployment": null,
+  "gatewayDeployment": null,
+  "compressionModel": "gemini-3.5-flash-lite",
+  "compressionPromptVersion": "semantic-dense-v1.1",
+  "compressionPromptVersions": {
+    "compact": "compact-v1.1",
+    "semanticDense": "semantic-dense-v1.1"
+  },
+  "failure": {
+    "stage": "clean dependency install",
+    "message": "npm.cmd ci exited with 4294963248"
+  }
+}
