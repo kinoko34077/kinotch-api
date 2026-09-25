@@ -78,7 +78,7 @@
 
 **Files:**
 - Modify: `package.json`
-- Modify: `AGENTS.md`
+- Do not modify `AGENTS.md`; it is Base-managed and Verify rejects local edits. Record the same opaque boundary in the repository operator documentation instead.
 - Modify: `README.md`
 - Modify: `docs/USAGE.md`
 - Modify: `docs/OPERATIONS.md`
@@ -115,7 +115,7 @@
 
 - [ ] **Step 4: Document the opaque operator boundary and usage**
 
-  Add the required `AGENTS.md` Production Secret Boundary rules without naming or reading real secret values. Add concise README and detailed `docs/USAGE.md` / `docs/OPERATIONS.md` instructions covering the fixed file format, allowed keys, local commands, missing/unknown-key behavior, Cloudflare credential prerequisite, and the fact that `release:local` is only a launcher for `npm run deploy:production`.
+  Add the required opaque Production Secret Boundary rules without naming or reading real secret values. Add concise README and detailed `docs/USAGE.md` / `docs/OPERATIONS.md` instructions covering the fixed file format, allowed keys, local commands, missing/unknown-key behavior, Cloudflare credential prerequisite, and the fact that `release:local` is only a launcher for `npm run deploy:production`.
 
 - [ ] **Step 5: Run focused tests and verify GREEN**
 
@@ -130,7 +130,7 @@
 - [ ] **Step 6: Commit the operator surface**
 
   ```powershell
-  git add package.json AGENTS.md README.md docs/USAGE.md docs/OPERATIONS.md test/production-secret-mapper.test.js
+  git add package.json README.md docs/USAGE.md docs/OPERATIONS.md test/production-secret-mapper.test.js
   git commit -m "docs: expose production secret mapper workflow"
   ```
 

@@ -31,7 +31,6 @@ const secretText = Object.entries(secretValues)
   .join("\n");
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-const agentInstructions = await readFile(new URL("../AGENTS.md", import.meta.url), "utf8");
 const operatorDocumentation = await Promise.all([
   readFile(new URL("../README.md", import.meta.url), "utf8"),
   readFile(new URL("../docs/USAGE.md", import.meta.url), "utf8"),
@@ -221,16 +220,6 @@ test("package scripts expose only the two fixed local mapper modes", () => {
   assert.equal(packageJson.scripts["smoke:mcp"], "node scripts/smoke-mcp.mjs");
   assert.equal(packageJson.scripts["deploy:production"], "node scripts/deploy-production.mjs");
   assert.equal(packageJson.scripts.deploy, "npm run deploy:production");
-});
-
-test("agent instructions define the opaque production secret boundary", () => {
-  assert.match(agentInstructions, /Production Secret Boundary/);
-  assert.match(agentInstructions, /%USERPROFILE%\\\.kinotch-secrets\\/);
-  assert.match(agentInstructions, /Agents MUST NOT:/);
-  assert.match(agentInstructions, /Get-Content/);
-  assert.match(agentInstructions, /process\.env/);
-  assert.match(agentInstructions, /npm run smoke:mcp:local/);
-  assert.match(agentInstructions, /npm run release:local/);
 });
 
 test("operator documentation explains the fixed mapper workflow without secret values", () => {
