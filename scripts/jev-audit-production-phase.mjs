@@ -158,10 +158,11 @@ export function createJevAuditProductionPhase({
     if (!state.inputs) throw new Error("Jev Audit production phase must be prepared before smoke");
     stage("Jev Audit REST smoke");
     state.jevAuditRestSmoke = await runRestSmoke({ token: state.inputs.restSmokeToken });
-    stage("Jev Audit MCP smoke");
+    stage("Jev Audit MCP Service Token smoke");
     state.jevAuditMcpSmoke = await runMcpSmoke({
       endpoint: state.inputs.mcpSmoke.endpoint,
-      accessCookie: state.inputs.mcpSmoke.accessCookie,
+      accessClientId: state.inputs.mcpSmoke.accessClientId,
+      accessClientSecret: state.inputs.mcpSmoke.accessClientSecret,
       checkToolCall: true,
     });
     return metadata();
@@ -216,7 +217,8 @@ export function createJevAuditProductionPhase({
         recoverySmoke: async () => {
           const result = await runMcpSmoke({
             endpoint: state.inputs.mcpSmoke.endpoint,
-            accessCookie: state.inputs.mcpSmoke.accessCookie,
+            accessClientId: state.inputs.mcpSmoke.accessClientId,
+            accessClientSecret: state.inputs.mcpSmoke.accessClientSecret,
             checkToolCall: false,
           });
           return { status: result.status, mode: "non_billable_jev_audit_mcp_handshake" };
