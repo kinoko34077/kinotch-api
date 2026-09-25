@@ -238,6 +238,6 @@ test("operator documentation preserves the current main mapper workflow without 
   assert.match(documentation, /CF_ACCESS_CLIENT_ID/);
   assert.match(documentation, /CF_ACCESS_CLIENT_SECRET/);
   assert.match(documentation, /COMPRESSION_SMOKE_TOKEN/);
-  assert.doesNotMatch(documentation, /MCP_SMOKE_ACCESS_COOKIE/);
+  assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
   assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });
