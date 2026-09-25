@@ -380,6 +380,44 @@ release metadataはdocs/releases/へ保存され、gitRevision、各Worker Versi
 smoke、recoveryを追跡する。失敗時にProductionを成功扱いせず、保存済みVersionへ
 rollbackする。
 
+### 9.1 Production secret mapper
+
+毎回の環境変数入力を避ける場合、Production用operator値を次のrepository外固定ファイルへ
+保存し、mapper経由で既存gateへ渡せる。
+
+~~~text
+%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env
+~~~
+
+mapperが受け付けるkeyは次の5つだけで、未知keyや必須key不足は停止する。
+
+~~~text
+TEAM_DOMAIN=<team-domain>
+POLICY_AUD=<audience-tag>
+MCP_ENDPOINT=https://semantic-compression-mcp.kinotch.workers.dev/mcp
+MCP_SMOKE_ACCESS_COOKIE=<temporary-access-cookie>
+COMPRESSION_SMOKE_TOKEN=<compression-caller-token>
+~~~
+
+MCP確認は:
+
+~~~powershell
+npm run smoke:mcp:local
+~~~
+
+Production releaseは、MCP確認後に:
+
+~~~powershell
+npm run release:local
+~~~
+
+`release:local` はsecret injection用launcherであり、正式なProduction release authorityは
+引き続き `npm run deploy:production` です。mapperは値、file本文、`process.env`全体を
+出力せず、実際のdeploy・smoke・rollback・metadata処理は既存scriptへ委譲します。
+Cloudflare deploy credentialはこの5key fileへ含めず、既存のoperator-managed認証を使用します。
+secret directoryはagentからopaque boundaryとして扱い、agentが直接開いたり内容を要求したり
+しません。
+
 ## 10. 変更時の確認
 
 実装・文書変更後の最低確認:

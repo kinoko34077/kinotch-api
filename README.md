@@ -157,6 +157,28 @@ deploy、readiness、authenticated smoke、release metadata、失敗時rollback�
 詳細は docs/OPERATIONS.md、docs/semantic-compression.md、
 docs/semantic-compression-mcp.md を参照してください。
 
+### Production secret mapper
+
+Production用のoperator値は、repository外の固定ファイル
+`%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` から安全に供給できます。
+mapperが扱うkeyは `TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、
+`MCP_SMOKE_ACCESS_COOKIE`、`COMPRESSION_SMOKE_TOKEN` だけです。未知keyや必須key不足は
+fail-closedで停止し、値はログへ出しません。Cloudflare deploy credentialはこのファイルへ
+追加せず、既存のoperator-managed設定を使用します。
+
+通常の操作は次の2つです。
+
+~~~powershell
+npm run smoke:mcp:local
+npm run release:local
+~~~
+
+`smoke:mcp:local` は既存の `npm run smoke:mcp` を、`release:local` は既存の
+`npm run deploy:production` を起動するlauncherにすぎません。Production deploy authority、
+clean worktree、`main == origin/main`、test、dry-run、smoke、rollback、release metadataの
+既存gateは変更されません。agentはsecret directoryを直接開かず、mapperをopaque boundary
+として扱います。
+
 ## セキュリティと非目的
 
 - Compressionは汎用LLM proxy、chat、agent、任意Prompt APIではありません。

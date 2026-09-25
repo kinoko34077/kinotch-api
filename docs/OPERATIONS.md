@@ -13,6 +13,8 @@ Production deploy authority is only `npm run deploy:production`。このscript�
 - GitHub branch protectionとCloudflare Workers Buildsの接続状態はoperatorがDashboardで管理・確認する。repo内の文書だけで外部設定済みとは扱わない。
 - 通常のText Worker単独deploy scriptは提供しない。adminであっても、検証されていないcommitを`main`へ直接pushしない。
 - `npm run smoke:production` は、明示した `API_BASE_URL`、`TEXT_DIRECT_URL`、`COMPRESSION_DIRECT_URL` をローカル診断用に使用できる。一方、`npm run deploy:production` のrelease smokeはこれらの環境変数を無視し、`https://api.kinotch.workers.dev`、`https://text-transform.kinotch.workers.dev`、`https://semantic-compression.kinotch.workers.dev`へ固定する。別endpointが正常でもrelease成功とは扱わない。
+- Production operator値はrepository外の固定ファイル `%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env` から `scripts/production-secret-mapper.mjs` 経由で供給できる。mapperの許可keyは`TEAM_DOMAIN`、`POLICY_AUD`、`MCP_ENDPOINT`、`MCP_SMOKE_ACCESS_COOKIE`、`COMPRESSION_SMOKE_TOKEN`だけで、未知key・必須key不足・固定path以外の指定はfail closedとする。
+- `npm run smoke:mcp:local` は既存`npm run smoke:mcp`のlauncher、`npm run release:local` は既存`npm run deploy:production`のsecret injection用launcherである。正式なProduction authorityや既存release gateを分割・迂回しない。secret値、file本文、`process.env`全体は出力せず、agentはsecret directoryをopaque boundaryとして直接参照しない。
 
 ## 本番の基本確認
 

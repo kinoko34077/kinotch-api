@@ -14,6 +14,7 @@ Last verified: 2026-09-25 — Node 26 runtime migration verification
 - Detailed usage, operations, and first-parent development history are documented under docs/ and linked from this index
 - Production smoke uses fixed Gateway, Text Worker, and Compression Worker targets; standalone diagnostic smoke keeps local endpoint overrides separate.
 - Production release verifies `main == origin/main`, rebuilds dependencies with `npm ci`, and isolates release-only secrets from build/test child processes.
+- Production operator secrets can be supplied through the fixed external `%USERPROFILE%\\.kinotch-secrets\\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; `smoke:mcp:local` and `release:local` are launchers only, and the formal authority remains `npm run deploy:production`.
 - Worker deploy results are reconciled against remote active versions; rollback verifies the active version and runs non-billable recovery smoke.
 - Remote MCP rate limiting prefers a non-reversible fingerprint of the verified Access subject/email claim and falls back to `CF-Connecting-IP` only when no stable claim exists.
 - Repository runtime is pinned to Node 26.10.0 through `package.json`, `package-lock.json`, `.node-version`, and the project-owned CI workflow.

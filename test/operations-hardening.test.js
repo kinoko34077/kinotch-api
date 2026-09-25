@@ -17,3 +17,11 @@ test("production is the only normal deploy authority", () => {
 test("Text Worker automatic invocation logs remain disabled", () => {
   assert.equal(textWorkerConfig.observability.logs.invocation_logs, false);
 });
+
+test("production secret mapper remains a launcher, not a second release authority", () => {
+  assert.match(operations, /production-secret-mapper\.mjs/);
+  assert.match(operations, /smoke:mcp:local/);
+  assert.match(operations, /release:local/);
+  assert.match(operations, /opaque boundary/);
+  assert.match(operations, /正式なProduction authority/);
+});

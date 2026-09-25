@@ -20,3 +20,16 @@ test("Current State records the Base gate evidence without editing the Base-mana
   assert.doesNotMatch(currentState, /Confirm the repository-local Base gate on GitHub Actions/);
   assert.match(currentState, /GitHub Actions `Verify`: success/);
 });
+
+test("Current State and development history record the production secret mapper boundary", async () => {
+  const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
+  const history = await readFile(new URL("../docs/DEVELOPMENT_HISTORY.md", import.meta.url), "utf8");
+
+  assert.match(currentState, /production-secret-mapper\.mjs/);
+  assert.match(currentState, /smoke:mcp:local/);
+  assert.match(currentState, /release:local/);
+  assert.match(currentState, /opaque boundary/);
+  assert.match(history, /Production secret mapper/i);
+  assert.match(history, /既存release gate/);
+  assert.doesNotMatch(history, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
+});
