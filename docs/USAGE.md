@@ -98,7 +98,7 @@ https://api.kinotch.workers.dev
 ### 4.1 一般route
 
 | Method | Path | 用途 | 主な入力 |
-|---|---|---|
+|---|---|---|---|
 | GET | /health | Gateway health | なし |
 | GET | /v1/time | 時刻中継 | なし |
 | GET | /v1/weather | 天気中継 | lat, lon |
