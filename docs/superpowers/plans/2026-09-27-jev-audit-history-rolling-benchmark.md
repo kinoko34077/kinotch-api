@@ -1,9 +1,9 @@
 # Jev Audit Remote history + rolling benchmark implementation plan
 
-Status: approved for implementation
+Status: repository implementation verified; Production rollout pending
 
 Owning work: `kinotch-api#29`, parent `devflow#63`
-Base: latest accepted `main` (`b02095f63c396bfcfc3aab3d0cd87dc55e2743d2`)
+Base: latest accepted `main` (`7e06351215a26911b8960bacd40bc5ea634098c3`)
 Design: `docs/superpowers/specs/2026-09-26-jev-audit-history-rolling-benchmark-design.md`
 
 ## Goal
@@ -46,7 +46,7 @@ TDD:
 3. Keep public request bodies and external response schemas unchanged.
 ## Task 4 — deployment-config boundary and docs
 
-Repository implementation may prepare code/tests/docs for the `JEV_BENCHMARK_STATE` binding, but must not create/attach a Production KV namespace or deploy it without separate explicit approval.
+Repository implementation may prepare code/tests/docs for the `JEV_AUDIT_BENCHMARK_STATE` binding, but must not create/attach a Production KV namespace or deploy it without separate explicit approval.
 
 Files:
 - update `wrangler.jev-audit.jsonc` only when a real approved namespace id/resource exists; do not commit a fake Production id

@@ -62,7 +62,7 @@ export async function callJevAuditService(env, input, { timeoutMs = 50_000 } = {
   try {
     const response = await service.fetch(new Request("https://jev-audit.internal/v1/audit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Kinotch-Jev-Surface": "remote_mcp" },
       body: JSON.stringify(input),
       ...(controller ? { signal: controller.signal } : {}),
     }));

@@ -1,6 +1,6 @@
 ﻿# Jev Audit Remote lightweight history + rolling benchmark design
 
-Status: **approved 2026-09-27 / implementation in progress**
+Status: **repository-verified 2026-09-27 / Production rollout pending**
 
 Related:
 - `kinotch-api#29`

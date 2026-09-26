@@ -282,6 +282,15 @@ Remote側はfilename/extensionによる完全DLPを保証しない。
 - `TYPESAFE_API_KEY`
 - TypeSafe raw response body
 
+
+### Lightweight Remote history / rolling benchmark
+
+Repository code includes a compact observability path that does not change REST/MCP response schemas. A completed audit projects only aggregate/provenance metadata into a `jev_audit_history` structured event. Provider-backed audits add at most one small synthetic benchmark call from a fixed eight-fixture sequence; results are `100`, `0`, or `null`, with an up-to-10 rolling window whose numeric mean excludes `null`.
+
+The rolling state is designed for one Jev-dedicated `JEV_AUDIT_BENCHMARK_STATE` KV record. Source/diff text, audited paths, auth values, provider raw bodies, and fixture bodies are not persisted in this history/state path. Benchmark/history/state failure does not change the caller audit result.
+
+This feature is currently **repository-verified/pending Production rollout**. The existing Production Jev Audit surface below remains the deployed baseline until a separately approved normal release creates/attaches the real KV namespace and deploys the updated Worker code.
+
 ## 13. Production状態
 
 Jev Audit RemoteはProduction verifiedである。
