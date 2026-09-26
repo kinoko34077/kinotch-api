@@ -11,7 +11,7 @@ Audit base: `3a46902db2ac51d7251cfd79dfb4660f191bc748`
 
 Success means:
 
-1. GitHub-hosted third-party Actions used by this repository are immutable at execution time.
+1. GitHub-hosted repository Actions used by this repository are immutable at execution time.
 2. npm dependency update proposals arrive at a deliberately low frequency rather than requiring manual discovery.
 3. pull requests that actually change `package.json` or `package-lock.json` receive dependency-delta security review.
 4. existing `npm test`, `knt verify`, Worker dry-runs, release logic, and `package-lock.json` remain the behavioral/reproducibility authorities they already are.
@@ -66,7 +66,7 @@ Disadvantages:
 
 Add only three controls with separate responsibilities:
 
-1. immutable external Action references;
+1. immutable GitHub repository Action references;
 2. low-frequency npm Dependabot version-update proposals;
 3. dependency review only on PRs that change dependency manifests/lockfiles.
 
@@ -78,13 +78,15 @@ This approach is selected because it addresses the known reproducibility gap and
 
 ### 4.1 Reproducible GitHub Actions inputs
 
-All external `uses:` references in repository-owned workflows must use a full 40-character commit SHA. A trailing release comment such as `# v4` may remain for human readability, but the SHA is the executable authority.
+All GitHub repository Action references of the form `owner/repository[/path]@ref` in repository-owned workflows must use a full 40-character commit SHA. A trailing release comment such as `# v4` may remain for human readability, but the SHA is the executable authority.
 
 For the current `verify.yml`, use the same checkout commit already used by `ci.yml`:
 
 `actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4`
 
-A focused repository test should reject a future external Action ref that is a branch/tag rather than a full commit SHA. Local actions (`./...`) are outside this rule. The test exists to protect an actual security/reproducibility invariant; it should not become a generic YAML-style checker.
+A focused repository test should reject a future GitHub repository Action ref that uses a branch/tag rather than a full commit SHA. Local actions (`./...`) are outside this rule. Container actions such as `docker://...` are also outside this specific invariant; none exists in the current workflows, and introducing one would require a separate digest/reproducibility policy decision rather than being accidentally rejected as though it were a GitHub repository Action.
+
+The test exists to protect an actual security/reproducibility invariant; it should not become a generic YAML-style checker.
 
 When a pinned Action is intentionally upgraded later, the upgrade PR must identify the upstream version/ref used to resolve the new SHA and rely on normal repository CI before merge.
 
@@ -182,7 +184,7 @@ Verification is proportional and layered.
 
 ### Reproducibility policy
 
-Use a focused RED/GREEN regression test for immutable external Action refs:
+Use a focused RED/GREEN regression test for immutable GitHub repository Action refs:
 
 1. RED against the current mutable `verify.yml` ref;
 2. pin it to the exact accepted SHA;
@@ -245,8 +247,8 @@ Repository file changes implementing this design remain normal reversible PR wor
 
 The implementation is complete when:
 
-- all repository-owned external GitHub Action references are immutable full SHAs;
-- a focused regression prevents accidental return to mutable external Action refs;
+- all repository-owned GitHub repository Action references are immutable full SHAs;
+- a focused regression prevents accidental return to mutable GitHub repository Action refs;
 - npm Dependabot version-update configuration is present with a low-noise monthly policy;
 - dependency review is configured only for dependency-file PR changes and uses an immutable Action SHA;
 - existing CI/test/verify behavior remains green;
