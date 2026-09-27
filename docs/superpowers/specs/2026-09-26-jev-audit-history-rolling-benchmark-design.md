@@ -137,7 +137,7 @@ Exact fixture definitions may be implemented separately in JavaScript but their 
 
 ### R-RBENCH-002 — one fixture per provider-backed audit
 
-After a real Remote audit completes through TypeSafe, run at most one additional small benchmark provider call.
+After a real Remote audit completes through TypeSafe, run at most one additional small benchmark provider call. The default runtime sample rate is `1`, preserving one benchmark attempt per provider-backed audit. `JEV_AUDIT_BENCHMARK_SAMPLE_RATE=0` is the kill switch; values strictly between `0` and `1` sample provider-backed audits without advancing rolling state for skipped audits. Invalid values fail safe by skipping the extra provider call.
 
 Do not execute the full benchmark suite per request.
 

@@ -90,3 +90,10 @@ test("jev-audit history benchmark docs record deployed Production verification",
   assert.doesNotMatch(docs.guide, /formal release[^\n]*Production[^\n]*deploy/i);
   assert.doesNotMatch(docs.jev, /次回[^\n]*release[^\n]*Production/);
 });
+
+test("jev-audit benchmark docs expose the bounded runtime sample-rate control", async () => {
+  const docs = await loadDocumentation();
+  assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_SAMPLE_RATE`/);
+  assert.match(docs.jev, /`0`[^\n]*(disable|kill switch)/i);
+  assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_SAMPLE_RATE`/);
+});
