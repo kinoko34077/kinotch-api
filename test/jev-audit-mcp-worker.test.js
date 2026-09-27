@@ -215,3 +215,29 @@ test("jev-audit MCP actor rate limit runs before Service Binding", async () => {
   assert.equal(payload.result.content[0].text, "rate_limited");
   assert.deepEqual(events, [{ type: "rate", key: `jev-audit-mcp:actor:${"a".repeat(64)}` }]);
 });
+
+test("jev-audit MCP rate limit falls back to Cloudflare client IP without actor claims", async () => {
+  let rateKey;
+  const worker = createJevAuditMcpWorker({ verifyAccessJwtImpl: async () => ({ ok: true }) });
+  const env = {
+    JEV_AUDIT_MCP_RATE_LIMITER: {
+      limit(input) { rateKey = input.key; return Promise.resolve({ success: true }); },
+    },
+    JEV_AUDIT: {
+      fetch: async () => new Response(JSON.stringify(auditReport()), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    },
+  };
+  const response = await worker.fetch(mcpRequest({
+    jsonrpc: "2.0",
+    id: 7,
+    method: "tools/call",
+    params: { name: "audit_files", arguments: { files: [{ path: "a.py", content: "x" }] } },
+  }, { "CF-Connecting-IP": "198.51.100.7" }), env, {});
+  const payload = await responseJson(response);
+
+  assert.equal(payload.result.isError, undefined);
+  assert.equal(rateKey, "jev-audit-mcp:198.51.100.7");
+});
