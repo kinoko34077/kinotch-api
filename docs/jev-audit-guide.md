@@ -289,7 +289,7 @@ Repository code includes a compact observability path that does not change REST/
 
 The rolling state is designed for one Jev-dedicated `JEV_AUDIT_BENCHMARK_STATE` KV record. Source/diff text, audited paths, auth values, provider raw bodies, and fixture bodies are not persisted in this history/state path. Benchmark/history/state failure does not change the caller audit result.
 
-This feature is currently **repository-verified/pending Production rollout**. The existing Production Jev Audit surface below remains the deployed baseline until a separately approved normal release creates/attaches the real KV namespace and deploys the updated Worker code.
+This feature is currently **repository-verified/pending Production rollout**. The dedicated Production KV namespace has been created and the private Worker config now binds it as `JEV_AUDIT_BENCHMARK_STATE`; the existing Production Jev Audit surface below remains the deployed baseline until the authorized normal release deploys the updated Worker code.
 
 ## 13. Production状態
 

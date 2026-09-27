@@ -123,7 +123,7 @@ REST and Remote MCP stamp the internal Service Binding request with a trusted su
 
 Rolling Remote state uses one logical KV record through the private Worker binding `JEV_AUDIT_BENCHMARK_STATE`, containing only the next fixture index and up to 10 recent `100` / `0` / `null` observations. The repository implementation degrades safely when this binding is absent or unavailable.
 
-**This repository implementation is not yet Production evidence.** `wrangler.jev-audit.jsonc` intentionally receives no fake namespace id. Creating/attaching the real Production KV namespace and deploying the updated Workers remain a separately confirmed normal release operation.
+**This repository implementation is not yet deployed Production evidence.** The dedicated Production KV namespace has now been created and `wrangler.jev-audit.jsonc` binds it as `JEV_AUDIT_BENCHMARK_STATE`; the normal Production release/deploy remains pending. The binding contains no credential or audited payload data.
 
 ## 7. One-time production bootstrap
 

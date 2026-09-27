@@ -74,11 +74,12 @@ test("jev-audit documentation records production verification and Service Token 
   assert.match(docs.readme, /Jev Audit[^\n]*(Production verified|production verified)/i);
 });
 
-test("jev-audit history benchmark docs preserve the repository-only Production boundary", async () => {
+test("jev-audit history benchmark docs record the created Production KV binding while release remains pending", async () => {
   const docs = await loadDocumentation();
   assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_STATE`/);
-  assert.match(docs.jev, /not yet Production evidence/i);
+  assert.match(docs.jev, /not yet deployed Production evidence/i);
   assert.match(docs.guide, /repository-verified\/pending Production rollout/i);
   assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_STATE`/);
-  assert.match(docs.currentState, /No real Production KV namespace\/binding has been created or attached/i);
+  assert.match(docs.currentState, /Production KV namespace[^\n]*created[^\n]*binding[^\n]*configured/i);
+  assert.match(docs.currentState, /Production release[^\n]*pending/i);
 });
