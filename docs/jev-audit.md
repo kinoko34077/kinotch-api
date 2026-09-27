@@ -123,7 +123,7 @@ REST and Remote MCP stamp the internal Service Binding request with a trusted su
 
 Rolling Remote state uses one logical KV record through the private Worker binding `JEV_AUDIT_BENCHMARK_STATE`, containing only the next fixture index and up to 10 recent `100` / `0` / `null` observations. The repository implementation degrades safely when this binding is absent or unavailable.
 
-**This repository implementation is not yet deployed Production evidence.** The dedicated Production KV namespace has now been created and `wrangler.jev-audit.jsonc` binds it as `JEV_AUDIT_BENCHMARK_STATE`; the normal Production release/deploy remains pending. The binding contains no credential or audited payload data.
+**Lightweight history + rolling benchmark is Production verified.** Formal `npm run release:local` from source revision `5beea99251dec97c1434fc6419be99c4feac5fd3` completed successfully on 2026-09-27 with the dedicated `JEV_AUDIT_BENCHMARK_STATE` KV binding deployed. Live REST and authenticated Remote MCP `audit_files` checks both returned HTTP 200 through the pinned `jev-1.13.0` / semantics `0.2.12` contract. Production tail observation recorded allowlisted `jev_audit_history` events for both `rest` and `remote_mcp`; successive benchmark windows advanced from `[100, 100]` to `[100, 100, 100]`, confirming KV state continuity across requests and surfaces. Release evidence is recorded in `docs/releases/20260927T083120814Z.json` and `docs/releases/jev-audit-20260927T083122160Z.json`.
 
 ## 7. One-time production bootstrap
 
@@ -202,6 +202,6 @@ Jev Audit Remoteは **Production verified** である。
 - `docs/releases/20260925T144351192Z.json`
 - `docs/releases/jev-audit-20260925T144353075Z.json`
 
-production releaseで使ったJev version IDsはprivate `aedb81fd-58ef-4296-93bb-a538511bdbcb`、MCP `cd45c6cc-aaf1-453a-831c-d4ff83a16339`。release後のrepository-only hardeningは次回の正式releaseまではProductionへ反映された証拠として扱わない。
+2026-09-25 production releaseで使ったJev version IDsはprivate `aedb81fd-58ef-4296-93bb-a538511bdbcb`、MCP `cd45c6cc-aaf1-453a-831c-d4ff83a16339`。その後のrepository hardeningは2026-09-27 formal release source `5beea99251dec97c1434fc6419be99c4feac5fd3`に含まれ、現在はProductionへ反映済みである。
 
-post-release監査では、MCP/RESTのUnicode path length契約統一、provider model driftのfail-closed、Service Token full smokeでの`list_profiles`実call追加、未使用Wrangler var除去をrepository側で追加した。これらはunit/regression/CI/Verifyで検証し、次回通常releaseからProductionへ適用する。
+post-release監査で追加したMCP/RESTのUnicode path length契約統一、provider model driftのfail-closed、Service Token full smokeでの`list_profiles`実call、未使用Wrangler var除去はunit/regression/CI/Verifyを通過し、2026-09-27 formal releaseでProduction適用まで完了した。

@@ -74,12 +74,19 @@ test("jev-audit documentation records production verification and Service Token 
   assert.match(docs.readme, /Jev Audit[^\n]*(Production verified|production verified)/i);
 });
 
-test("jev-audit history benchmark docs record the created Production KV binding while release remains pending", async () => {
+test("jev-audit history benchmark docs record deployed Production verification", async () => {
   const docs = await loadDocumentation();
   assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_STATE`/);
-  assert.match(docs.jev, /not yet deployed Production evidence/i);
-  assert.match(docs.guide, /repository-verified\/pending Production rollout/i);
+  assert.match(docs.jev, /history \+ rolling benchmark[^\n]*Production verified/i);
+  assert.match(docs.guide, /history \+ rolling benchmark[^\n]*Production verified/i);
   assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_STATE`/);
-  assert.match(docs.currentState, /Production KV namespace[^\n]*created[^\n]*binding[^\n]*configured/i);
-  assert.match(docs.currentState, /Production release[^\n]*pending/i);
+  assert.match(docs.currentState, /20260927T083120814Z\.json/);
+  assert.match(docs.currentState, /jev-audit-20260927T083122160Z\.json/);
+  assert.match(docs.currentState, /structured history[^\n]*(rest|REST)[^\n]*(remote_mcp|MCP)/i);
+  assert.doesNotMatch(docs.currentState, /Production release[^\n]*pending/i);
+  assert.doesNotMatch(docs.currentState, /post-release repository hardening[^\n]*not Production evidence/i);
+  assert.doesNotMatch(docs.currentState, /Carry the post-release Jev hardening into Production/i);
+  assert.doesNotMatch(docs.currentState, /create and attach the single Jev benchmark KV namespace/i);
+  assert.doesNotMatch(docs.guide, /formal release[^\n]*Production[^\n]*deploy/i);
+  assert.doesNotMatch(docs.jev, /次回[^\n]*release[^\n]*Production/);
 });

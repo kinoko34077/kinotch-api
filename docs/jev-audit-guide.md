@@ -289,7 +289,7 @@ Repository code includes a compact observability path that does not change REST/
 
 The rolling state is designed for one Jev-dedicated `JEV_AUDIT_BENCHMARK_STATE` KV record. Source/diff text, audited paths, auth values, provider raw bodies, and fixture bodies are not persisted in this history/state path. Benchmark/history/state failure does not change the caller audit result.
 
-This feature is currently **repository-verified/pending Production rollout**. The dedicated Production KV namespace has been created and the private Worker config now binds it as `JEV_AUDIT_BENCHMARK_STATE`; the existing Production Jev Audit surface below remains the deployed baseline until the authorized normal release deploys the updated Worker code.
+Lightweight Remote history + rolling benchmark is **Production verified**. Formal release from source revision `5beea99251dec97c1434fc6419be99c4feac5fd3` deployed the dedicated `JEV_AUDIT_BENCHMARK_STATE` binding. Live REST and authenticated Remote MCP `audit_files` both passed; structured `jev_audit_history` events were observed for `rest` and `remote_mcp`, and the rolling benchmark window advanced across those requests, confirming Production KV read/write continuity.
 
 ## 13. Production状態
 
@@ -310,8 +310,10 @@ Production evidence:
 
 - `docs/releases/20260925T144351192Z.json`
 - `docs/releases/jev-audit-20260925T144353075Z.json`
+- `docs/releases/20260925T171244986Z.json` / `docs/releases/jev-audit-20260925T171248483Z.json` — preserved prior successful release evidence
+- `docs/releases/20260927T083120814Z.json` / `docs/releases/jev-audit-20260927T083122160Z.json` — current history/rolling-benchmark Production release evidence
 
-release後にrepositoryへ追加されたhardening（Unicode path契約統一、model drift rejection、`list_profiles` actual smoke等）はCI/Verify済みだが、次回の明示承認されたformal releaseまでは「Productionへdeploy済み」とは扱わない。
+Unicode path契約統一、model drift rejection、`list_profiles` actual smoke等のJev hardeningも、2026-09-27のformal release source `5beea99251dec97c1434fc6419be99c4feac5fd3`に含まれてProductionへ反映済みである。
 
 ## 14. よく使う選択例
 
