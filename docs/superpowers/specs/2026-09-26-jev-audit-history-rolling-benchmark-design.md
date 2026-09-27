@@ -1,12 +1,12 @@
-﻿# Jev Audit Remote lightweight history + rolling benchmark design
+# Jev Audit Remote lightweight history + rolling benchmark design
 
-Status: **repository-verified 2026-09-27 / Production rollout pending**
+Status: **repository-verified and Production-verified 2026-09-27**
 
 Related:
 - `kinotch-api#29`
 - `devflow#63`
 - `devflow#64`
-- `devflow#65`窶伝#70`
+- `devflow#65`–`#70`
 
 Audit base: `3a46902db2ac51d7251cfd79dfb4660f191bc748`
 
@@ -26,7 +26,7 @@ The feature is not a dashboard, analytics warehouse, experiment platform, billin
 
 ## 2. Required behavior
 
-### R-RHIST-001 窶・one compact structured history event per completed audit
+### R-RHIST-001 — one compact structured history event per completed audit
 
 Each completed Jev Audit Remote invocation produces one structured chronological history event.
 
@@ -37,13 +37,13 @@ Surfaces:
 
 The event is emitted through the existing Cloudflare observability/logging path. No D1/general history database is introduced.
 
-### R-RHIST-002 窶・external response contracts stay unchanged
+### R-RHIST-002 — external response contracts stay unchanged
 
 REST `/v1/audit` and MCP `audit_files` continue returning their existing Audit Report contracts.
 
 History and benchmark data are side-channel observability. Do not add the rolling history to normal caller responses solely for this feature.
 
-### R-RHIST-003 窶・private worker owns shared Remote observability semantics
+### R-RHIST-003 — private worker owns shared Remote observability semantics
 
 The private `jev-audit` Worker remains the shared evaluator and should own benchmark execution/history projection so REST and MCP do not duplicate logic.
 
@@ -51,7 +51,7 @@ Public Gateway and MCP layers provide an internal trusted surface hint (`rest` o
 
 The private Worker emits the normalized structured history event after it has a completed Audit Report and benchmark observation.
 
-### R-RHIST-004 窶・no audited content in history
+### R-RHIST-004 — no audited content in history
 
 History events must not contain:
 
@@ -118,7 +118,7 @@ Representative structured event payload:
 
 ## 4. Benchmark contract
 
-### R-RBENCH-001 窶・same fixed synthetic semantics as Local
+### R-RBENCH-001 — same fixed synthetic semantics as Local
 
 Remote uses the same conceptual eight fixed synthetic cases as Local Jev Audit:
 
@@ -135,7 +135,7 @@ Fixtures are small, hand-authored, repository-independent and never copied from 
 
 Exact fixture definitions may be implemented separately in JavaScript but their IDs and expected-outcome semantics must remain aligned with Local documentation/tests.
 
-### R-RBENCH-002 窶・one fixture per provider-backed audit
+### R-RBENCH-002 — one fixture per provider-backed audit
 
 After a real Remote audit completes through TypeSafe, run at most one additional small benchmark provider call.
 
@@ -143,7 +143,7 @@ Do not execute the full benchmark suite per request.
 
 Remote v1 currently performs provider-backed audits for valid non-empty snapshot requests, so benchmark execution is normally expected on successful provider-backed requests. If a future no-provider/no-op path exists, it must not create a benchmark provider call merely for history.
 
-### R-RBENCH-003 窶・pinned model / fixed benchmark contract
+### R-RBENCH-003 — pinned model / fixed benchmark contract
 
 Remote benchmark uses:
 
@@ -152,7 +152,7 @@ Remote benchmark uses:
 
 Caller profile changes must not redefine expected benchmark outcomes.
 
-### R-RBENCH-004 窶・scoring
+### R-RBENCH-004 — scoring
 
 - expected outcome satisfied: `100`;
 - expected outcome mismatch: `0`;
@@ -160,7 +160,7 @@ Caller profile changes must not redefine expected benchmark outcomes.
 
 No weighted or calendar score is introduced.
 
-### R-RBENCH-005 窶・rolling window
+### R-RBENCH-005 — rolling window
 
 Each history event embeds the most recent **up to 10 benchmark observations**, including the current attempted observation.
 
