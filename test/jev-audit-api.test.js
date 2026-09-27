@@ -11,11 +11,12 @@ function allowRateLimiter() {
   return { limit() { return Promise.resolve({ success: true }); } };
 }
 
-function requestInit(body, token = TOKEN) {
+function requestInit(body, token = TOKEN, extraHeaders = {}) {
   return {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...extraHeaders,
       ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
     },
     body: JSON.stringify(body),
@@ -124,7 +125,26 @@ test("jev-audit REST forwards only JSON audit data to the private binding", asyn
   assert.equal(upstreamRequest.method, "POST");
   assert.equal(upstreamRequest.headers.get("authorization"), null);
   assert.equal(upstreamRequest.headers.get("content-type"), "application/json");
+  assert.equal(upstreamRequest.headers.get("x-kinotch-jev-surface"), "rest");
   assert.deepEqual(await upstreamRequest.json(), validBody);
+});
+
+test("jev-audit REST ignores caller surface spoofing and stamps trusted rest surface", async () => {
+  let upstreamSurface;
+  const response = await app.request(
+    "https://api.test/v1/audit",
+    requestInit(validBody, TOKEN, { "X-Kinotch-Jev-Surface": "remote_mcp" }),
+    env({
+      JEV_AUDIT: {
+        async fetch(request) {
+          upstreamSurface = request.headers.get("x-kinotch-jev-surface");
+          return auditResponse({ ok: true });
+        },
+      },
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(upstreamSurface, "rest");
 });
 
 test("jev-audit REST fails closed when its authentication secret is absent", async () => {

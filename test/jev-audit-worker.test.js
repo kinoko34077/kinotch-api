@@ -34,8 +34,15 @@ const successReport = {
   },
 };
 
+function testApp(overrides = {}) {
+  return createJevAuditWorkerApp({
+    recordRemoteAuditImpl: async () => null,
+    ...overrides,
+  });
+}
+
 test("private audit Worker accepts only POST /v1/audit", async () => {
-  const app = createJevAuditWorkerApp({ evaluateAuditImpl: async () => successReport });
+  const app = testApp({ evaluateAuditImpl: async () => successReport });
   const env = { TYPESAFE_API_KEY: "fixture-key" };
 
   assert.equal((await app.request("https://internal.test/v1/audit", { method: "GET" }, env)).status, 405);
@@ -44,7 +51,7 @@ test("private audit Worker accepts only POST /v1/audit", async () => {
 
 test("private audit Worker rejects malformed and invalid input before evaluation", async () => {
   let calls = 0;
-  const app = createJevAuditWorkerApp({
+  const app = testApp({
     evaluateAuditImpl: async () => { calls += 1; return successReport; },
   });
   const env = { TYPESAFE_API_KEY: "fixture-key" };
@@ -64,7 +71,7 @@ test("private audit Worker rejects malformed and invalid input before evaluation
 
 test("private audit Worker fails closed when TypeSafe secret is absent", async () => {
   let calls = 0;
-  const app = createJevAuditWorkerApp({
+  const app = testApp({
     evaluateAuditImpl: async () => { calls += 1; return successReport; },
   });
   const response = await app.request("https://internal.test/v1/audit", request(validBody), {});
@@ -76,7 +83,7 @@ test("private audit Worker fails closed when TypeSafe secret is absent", async (
 });
 
 test("private audit Worker maps stable audit errors without leaking internal messages", async () => {
-  const app = createJevAuditWorkerApp({
+  const app = testApp({
     evaluateAuditImpl: async () => {
       throw new AuditRemoteError("provider_rate_limit", 503, "upstream secret body");
     },
@@ -95,7 +102,7 @@ test("private audit Worker maps stable audit errors without leaking internal mes
 });
 
 test("private audit Worker redacts unexpected exceptions", async () => {
-  const app = createJevAuditWorkerApp({
+  const app = testApp({
     evaluateAuditImpl: async () => { throw new Error("sensitive stack detail"); },
   });
   const response = await app.request(
@@ -112,7 +119,7 @@ test("private audit Worker redacts unexpected exceptions", async () => {
 
 test("private audit Worker returns audit JSON and echoes safe request ID", async () => {
   let received;
-  const app = createJevAuditWorkerApp({
+  const app = testApp({
     evaluateAuditImpl: async (env, body) => { received = { env, body }; return successReport; },
   });
   const response = await app.request(
@@ -128,4 +135,39 @@ test("private audit Worker returns audit JSON and echoes safe request ID", async
   assert.equal(payload.provenance.audit_semantics_version, "0.2.12");
   assert.deepEqual(received.body, validBody);
   assert.equal(received.env.TYPESAFE_API_KEY, "fixture-key");
+});
+
+test("private audit Worker records completed audit with trusted surface without changing response", async () => {
+  const observations = [];
+  const app = testApp({
+    evaluateAuditImpl: async () => successReport,
+    recordRemoteAuditImpl: async (input) => { observations.push(input); },
+  });
+  const response = await app.request(
+    "https://internal.test/v1/audit",
+    request(validBody, { "X-Kinotch-Jev-Surface": "rest" }),
+    { TYPESAFE_API_KEY: "fixture-key" },
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload, successReport);
+  assert.equal(observations.length, 1);
+  assert.equal(observations[0].surface, "rest");
+  assert.deepEqual(observations[0].report, successReport);
+  assert.ok(observations[0].elapsedMs >= 0);
+});
+
+test("observability failure never changes successful audit response", async () => {
+  const app = testApp({
+    evaluateAuditImpl: async () => successReport,
+    recordRemoteAuditImpl: async () => { throw new Error("history secret body"); },
+  });
+  const response = await app.request(
+    "https://internal.test/v1/audit",
+    request(validBody, { "X-Kinotch-Jev-Surface": "remote_mcp" }),
+    { TYPESAFE_API_KEY: "fixture-key" },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), successReport);
 });

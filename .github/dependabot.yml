@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      mcp-peer-coupled:
+        applies-to: version-updates
+        patterns:
+          - "agents"
+          - "@modelcontextprotocol/server"
+        update-types:
+          - "minor"
+          - "patch"
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "agents"
+          - "@modelcontextprotocol/server"
+        update-types:
+          - "minor"
+          - "patch"

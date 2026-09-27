@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const files = Object.freeze({
   jev: new URL("../docs/jev-audit.md", import.meta.url),
+  guide: new URL("../docs/jev-audit-guide.md", import.meta.url),
   readme: new URL("../README.md", import.meta.url),
   usage: new URL("../docs/USAGE.md", import.meta.url),
   operations: new URL("../docs/OPERATIONS.md", import.meta.url),
@@ -71,4 +72,37 @@ test("jev-audit documentation records production verification and Service Token 
   assert.match(docs.changelog, /Jev Audit Remote/i);
   assert.match(docs.readme, /docs\/jev-audit\.md/);
   assert.match(docs.readme, /Jev Audit[^\n]*(Production verified|production verified)/i);
+});
+
+test("jev-audit history benchmark docs record deployed Production verification", async () => {
+  const docs = await loadDocumentation();
+  assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_STATE`/);
+  assert.match(docs.jev, /history \+ rolling benchmark[^\n]*Production verified/i);
+  assert.match(docs.guide, /history \+ rolling benchmark[^\n]*Production verified/i);
+  assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_STATE`/);
+  assert.match(docs.currentState, /20260927T083120814Z\.json/);
+  assert.match(docs.currentState, /jev-audit-20260927T083122160Z\.json/);
+  assert.match(docs.currentState, /structured history[^\n]*(rest|REST)[^\n]*(remote_mcp|MCP)/i);
+  assert.doesNotMatch(docs.currentState, /Production release[^\n]*pending/i);
+  assert.doesNotMatch(docs.currentState, /post-release repository hardening[^\n]*not Production evidence/i);
+  assert.doesNotMatch(docs.currentState, /Carry the post-release Jev hardening into Production/i);
+  assert.doesNotMatch(docs.currentState, /create and attach the single Jev benchmark KV namespace/i);
+  assert.doesNotMatch(docs.guide, /formal release[^\n]*Production[^\n]*deploy/i);
+  assert.doesNotMatch(docs.jev, /次回[^\n]*release[^\n]*Production/);
+});
+
+test("jev-audit benchmark docs expose the bounded runtime sample-rate control", async () => {
+  const docs = await loadDocumentation();
+  assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_SAMPLE_RATE`/);
+  assert.match(docs.jev, /`0`[^\n]*(disable|kill switch)/i);
+  assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_SAMPLE_RATE`/);
+});
+
+test("jev-audit docs define the bounded benchmark sample-rate control", async () => {
+  const docs = await loadDocumentation();
+  const combined = `${docs.jev}\n${docs.guide}\n${docs.currentState}`;
+  assert.match(combined, /JEV_AUDIT_BENCHMARK_SAMPLE_RATE/);
+  assert.match(combined, /default[^\n]*1|unset[^\n]*1/i);
+  assert.match(combined, /0[^\n]*(disable|disables)/i);
+  assert.match(combined, /benchmark_config_error/);
 });

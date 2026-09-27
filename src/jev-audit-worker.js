@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { validateAuditInput } from "./jev-audit/contract.js";
 import { AuditRemoteError, evaluateAudit } from "./jev-audit/evaluator.js";
+import { recordRemoteAudit } from "./jev-audit/observability.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 
 function errorResponse(c, status, code, message) {
@@ -12,7 +13,19 @@ function errorResponse(c, status, code, message) {
   }, status);
 }
 
-export function createJevAuditWorkerApp({ evaluateAuditImpl = evaluateAudit } = {}) {
+async function scheduleObservability(c, task) {
+  try {
+    c.executionCtx.waitUntil(task);
+    return;
+  } catch {
+    await task;
+  }
+}
+
+export function createJevAuditWorkerApp({
+  evaluateAuditImpl = evaluateAudit,
+  recordRemoteAuditImpl = recordRemoteAudit,
+} = {}) {
   const app = new Hono();
 
   app.use("*", requestIdMiddleware());
@@ -58,8 +71,18 @@ export function createJevAuditWorkerApp({ evaluateAuditImpl = evaluateAudit } = 
       );
     }
 
+    const started = performance.now();
     try {
       const report = await evaluateAuditImpl(c.env, body);
+      const elapsedMs = performance.now() - started;
+      const surfaceHeader = c.req.header("X-Kinotch-Jev-Surface");
+      const surface = surfaceHeader === "rest" || surfaceHeader === "remote_mcp"
+        ? surfaceHeader
+        : "unknown";
+      const task = Promise.resolve()
+        .then(() => recordRemoteAuditImpl({ env: c.env, report, surface, elapsedMs }))
+        .catch(() => null);
+      await scheduleObservability(c, task);
       return c.json(report, 200);
     } catch (error) {
       if (error instanceof AuditRemoteError) {

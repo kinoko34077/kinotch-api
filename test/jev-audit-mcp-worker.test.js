@@ -103,6 +103,7 @@ test("jev-audit MCP exposes only audit_files and list_profiles", async () => {
       async fetch(request) {
         upstreamCalls.push({
           authorization: request.headers.get("authorization"),
+          surface: request.headers.get("x-kinotch-jev-surface"),
           body: await request.json(),
         });
         return new Response(JSON.stringify(auditReport()), {
@@ -149,6 +150,7 @@ test("jev-audit MCP exposes only audit_files and list_profiles", async () => {
   assert.equal(auditPayload.result.structuredContent.aggregate.overall.status, "clear");
   assert.equal(upstreamCalls.length, 1);
   assert.equal(upstreamCalls[0].authorization, null);
+  assert.equal(upstreamCalls[0].surface, "remote_mcp");
   assert.deepEqual(upstreamCalls[0].body, {
     files: [{ path: "src/app.py", content: "print(1)" }],
     profile: "development",

@@ -314,7 +314,7 @@ function mapProviderStatus(status) {
   return ["provider_error", 502];
 }
 
-async function callSystemOne({ apiKey, state, questions, fetchImpl, timeoutMs }) {
+export async function callSystemOne({ apiKey, state, questions, fetchImpl, timeoutMs }) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timer = controller && timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
   const started = performance.now();

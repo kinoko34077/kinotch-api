@@ -6,6 +6,15 @@
   "workers_dev": false,
   "preview_urls": false,
   "compatibility_date": "2026-09-07",
+  "vars": {
+    "JEV_AUDIT_BENCHMARK_SAMPLE_RATE": "1"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "JEV_AUDIT_BENCHMARK_STATE",
+      "id": "3c60e777f1aa4721aa83e7376a67bd4d"
+    }
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
