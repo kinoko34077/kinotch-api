@@ -2,7 +2,7 @@
 
 Date: 2026-09-26
 Repository: `kinoko34077/kinotch-api`
-Status: design review
+Status: implemented and repository-verified 2026-09-27
 Owning Issue: `#34`
 Audit base: `3a46902db2ac51d7251cfd79dfb4660f191bc748`
 
@@ -44,6 +44,8 @@ Policy:
 - cadence: `weekly`
 - keep the open Dependabot version-update PR limit small; initial target: `3`
 - group compatible minor/patch version updates where GitHub supports grouping
+- isolate the peer-coupled `agents` and `@modelcontextprotocol/server` packages in their own group so an incompatible MCP-server update cannot block unrelated routine updates
+- exclude that peer-coupled pair from the blanket minor/patch group
 - keep major-version updates distinct rather than silently grouping them with routine minor/patch maintenance
 - do not configure deployment, release, auto-merge, credentials, or private registries
 

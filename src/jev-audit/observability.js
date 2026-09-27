@@ -8,6 +8,16 @@ import {
   ROLLING_WINDOW,
 } from "./history.js";
 
+function benchmarkSamplingDecision(env, random) {
+  const raw = env?.JEV_AUDIT_BENCHMARK_SAMPLE_RATE;
+  if (raw === undefined || raw === null || raw === "") return { run: true, error: null };
+  const rate = Number(raw);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1) return { run: false, error: "benchmark_config_error" };
+  if (rate === 0) return { run: false, error: null };
+  if (rate === 1) return { run: true, error: null };
+  return { run: random() < rate, error: null };
+}
+
 export async function recordRemoteAudit({
   env,
   report,
@@ -17,6 +27,7 @@ export async function recordRemoteAudit({
   logImpl = console.log,
   fetchImpl = fetch,
   timestamp,
+  random = Math.random,
 } = {}) {
   let state = normalizeBenchmarkState(null);
   let stateReadError = null;
@@ -26,11 +37,12 @@ export async function recordRemoteAudit({
     stateReadError = "state_read_error";
   }
 
-  let observation = { fixture_id: null, score: null, error: null };
+  const sampling = benchmarkSamplingDecision(env, random);
+  let observation = { fixture_id: null, score: null, error: sampling.error };
   let recentScores = [...state.recent_scores];
   let stateWriteError = null;
 
-  if (Number(report?.batches ?? 0) > 0) {
+  if (Number(report?.batches ?? 0) > 0 && sampling.run) {
     try {
       observation = await benchmarkRunner(state.next_fixture_index, {
         apiKey: typeof env?.TYPESAFE_API_KEY === "string" ? env.TYPESAFE_API_KEY.trim() : "",

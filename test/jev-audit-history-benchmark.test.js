@@ -227,3 +227,47 @@ test("non-provider-backed remote audit logs history without benchmark call or st
   assert.deepEqual(event.benchmark.recent_scores, [100, 0]);
   assert.equal(events.length, 1);
 });
+
+test("remote benchmark sample rate zero disables the extra provider call without changing audit history", async () => {
+  let benchmarkCalls = 0;
+  let writes = 0;
+  const event = await recordRemoteAudit({
+    env: {
+      JEV_AUDIT_BENCHMARK_SAMPLE_RATE: "0",
+      JEV_AUDIT_BENCHMARK_STATE: {
+        async get() { return { schema_version: 1, next_fixture_index: 3, recent_scores: [100, 0] }; },
+        async put() { writes += 1; },
+      },
+    },
+    report: report(),
+    surface: "rest",
+    elapsedMs: 7,
+    benchmarkRunner: async () => { benchmarkCalls += 1; return { fixture_id: "x", score: 100, error: null }; },
+    logImpl: () => {},
+  });
+  assert.equal(benchmarkCalls, 0);
+  assert.equal(writes, 0);
+  assert.equal(event.benchmark.fixture_id, null);
+  assert.deepEqual(event.benchmark.recent_scores, [100, 0]);
+});
+
+test("remote benchmark sampling is deterministic with injected random and fails safe on invalid config", async () => {
+  let calls = 0;
+  const env = { JEV_AUDIT_BENCHMARK_SAMPLE_RATE: "0.25" };
+  await recordRemoteAudit({ env, report: report(), surface: "rest", elapsedMs: 1,
+    benchmarkRunner: async () => { calls += 1; return { fixture_id: "clear-code", score: 100, error: null }; },
+    random: () => 0.1, logImpl: () => {} });
+  await recordRemoteAudit({ env, report: report(), surface: "rest", elapsedMs: 1,
+    benchmarkRunner: async () => { calls += 1; return { fixture_id: "clear-code", score: 100, error: null }; },
+    random: () => 0.9, logImpl: () => {} });
+  assert.equal(calls, 1);
+
+  const invalid = await recordRemoteAudit({
+    env: { JEV_AUDIT_BENCHMARK_SAMPLE_RATE: "not-a-number" },
+    report: report(), surface: "rest", elapsedMs: 1,
+    benchmarkRunner: async () => { throw new Error("must not run"); },
+    logImpl: () => {},
+  });
+  assert.equal(invalid.benchmark.fixture_id, null);
+  assert.equal(invalid.benchmark.error, "benchmark_config_error");
+});
