@@ -350,7 +350,9 @@ CF-Access-Client-Secret
 
 KiNoTch. ProductionではService Token経路自体はrelease smokeで検証済みである。
 
-Codex固有の `http_headers_helper` を用いたmachine-local Service Auth E2Eは、repository実装完了後の実機確認としてIssue #9で追跡する。
+Codex Service Authのrepository実装も完了している。既定ではrelease smokeで使用する既存 `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` を、machine-local `http_headers_helper` が固定の外部secret fileから読み出して再利用する。独立した失効・rotationが必要になった場合だけ、完全な `CODEX_CF_ACCESS_CLIENT_ID` / `CODEX_CF_ACCESS_CLIENT_SECRET` pairを任意overrideとして使用できる。partial/empty overrideはfail closedとする。
+
+machine-local設定には `npm run setup:codex-mcp-service-auth` を使用できる。このsetupは `~/.codex/config.toml` へsecret literalを書かず、`semantic_compressor` のhelper設定だけを更新する。実Codex上での `codex mcp list` とService Auth `compress_text` E2EはIssue #9で追跡中であり、REST/MCP Production本体の利用可否をblockしない。
 
 ---
 
