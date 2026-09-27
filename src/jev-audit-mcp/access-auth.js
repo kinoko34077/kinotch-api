@@ -1,5 +1,19 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
+const jwksCacheByFactory = new WeakMap();
+
+function getCachedJwks(issuer, factory) {
+  let issuerCache = jwksCacheByFactory.get(factory);
+  if (!issuerCache) {
+    issuerCache = new Map();
+    jwksCacheByFactory.set(factory, issuerCache);
+  }
+  if (!issuerCache.has(issuer)) {
+    issuerCache.set(issuer, factory(new URL(`${issuer}/cdn-cgi/access/certs`)));
+  }
+  return issuerCache.get(issuer);
+}
+
 function normalizeTeamDomain(value) {
   if (typeof value !== "string" || value.trim().length === 0) return null;
   const candidate = value.trim().startsWith("http") ? value.trim() : `https://${value.trim()}`;
@@ -40,7 +54,7 @@ export async function verifyAccessJwt(request, env, {
   }
 
   try {
-    const jwks = createRemoteJWKSetImpl(new URL(`${issuer}/cdn-cgi/access/certs`));
+    const jwks = getCachedJwks(issuer, createRemoteJWKSetImpl);
     const { payload } = await jwtVerifyImpl(token, jwks, { issuer, audience: env.POLICY_AUD });
     if (!Number.isSafeInteger(payload?.exp) || payload.exp <= now()) {
       return { ok: false, code: "authentication_failed" };
