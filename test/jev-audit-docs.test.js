@@ -97,3 +97,12 @@ test("jev-audit benchmark docs expose the bounded runtime sample-rate control", 
   assert.match(docs.jev, /`0`[^\n]*(disable|kill switch)/i);
   assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_SAMPLE_RATE`/);
 });
+
+test("jev-audit docs define the bounded benchmark sample-rate control", async () => {
+  const docs = await loadDocumentation();
+  const combined = `${docs.jev}\n${docs.guide}\n${docs.currentState}`;
+  assert.match(combined, /JEV_AUDIT_BENCHMARK_SAMPLE_RATE/);
+  assert.match(combined, /default[^\n]*1|unset[^\n]*1/i);
+  assert.match(combined, /0[^\n]*(disable|disables)/i);
+  assert.match(combined, /benchmark_config_error/);
+});
