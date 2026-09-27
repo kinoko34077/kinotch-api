@@ -16,6 +16,7 @@
     "dev:text-transform": "npm run build:text-snapshot && wrangler dev --config wrangler.text-transform.jsonc",
     "dev:compression-mcp": "wrangler dev --config wrangler.semantic-compression-mcp.jsonc",
     "dev:jev-audit": "wrangler dev --config wrangler.jev-audit.jsonc",
+    "dev:jev-audit:remote": "wrangler dev --remote --config wrangler.jev-audit.jsonc",
     "dev:jev-audit-mcp": "wrangler dev --config wrangler.jev-audit-mcp.jsonc",
     "benchmark:text-transform": "node scripts/benchmark-text-transform.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",

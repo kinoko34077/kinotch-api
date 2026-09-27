@@ -12,7 +12,8 @@
   "kv_namespaces": [
     {
       "binding": "JEV_AUDIT_BENCHMARK_STATE",
-      "id": "3c60e777f1aa4721aa83e7376a67bd4d"
+      "id": "3c60e777f1aa4721aa83e7376a67bd4d",
+      "preview_id": "fca5749729da45f0b7c0a095d111999a"
     }
   ],
   "observability": {
