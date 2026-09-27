@@ -39,6 +39,8 @@ Last verified: 2026-09-26 — Production release source `84e8109ef43064efd72fd10
 - Release failure metadata preserves the original failure stage even while rollback/recovery updates the live release stage.
 - Jev Audit Production release sourced from `84e8109ef43064efd72fd1012054dc7787de6a8e` completed on 2026-09-25 and is recorded by `docs/releases/20260925T144351192Z.json` and `docs/releases/jev-audit-20260925T144353075Z.json`. Jev REST returned HTTP 200 through live TypeSafe with model `jev-1.13.0` / semantics `0.2.12`; Jev MCP Service Token authentication returned HTTP 200 and completed a real `audit_files` call; private/MCP deployments reported `needsRollback: false`; no rollback was required.
 - Post-release Jev hardening aligns MCP path validation with the REST Unicode code-point contract, rejects provider model drift from the pinned `jev-1.13.0`, makes the Service Token full smoke call and validate `list_profiles` before `audit_files`, and removes unused private Worker vars that falsely implied runtime timeout/log configurability. These repository changes require the next normal formal release before they are claimed as deployed Production behavior.
+- Jev Audit Remote lightweight history + rolling benchmark is implemented at repository level: the private Worker owns one allowlisted `jev_audit_history` event and at most one fixed synthetic benchmark fixture per provider-backed audit; REST/MCP supply trusted internal `rest` / `remote_mcp` surface classification; pinned-model validation, response contracts, and source/secret/path redaction remain intact.
+- Remote rolling benchmark state is designed for one `JEV_AUDIT_BENCHMARK_STATE` KV record containing only next fixture index plus the most recent up-to-10 `100` / `0` / `null` observations. No real Production KV namespace/binding has been created or attached by this implementation phase, and no Production deploy is claimed; missing/unavailable state degrades without changing the real audit response.
 
 ## Default state
 
@@ -68,7 +70,7 @@ Last verified: 2026-09-26 — Production release source `84e8109ef43064efd72fd10
 2. Do not require Jev-specific Managed OAuth. If a future interactive-human Jev MCP flow needs OAuth, treat it as a separate optional feature rather than a production-readiness blocker.
 3. Carry the post-release Jev hardening into Production only through the next authorized normal `npm run release:local`; do not perform an ad-hoc deploy solely for the hardening.
 4. On the authorized Codex machine, if Compression Service Auth use is still desired, synchronize `main` and run `npm run setup:codex-mcp-service-auth`. This configures machine-local `semantic_compressor` with an absolute `http_headers_helper` path and reuses the existing release Service Token without adding `CODEX_CF_ACCESS_*` values or a new Cloudflare policy. Confirm `codex mcp list`, then run one synthetic Compression MCP `compress_text` Service Auth E2E without an OAuth prompt.
-5. Add only lightweight log accumulation / 5–10 fixed-fixture benchmark checks if they provide practical value; do not build a large eval platform, dashboard, billing, account system, remote Git clone, or filesystem layer without a concrete requirement.
+5. After repository verification/merge, create and attach the single Jev benchmark KV namespace only under separate explicit Production approval, then carry the history/benchmark feature through the existing normal `npm run release:local` path. Do not add a dashboard, billing/account system, remote Git clone, filesystem layer, or larger eval platform without a concrete requirement.
 
 ## Verification
 
@@ -88,6 +90,7 @@ Last verified: 2026-09-26 — Production release source `84e8109ef43064efd72fd10
 - Jev Audit deployed versions recorded at successful release: private `aedb81fd-58ef-4296-93bb-a538511bdbcb`, MCP `cd45c6cc-aaf1-453a-831c-d4ff83a16339`, both `needsRollback: false`
 - Jev Audit successful release required no rollback; core Text / Compression / MCP / Gateway deploy and smoke also passed
 - Post-release Jev hardening TDD/regression coverage: pinned-model mismatch rejection, REST/MCP Unicode path-count alignment, Service Token `list_profiles` + `audit_files` full smoke, and unused Wrangler-var rejection
+- Jev Remote history/benchmark repository coverage: fixed 8-fixture alignment, `100`/`0`/`null` scoring, rolling-window/mean rules, pinned-model benchmark validation, KV read/write/missing-binding isolation, trusted REST/MCP surface classification, caller spoofing rejection, structured-event redaction, non-provider no-op behavior, and unchanged successful audit responses.
 - `knt doctor`
 - `knt base-check`
 - `knt setup`

@@ -79,7 +79,10 @@ registerRoute(apiRoutes, "POST", "/v1/compress", routePolicies.compression, (c) 
 registerRoute(apiRoutes, "POST", "/v1/audit", routePolicies.jevAudit, (c) =>
   proxyToWorker(c, c.env.JEV_AUDIT, "/v1/audit", {
     method: "POST",
-    headers: { "Content-Type": c.req.header("content-type") ?? "application/json" },
+    headers: {
+      "Content-Type": c.req.header("content-type") ?? "application/json",
+      "X-Kinotch-Jev-Surface": "rest",
+    },
     timeoutMs: routePolicies.jevAudit.upstreamTimeoutMs,
   }),
 );

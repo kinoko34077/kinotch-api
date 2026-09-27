@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const files = Object.freeze({
   jev: new URL("../docs/jev-audit.md", import.meta.url),
+  guide: new URL("../docs/jev-audit-guide.md", import.meta.url),
   readme: new URL("../README.md", import.meta.url),
   usage: new URL("../docs/USAGE.md", import.meta.url),
   operations: new URL("../docs/OPERATIONS.md", import.meta.url),
@@ -71,4 +72,13 @@ test("jev-audit documentation records production verification and Service Token 
   assert.match(docs.changelog, /Jev Audit Remote/i);
   assert.match(docs.readme, /docs\/jev-audit\.md/);
   assert.match(docs.readme, /Jev Audit[^\n]*(Production verified|production verified)/i);
+});
+
+test("jev-audit history benchmark docs preserve the repository-only Production boundary", async () => {
+  const docs = await loadDocumentation();
+  assert.match(docs.jev, /`JEV_AUDIT_BENCHMARK_STATE`/);
+  assert.match(docs.jev, /not yet Production evidence/i);
+  assert.match(docs.guide, /repository-verified\/pending Production rollout/i);
+  assert.match(docs.currentState, /`JEV_AUDIT_BENCHMARK_STATE`/);
+  assert.match(docs.currentState, /No real Production KV namespace\/binding has been created or attached/i);
 });

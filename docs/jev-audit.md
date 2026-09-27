@@ -114,6 +114,17 @@ source or diff contents must not be logged by normal Gateway, private Worker, MC
 
 Remote監査対象は外部providerへ送信されるため、callerは送信可能なsourceだけをsnapshotとして構成する必要がある。filename/extensionによるDLPをRemote serviceが保証するものではない。
 
+
+### Lightweight history / rolling benchmark (repository implementation)
+
+Repository code now supports a compact Remote observability side-channel owned by the private `jev-audit` Worker. Each completed audit emits one allowlisted `jev_audit_history` structured event. Provider-backed audits run at most one of eight fixed synthetic benchmark fixtures with the pinned Jev model and a benchmark contract independent of caller profile; benchmark/provider/state/log failures never change the normal AuditReport response.
+
+REST and Remote MCP stamp the internal Service Binding request with a trusted surface value (`rest` / `remote_mcp`). A public REST caller cannot choose or override this classification. History/state intentionally omit audited source/diff text, audited file paths, Authorization/Access credentials, `TYPESAFE_API_KEY`, benchmark fixture bodies, and raw provider responses.
+
+Rolling Remote state uses one logical KV record through the private Worker binding `JEV_AUDIT_BENCHMARK_STATE`, containing only the next fixture index and up to 10 recent `100` / `0` / `null` observations. The repository implementation degrades safely when this binding is absent or unavailable.
+
+**This repository implementation is not yet Production evidence.** `wrangler.jev-audit.jsonc` intentionally receives no fake namespace id. Creating/attaching the real Production KV namespace and deploying the updated Workers remain a separately confirmed normal release operation.
+
 ## 7. One-time production bootstrap
 
 Semantic Compression MCPと同様に、Jev Audit Remoteも最初の1回だけbootstrap段階を分ける。理由は、Cloudflare Access application / Audienceを作るには`jev-audit-mcp`の実hostnameが必要であり、private `jev-audit` Workerへ`TYPESAFE_API_KEY` Secretを所有させるにも先にWorkerを作成する必要があるためである。
