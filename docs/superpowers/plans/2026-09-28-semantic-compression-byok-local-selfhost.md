@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a lightweight BYOK local REST path that lets a third party run the existing Semantic Compression Worker on loopback with only their own `GEMINI_API_KEY` in `.env`.
+**Goal:** Add a lightweight BYOK local REST path that lets a third party run the existing Semantic Compression Worker on loopback with only their own `GEMINI_API_KEY` in the repository-root `.env`.
 
-**Architecture:** Reuse `src/semantic-compression-worker.js` and the existing Compression Core unchanged. Add a thin launcher that parses only `GEMINI_API_KEY`, builds a bounded child environment, and starts a dedicated local Wrangler configuration in `--local` mode; keep Production Gateway, MCP, release, authentication, rate-limit, and Cloudflare-resource behavior untouched.
+**Architecture:** Reuse `src/semantic-compression-worker.js` and the existing Compression Core unchanged. Add a thin launcher that accepts only the root `.env`, parses and maps only `GEMINI_API_KEY`, rejects alternate Wrangler local-secret files, builds a bounded child environment, and starts a dedicated local Wrangler configuration in `--local` mode; keep Production Gateway, MCP, release, authentication, rate-limit, and Cloudflare-resource behavior untouched.
 
 **Tech Stack:** Node.js `>=26.10.0 <27`, ES modules, Node built-in `parseEnv` and test runner, Wrangler `4.138.0`, existing Hono Semantic Compression Worker/Core.
 
@@ -13,6 +13,8 @@
 ## Global Constraints
 
 - The only self-host secret is `GEMINI_API_KEY`.
+- The only supported self-host secret file is the repository-root `.env`.
+- The launcher must reject a root `.dev.vars` or any root `.dev.vars.*` before spawning Wrangler so no alternate Wrangler local-secret source can bypass or shadow the `.env` allowlist boundary.
 - The supported endpoint is loopback-only at `127.0.0.1:8787`; public/shared-network hosting is outside this feature.
 - Reuse `src/semantic-compression-worker.js`; do not fork or duplicate profiles, prompt text/version, model choice, limits, response schema, integrity warnings, or provider logic.
 - Do not add a dotenv/runtime dependency; use Node built-ins already available in Node 26.
@@ -27,7 +29,7 @@
 ## Review Focus
 
 1. `.env` contains unrelated or Cloudflare-looking keys: only `GEMINI_API_KEY` reaches the child Worker environment.
-2. Wrangler cannot independently reload `.env` and bypass the launcher allowlist: the child sets `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false` while `secrets.required` reads the mapped process value.
+2. Wrangler cannot bypass the launcher allowlist through either automatic `.env` reloading or an alternate `.dev.vars` / `.dev.vars.*` file: auto `.env` loading is disabled and alternate local-secret files are rejected before spawn.
 3. Missing, malformed, empty, quoted, and whitespace-containing dotenv values follow Node `parseEnv` semantics and fail safely when the required key is unusable.
 4. Any launcher argument such as `--remote`, `deploy`, another config path, or another port is rejected before process spawn.
 5. Spawn failure or non-zero child exit preserves a safe diagnostic/exit result without revealing the Gemini key or widening the environment.
@@ -41,12 +43,12 @@
 - Create: `test/selfhost-compression.test.js`
 
 **Interfaces:**
-- Consumes: root `.env`, `createReleaseChildEnv(sourceEnv)` from `scripts/release-child-env.mjs`, and `createWranglerInvocation(args, { projectRoot })` from `scripts/wrangler-runner.mjs`.
+- Consumes: repository-root `.env`, `createReleaseChildEnv(sourceEnv)` from `scripts/release-child-env.mjs`, and `createWranglerInvocation(args, { projectRoot })` from `scripts/wrangler-runner.mjs`.
 - Produces:
   - `SELFHOST_ENV_FILENAME = ".env"`
   - `SELFHOST_SECRET_KEYS = Object.freeze(["GEMINI_API_KEY"])`
   - `parseSelfHostEnv(sourceText)` -> frozen `{ GEMINI_API_KEY }` or throws a safe configuration error.
-  - `loadSelfHostSecrets({ projectRoot, readFileImpl })` -> frozen `{ GEMINI_API_KEY }`.
+  - `loadSelfHostSecrets({ projectRoot, readFileImpl, readdirImpl })` -> rejects root `.dev.vars` / `.dev.vars.*`, then returns frozen `{ GEMINI_API_KEY }` from root `.env`.
   - `createSelfHostChildEnv({ sourceEnv, secrets })` -> safe child environment.
   - `resolveSelfHostInvocation({ projectRoot })` -> fixed local Wrangler invocation.
   - `runSelfHostCommand({ secrets, sourceEnv, spawnImpl, projectRoot })` -> child exit code.
@@ -59,9 +61,10 @@
   - `parseSelfHostEnv("GEMINI_API_KEY=fixture\nUNRELATED_SECRET=ignored")` returns exactly `{ GEMINI_API_KEY: "fixture" }`.
   - malformed dotenv input throws `Could not parse self-host .env` and never includes source values.
   - missing `.env`, missing `GEMINI_API_KEY`, and empty `GEMINI_API_KEY` fail before spawn with short setup errors that do not include a secret value.
-  - quoted and whitespace-preserving legal dotenv values are accepted according to Node `parseEnv` rather than by a custom parser.
+  - quoted and whitespace-containing legal dotenv values are accepted according to Node `parseEnv` rather than by a custom parser.
+  - a synthetic root listing containing `.dev.vars` or `.dev.vars.local` causes `loadSelfHostSecrets` to fail before reading/spawning the local server, even when `.env` itself is valid; the error directs the user to use root `.env` only and contains no secret value.
   - `createSelfHostChildEnv` preserves ordinary safe variables such as `PATH`, maps the Gemini key, sets `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV` to `false`, and omits `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `WRANGLER_API_TOKEN`, and unrelated source variables.
-  - `resolveSelfHostInvocation` uses the local installed Wrangler through `createWranglerInvocation` and the exact Wrangler argument list `dev --local --config wrangler.semantic-compression.selfhost.jsonc`; it contains neither `deploy` nor `--remote`.
+  - `resolveSelfHostInvocation` uses the local installed Wrangler through `createWranglerInvocation` and the exact Wrangler argument list `dev --local --config wrangler.semantic-compression.selfhost.jsonc`; it contains neither an effective `deploy` command nor `--remote`.
   - `main(["--remote"])` and any other non-empty argument list fail before spawn.
   - a synthetic Gemini key never appears in captured stdout/stderr.
   - child exit code `17` is returned as `17`; synchronous spawn failure returns a safe non-zero result.
@@ -74,12 +77,13 @@
 
 - [ ] **Step 3: Implement the minimal launcher**
 
-  Use `readFile`, `fileURLToPath`, `join`, `parseEnv`, `spawn`, `createReleaseChildEnv`, and `createWranglerInvocation`. Do not introduce a new generic mapper abstraction.
+  Use `readFile`, `readdir`, `fileURLToPath`, `join`, `parseEnv`, `spawn`, `createReleaseChildEnv`, and `createWranglerInvocation`. Do not introduce a new generic mapper abstraction.
 
   Required behavior:
 
-  - fixed root `.env` only; no alternate path argument;
-  - allowlist only `GEMINI_API_KEY`;
+  - fixed repository-root `.env` only; no alternate path argument;
+  - inspect the repository root and fail closed if an entry equals `.dev.vars` or starts with `.dev.vars.`;
+  - allowlist only `GEMINI_API_KEY` from parsed `.env`;
   - reject absent/malformed/empty required key before spawn;
   - `createReleaseChildEnv(sourceEnv)` is the child-environment baseline;
   - add `GEMINI_API_KEY` and fixed `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV="false"` only;
@@ -90,7 +94,7 @@
 
   Run: `node --test test/selfhost-compression.test.js`
 
-  Expected: PASS for parser, allowlist, invocation, argument rejection, secret-redaction, and exit-propagation cases.
+  Expected: PASS for parser, alternate-secret-source rejection, allowlist, invocation, argument rejection, secret-redaction, and exit-propagation cases.
 
 - [ ] **Step 5: Commit the launcher boundary**
 
@@ -118,10 +122,11 @@
   - `main === "src/semantic-compression-worker.js"`;
   - `name === "semantic-compression-selfhost"`;
   - `compatibility_date === "2026-09-07"`;
+  - `workers_dev === false` and `preview_urls === false`;
   - `secrets.required` is exactly `["GEMINI_API_KEY"]`;
   - `dev` is exactly compatible with loopback `ip: "127.0.0.1"`, `port: 8787`, `local_protocol: "http"`;
   - non-secret vars are `ENABLE_REQUEST_LOGS: "false"` and `GEMINI_TIMEOUT_MS: "45000"`;
-  - config does not define `account_id`, `routes`, `services`, `ratelimits`, KV namespaces, Production hostname values, or Access configuration;
+  - config does not define `account_id`, `routes`, `services`, `ratelimits`, `kv_namespaces`, Production hostname values, or Access configuration;
   - `package.json.scripts["selfhost:compression"] === "node scripts/selfhost-compression.mjs"`;
   - `.env.example` defines `GEMINI_API_KEY=` with no credential-looking value and no second secret variable;
   - `.gitignore` still ignores `.env`/`.env.*` while allowing `.env.example`;
@@ -179,6 +184,7 @@
 
   - `npm run selfhost:compression`;
   - `.env.example` and `GEMINI_API_KEY`;
+  - an explicit root `.env`-only rule and a statement that `.dev.vars` / `.dev.vars.*` are not supported by this launcher;
   - `127.0.0.1:8787`;
   - `POST /v1/compress` and `GET /health`;
   - explicit statements that local mode has no Production Gateway Bearer auth/rate limit and must not be exposed directly to the public internet;
@@ -195,21 +201,22 @@
   `docs/semantic-compression-selfhost.md` must contain only the supported path:
 
   1. clone / `npm ci`;
-  2. copy `.env.example` to `.env`;
-  3. set the user's own `GEMINI_API_KEY`;
-  4. `npm run selfhost:compression`;
-  5. `GET http://127.0.0.1:8787/health`;
-  6. sample `POST http://127.0.0.1:8787/v1/compress` for both existing profiles;
-  7. explain that response/profile/prompt/model/integrity behavior comes from the existing Compression Core;
-  8. explain loopback/public-security boundary and that MCP/full Cloudflare installation are non-goals;
-  9. troubleshooting for absent/malformed/empty `.env` without suggesting alternate secret paths.
+  2. ensure no root `.dev.vars` / `.dev.vars.*` is present for this self-host mode;
+  3. copy `.env.example` to `.env`;
+  4. set the user's own `GEMINI_API_KEY`;
+  5. `npm run selfhost:compression`;
+  6. `GET http://127.0.0.1:8787/health`;
+  7. sample `POST http://127.0.0.1:8787/v1/compress` for both existing profiles;
+  8. explain that response/profile/prompt/model/integrity behavior comes from the existing Compression Core;
+  9. explain loopback/public-security boundary and that MCP/full Cloudflare installation are non-goals;
+  10. troubleshooting for absent/malformed/empty `.env` and conflicting `.dev.vars*`, without suggesting alternate secret paths.
 
 - [ ] **Step 4: Update the durable API specification and index**
 
   Add a local self-host section to `docs/specs/semantic-compression-api.md` without redefining core profile/provider behavior. Use unique requirement identifiers such as:
 
   - `ARCH-COMP-SELFHOST-001` — local BYOK path delegates directly to the existing Worker/Core on loopback;
-  - `SEC-COMP-SELFHOST-001` — `.env` allowlist boundary, one required secret, no Production credentials, no public security claim;
+  - `SEC-COMP-SELFHOST-001` — root `.env` allowlist boundary, one required secret, rejection of `.dev.vars*`, no Production credentials, no public security claim;
   - `BEH-COMP-SELFHOST-001` — fixed `npm run selfhost:compression`, fail-fast setup errors, no arbitrary launcher args, no deploy/remote path.
 
   Add `docs/semantic-compression-selfhost.md` to `project/docs/INDEX.md`.
@@ -261,17 +268,17 @@
 
 - [ ] **Step 3: Verify Production isolation from the diff**
 
-  Confirm the implementation does not modify Production Wrangler files, Production deploy/release scripts, Gateway auth/rate-limit implementation, MCP implementation, or Compression Core behavior. Confirm there is no `account_id`, Production hostname, Service Token value, Cloudflare API credential, `--remote`, or deploy command in the self-host surface.
+  Confirm the implementation does not modify Production Wrangler files, Production deploy/release scripts, Gateway auth/rate-limit implementation, MCP implementation, or Compression Core behavior. Confirm the effective self-host config/launcher contains no `account_id`, Production hostname, Service Token value, Cloudflare API credential, remote execution mode, or deploy action. Tests/docs may mention forbidden strings such as `--remote` only to prove or explain rejection.
 
 - [ ] **Step 4: Run loopback health smoke without external Gemini traffic**
 
-  Use a temporary local `.env` containing a non-empty synthetic `GEMINI_API_KEY`, start `npm run selfhost:compression`, then request `GET http://127.0.0.1:8787/health`.
+  Use a temporary local `.env` containing a non-empty synthetic `GEMINI_API_KEY`, ensure no root `.dev.vars*` exists, start `npm run selfhost:compression`, then request `GET http://127.0.0.1:8787/health`.
 
   Expected: HTTP 200 with the existing `semantic-compression` health payload; server listens only on loopback. Stop the child and remove the temporary `.env` after the check.
 
 - [ ] **Step 5: Run one real BYOK compression E2E when an operator-owned Gemini key is available**
 
-  With a locally supplied user-owned `GEMINI_API_KEY`, start the same `npm run selfhost:compression` path and send one synthetic `POST /v1/compress` using `semantic-dense-v1`.
+  With a locally supplied user-owned `GEMINI_API_KEY` in the supported root `.env`, start the same `npm run selfhost:compression` path and send one synthetic `POST /v1/compress` using `semantic-dense-v1`.
 
   Expected: HTTP 200; returned `profile`, `prompt_version`, and `model` equal the current reused Core contract; key is absent from terminal output, repository diff, generated artifacts, and logs; no Cloudflare login, resource creation, deploy, or Production mutation occurs.
 
