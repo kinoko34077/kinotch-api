@@ -115,6 +115,6 @@
 - Produces: current-state and history records that distinguish deployed source SHA from the later metadata-record commit.
 
 - [x] **Step 1: Update Current State with the successful release evidence**
-- [ ] **Step 2: Extend the first-parent history snapshot through the metadata commit**
+- [x] **Step 2: Extend the first-parent history snapshot through the metadata commit**
 - [x] **Step 3: Run `npm test`, `git diff --check`, and repository verification**
 - [ ] **Step 4: Commit/push the post-release documentation and comment Issue #23 with the final evidence**
