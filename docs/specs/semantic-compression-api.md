@@ -514,3 +514,42 @@ model変更時はPrompt token metadataがmodel依存のため再測定する。
 同一情報を複数文書へ無条件に複製せず、本文書は公開契約と変更条件を中心に保持する。
 
 Remote MCP adapterは別契約であり、[`docs/specs/semantic-compression-mcp.md`](semantic-compression-mcp.md) に定義する。
+
+## 18. BYOK local self-host
+
+### ARCH-COMP-SELFHOST-001: Local boundary
+
+Issue #23のBYOK local self-hostは、既存のSemantic Compression Worker/Coreをloopbackで実行する開発用経路である。
+
+```text
+repository-root .env (operator-owned GEMINI_API_KEY)
+  ↓ bounded launcher
+Wrangler local Worker at http://127.0.0.1:8787
+  ↓ existing semantic-compression Worker/Core
+Gemini Interactions API
+```
+
+- Dedicated config: `wrangler.semantic-compression.selfhost.jsonc`
+- Entry point: `src/semantic-compression-worker.js`
+- Supported local endpoints: `GET /health`, `POST /v1/compress`
+- Root `.dev.vars` and `.dev.vars.*` are rejected in this mode.
+- This is not a public endpoint, Production deploy authority, Remote MCP, Cloudflare infrastructure installer, or Gateway replacement.
+
+### SEC-COMP-SELFHOST-001: Secret source
+
+The launcher reads only the repository-root `.env` and only the `GEMINI_API_KEY` key. The key is operator-owned, must remain untracked, and is passed to the local Worker through a bounded child environment. Cloudflare API credentials, Service Tokens, `COMPRESSION_API_TOKEN`, unrelated process secrets, and alternate dotenv files are not used.
+
+Wrangler local dotenv loading is disabled by the launcher so that the selected secret source is unambiguous. `.env.example` contains an empty placeholder only.
+
+### BEH-COMP-SELFHOST-001: Local usage
+
+Run:
+
+```text
+npm ci
+Copy-Item .env.example .env
+# set the operator-owned GEMINI_API_KEY in .env
+npm run selfhost:compression
+```
+
+The launcher accepts no arguments and invokes only local Wrangler development with the dedicated config. It does not use `--remote`, `deploy`, Production hostnames, Production Bearer authentication, or the Remote MCP/Access surface. Keep `http://127.0.0.1:8787` loopback-only. Full instructions and troubleshooting are in [`docs/semantic-compression-selfhost.md`](../semantic-compression-selfhost.md).
