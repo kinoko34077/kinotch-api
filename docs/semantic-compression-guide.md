@@ -424,39 +424,16 @@ Cloudflare Accessの問題を回避するために `Bypass` policyへ変更し�
 
 ---
 
-## 13. self-host
+## 13. local BYOK self-host
 
-実装は構造的にself-host可能である。
+現在サポートするself-host経路は、第三者がCloudflare基盤を再構築するinstallerではなく、既存のSemantic Compression Worker/Coreをloopbackで実行する最小BYOK経路です。
 
-第三者はpublic repositoryをcloneし、自身のGemini / Cloudflare credentialとaccount固有resourceを設定すれば、同じSemantic Compression挙動を独立環境で再現できる。
+- repository-root `.env`へ利用者自身の`GEMINI_API_KEY`だけを設定する。
+- `npm run selfhost:compression`で専用Wrangler configを使い、`http://127.0.0.1:8787`へ起動する。
+- `profile`、Prompt、model、usage、hash、Integrity warning等は既存正本を再利用する。
+- root `.dev.vars` / `.dev.vars.*`、Cloudflare account、Production credential、REST Bearer token、Access、Service Token、Remote MCPはこの経路では使用しない。
 
-ただし現状はzero-edit installerではない。
-
-少なくとも次をself-host環境向けに用意・差替する必要がある。
-
-- Gemini API key
-- Cloudflare account
-- `account_id`
-- Worker namesまたはそれに対応するService Binding
-- rate-limit namespace IDs
-- REST caller credential
-- Gateway / MCP hostname
-- MCPを使う場合はCloudflare Access Application
-- `TEAM_DOMAIN`
-- `POLICY_AUD`
-- Managed OAuthまたはService Token policy
-
-利用形態は3つに分けられる。
-
-```text
-REST only
-MCP only
-REST + MCP
-```
-
-MCP onlyの場合でも、public REST Gatewayは必須ではない。MCP adapterはService Bindingでprivate Compression Workerへ直接接続する。
-
-self-hostの詳細はIssue #23および各運用仕様を参照する。
+これはProduction、公開Hosting、Cloudflare account installer、Remote MCPのself-hostではありません。詳細な前提、秘密値境界、実行例、トラブルシュートは[`docs/semantic-compression-selfhost.md`](semantic-compression-selfhost.md)とAPI仕様書を参照してください。
 
 ---
 
