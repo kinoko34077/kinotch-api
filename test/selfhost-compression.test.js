@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import path from "node:path";
 
 import {
   SELFHOST_ENV_FILENAME,
@@ -84,7 +85,7 @@ test("loadSelfHostSecrets reads only the repository-root .env", async () => {
     projectRoot,
     readdirImpl: async () => [".env"],
     readFileImpl: async (filePath) => {
-      assert.equal(filePath, `${projectRoot}\\.env`);
+      assert.equal(filePath, path.join(projectRoot, ".env"));
       return "GEMINI_API_KEY=fixture-key\nOTHER=ignored";
     },
   });
