@@ -2,9 +2,9 @@
 
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
-- 作成時点: 2026-09-24
-- 作成時点の先頭: 088943a27f03bb5e3c3d21ec63b12326c61fa982
-- 収録コミット数: 123
+- 作成時点: 2026-09-28
+- 作成時点の先頭: fad4bef6e3c67da58171ef5a528fd88c3e60a014
+- 収録コミット数: 151
 
 ## この文書の読み方
 
@@ -28,8 +28,9 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - REST Compression APIは POST https://api.kinotch.workers.dev/v1/compress。
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
-- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260923T182557522Z.json で、source revisionは 204d15eb382802aa776d5026421e197d52725300。現行main `088943a27f03bb5e3c3d21ec63b12326c61fa982` の後続修正はProductionへ未反映である。
-- 現行main `088943a` のGitHub Actions `CI` と `Verify` はsuccess。Base-managed Verifyのcheckout SHA pinはBase側で `60592ce` に反映済みで、個別repoのv0.3.8 snapshotは一括同期していない。
+- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260927T083120814Z.json で、source revisionは 5beea99251dec97c1434fc6419be99c4feac5fd3。現行main `fad4bef6e3c67da58171ef5a528fd88c3e60a014` の後続修正はProductionへ未反映である。
+- 現行main `fad4bef` には、Jev Audit preview KV bindingの修正（PR #50）とSemantic Compression MCP JWKS resolver再利用の修正（PR #51）が含まれる。いずれもProduction deploy、Cloudflare Access policy、credential変更を伴わないrepository maintenanceである。
+- PR #51のGitHub Actions `CI` と `Verify` は成功した上で`main`へmergeされた。Base-managed Verifyのcheckout SHA pinはBase側の正本で管理し、個別repo側では複製しない。
 - a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
 - c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
 - 263b98a はhardening実装計画の完了記録を追加した。
@@ -38,7 +39,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - 99cd489 はrelease reliabilityのCurrent State、Operations、MCP運用、変更履歴を更新した。GitHub main protectionはその後APIでrequired check `verify`を追加し、`test`／`verify`の両方をrequiredとして確認した。
 - 852d7e4 はGitHub main protectionのrequired check確認結果をCurrent Stateへ記録した。
 - 2da4440 はGemini生成requestをInteractions API安定版 `v1/interactions`へ移行した。固定Promptの`countTokens`測定endpointは`v1beta`のまま維持し、生成endpointとの責務を文書化した。focused regression 34件を通過したが、Production deployはまだ行っていない。
-- 088943a はCurrent State、Operations、履歴スナップショットを現行release境界へ更新した。現行mainとProduction metadataの差分を明示し、Production deployはまだ行っていない。
+- 088943a はCurrent State、Operations、履歴スナップショットを現行release境界へ更新した。後続のNode 26移行、Production Secret Mapper、Jev Audit Remote、Service Auth、Jev Audit本番検証は後続コミットで実施した。
 
 ### 8. Production Secret Mapper（2026-09-25）
 
@@ -53,7 +54,14 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - Gateway `POST /v1/audit`とRemote MCP `https://jev-audit-mcp.kinotch.workers.dev/mcp`を追加し、MCPは`audit_files`／`list_profiles`のみを公開する。Remote v1はlocal filesystem/Git/`changed_only`を扱わない。
 - REST token、TypeSafe credential、MCP Access credentialを別責務に分離し、`TYPESAFE_API_KEY`はprivate Workerだけが所有する。source/diff本文やraw credential/provider bodyを通常ログへ残さない。
 - private/MCP deploy、REST/MCP smoke、Version capture、rollback/recoveryをProduction releaseへ統合した。既存Semantic Compression releaseの責務・順序は維持する。
-- 自動testとCI上の実装検証は進行中。live TypeSafe REST E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは未実施であり、実行証拠を得るまでProduction verifiedとは扱わない。
+- このfeature branch時点では自動testとCI上の実装検証までが完了し、live TypeSafe REST E2E、Production deploy、authenticated Jev Audit MCP tool-call E2Eは未実施だった。後続の実行結果は現行mainのProduction記録と「10. 現行mainへの追随」に分けて記録する。
+
+### 10. 現行mainへの追随（2026-09-25〜2026-09-28）
+
+- Node 26 runtime固定、Production Secret Mapper、Cloudflare Access Service Tokenによる自動MCP smoke、Jev Audit Remote、Codex Service Auth helper、Jev Audit bootstrap／release recoveryを順に追加し、Production metadataへ実測結果を記録した。
+- Jev AuditのProduction releaseでは、REST E2E、Access Service TokenによるMCP `audit_files`、専用benchmark KV、history／rolling benchmarkの実測を確認した。対応する証跡は`docs/releases/20260925*.json`および`docs/releases/20260927*.json`である。
+- PR #50でJev Audit remote開発用Preview KVをProduction KVと分離し、PR #51でSemantic Compression MCPのJWKS resolverをfactory／issuer単位で再利用するキャッシュへ修正した。PR #51のmerge commitは`fad4bef6e3c67da58171ef5a528fd88c3e60a014`である。
+- この期間の後続maintenanceは本番の既存Versionを変更していない。Productionの最新実反映sourceは引き続き`5beea99251dec97c1434fc6419be99c4feac5fd3`であり、次回release時に`main == origin/main`および通常のrelease gateを通して反映する。
 
 ## 大きな変更段階
 
@@ -133,7 +141,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 
 ## Production release evidence
 
-以下はtrackedな docs/releases/*.json から確認できる反映記録である。古いmetadataは後から追加されたstatus/version fieldを持たないため、status=fieldなしは成功・失敗を推定する意味ではない。
+以下はtrackedな docs/releases/*.json から確認できる反映記録である。古いmetadataは後から追加されたstatus/version fieldを持たないため、status=fieldなしは成功・失敗を推定する意味ではない。2026-09-28時点の全tracked metadataを収録する。
 
 | metadata | status | gitRevision | Text | Gateway | Compression | MCP |
 |---|---|---|---|---|---|---|
@@ -153,10 +161,37 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 20260914T002941278Z.json | succeeded | 6ddbddc | 65a08a29 | a3068921 | 34f1222b | — |
 | 20260914T152818909Z.json | succeeded | db17352 | 26141b32 | fd23e4cd | 5aadee4f | — |
 | 20260923T182557522Z.json | succeeded | 204d15e | 7eebc04e | 21c9d846 | 4658e423 | 48ffebd8 |
+| 20260925T094316840Z.json | succeeded | 058628f9 | 46471bc4 | 9aa7ae9f | 66a8afbe | ae3fb6ee |
+| 20260925T125756481Z.json | failed | 4343bbd | — | — | — | — |
+| 20260925T131524395Z.json | failed | b5ad74a | — | — | — | — |
+| 20260925T131533993Z.json | failed | b5ad74a | e0dcca9f | — | — | — |
+| 20260925T133158082Z.json | succeeded | 14beab5 | 72eaf52c | f2cdd9e8 | 3afec980 | 303baae9 |
+| 20260925T135805612Z.json | succeeded | 7392487 | 3290c608 | 1d7cae5b | 8abbd1eb | 71dc1d22 |
+| 20260925T144351192Z.json | succeeded | 84e8109 | 42c904c9 | 795bc537 | 7540e3bf | 44aab539 |
+| 20260925T170258933Z.json | succeeded | df33747 | 2245a87c | e37ea972 | 07b70ab9 | 7ea7e453 |
+| 20260925T171244986Z.json | succeeded | 3a46902 | ad23559b | 9c9ea729 | 6adf68eb | f0a49714 |
+| 20260927T083120814Z.json | succeeded | 5beea99 | 2f3bebc2 | 8fbbb441 | 83e42b7c | 038beeb1 |
+
+Jev Audit wrapperが生成した補助metadataも同じ`docs/releases/`で追跡している。これらは上表のcore Worker Version列とは別のJev Audit専用記録である。
+
+| metadata | status |
+|---|---|
+| jev-audit-20260925T123448352Z.json | failed |
+| jev-audit-20260925T125758017Z.json | failed |
+| jev-audit-20260925T131525293Z.json | failed |
+| jev-audit-20260925T131534344Z.json | failed |
+| jev-audit-20260925T133224668Z.json | failed |
+| jev-audit-20260925T135857966Z.json | failed |
+| jev-audit-20260925T144353075Z.json | succeeded |
+| jev-audit-20260925T165409884Z.json | failed |
+| jev-audit-20260925T165649283Z.json | failed |
+| jev-audit-20260925T170300864Z.json | succeeded |
+| jev-audit-20260925T171248483Z.json | succeeded |
+| jev-audit-20260927T083122160Z.json | succeeded |
 
 ## 完全commit inventory
 
-以下は作成時点の origin/main first-parentを古い順に全件収録する。subjectはGit commitの記録を尊重し、推測で書き換えていない。
+以下は2026-09-28時点の origin/main first-parentを古い順に全件収録する。subjectはGit commitの記録を尊重し、推測で書き換えていない。
 
 | # | date | commit | subject |
 |---:|---|---|---|
@@ -283,6 +318,34 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 121 | 2026-09-24 | 852d7e4157a7af4c2425309e66a35ecd68518b58 | docs: record main protection verification |
 | 122 | 2026-09-24 | 2da444092577ba335c802f901afaf08c2c0fe9f2 | fix: use stable Gemini interactions endpoint |
 | 123 | 2026-09-24 | 088943a27f03bb5e3c3d21ec63b12326c61fa982 | docs: refresh current release state |
+| 124 | 2026-09-24 | 10a577161c7c47f4684c2838d950cf76eb7a1a16 | docs: align current release provenance |
+| 125 | 2026-09-25 | 60195705bdf734f083a240bc1b2036c460bfa8ba | chore: migrate repository runtime to Node 26 |
+| 126 | 2026-09-25 | ae595e4111ab31da2236c286031cbb9bcf222ac2 | feat: add production secret mapper (#3) |
+| 127 | 2026-09-25 | acbaad4157f876d16d313196c85e5060b5eb0096 | fix: launch mapper child commands correctly on Windows |
+| 128 | 2026-09-25 | e0b4f043c96a6840e01f179cd460da5988934275 | feat: use Cloudflare Access service token for MCP release smoke |
+| 129 | 2026-09-25 | 0ff5e0ed07b60e069183ec53622161b28bc6ea99 | fix: rename MCP release smoke stage label |
+| 130 | 2026-09-25 | 058628f9b28648f897c53b8c38b27f55ca4e4587 | chore: map Wrangler API token from production secrets |
+| 131 | 2026-09-25 | a335378dbff4fab5dfff60d6305c5f43ce0cc42c | docs: record 2026-09-25 production release (#8) |
+| 132 | 2026-09-25 | a279f32537e6ae05e73b187e25daf1172502cff0 | feat: add jev-audit remote API and MCP (#2) |
+| 133 | 2026-09-25 | fed702795b8b0dd7b2ab92444e430cb293a5b32e | feat: add Codex Service Token header helper |
+| 134 | 2026-09-25 | aede854ed975ae1f6e09e63b114e40edfc239f8e | fix: add Jev Audit one-time production bootstrap (#13) |
+| 135 | 2026-09-25 | be971cef519377d9d44572d47c0816f16820cd58 | fix: allow Codex to reuse release Service Token |
+| 136 | 2026-09-25 | 3b42007f2a0fe3b9b2e4c8655d328ccc7359eb8b | feat: add one-command Codex Service Auth local setup |
+| 137 | 2026-09-25 | 4343bbdcca136f3fe022042d45ae50ebc6721ace | fix: make Jev production runner safe on Windows (#16) |
+| 138 | 2026-09-25 | b5ad74abe068f85534895cc27579eba79c978d32 | Merge pull request #17 from kinoko34077/codex/jev-audit-release-recovery |
+| 139 | 2026-09-25 | 14beab539d98269b5e311ac369fb020828ab9703 | Merge pull request #18 from kinoko34077/codex/jev-audit-npm-install-reliability |
+| 140 | 2026-09-25 | 7392487c4b25672892d06145fcfc7193164fed75 | Merge pull request #19 from kinoko34077/codex/jev-audit-core-recovery |
+| 141 | 2026-09-25 | 84e8109ef43064efd72fd1012054dc7787de6a8e | docs: record Jev Audit MCP authentication blocker |
+| 142 | 2026-09-25 | 40eb67448deef5cd711b106dc27977236207af09 | docs: record successful Jev Audit production release |
+| 143 | 2026-09-26 | d8c28c862c1e9ab8fe65a280ac2fd1b3224f304a | fix: harden Jev post-release contracts and reconcile state (#22) |
+| 144 | 2026-09-26 | df337479187b57241009aa8f237089e17ff55e49 | Merge pull request #26 from kinoko34077/docs/jev-remote-guide |
+| 145 | 2026-09-26 | 3a46902db2ac51d7251cfd79dfb4660f191bc748 | docs: record synchronized Jev Audit release |
+| 146 | 2026-09-27 | 0c32942a602296896906f7a3a1c009317f05746b | Merge pull request #35 from kinoko34077/docs/issue-34-supply-chain-design |
+| 147 | 2026-09-27 | 3e90581eb0ff7c11a57d574be5191a06dddae1cb | Merge pull request #36 from kinoko34077/hardening/issue-34-supply-chain |
+| 148 | 2026-09-27 | b02095f63c396bfcfc3aab3d0cd87dc55e2743d2 | Merge pull request #38 from kinoko34077/docs/issue-34-current-state |
+| 149 | 2026-09-27 | 7e06351215a26911b8960bacd40bc5ea634098c3 | Merge pull request #39 from kinoko34077/docs/issue-34-dependency-review-reconciled |
+| 150 | 2026-09-27 | aff3f6a303d104dfda32f2716f55967320b4f3c5 | feat: add remote Jev audit history and rolling benchmark (#40) |
+| 151 | 2026-09-27 | 5beea99251dec97c1434fc6419be99c4feac5fd3 | release: bind Jev benchmark Production KV (#42) |
 
 ## 再生成・更新
 
