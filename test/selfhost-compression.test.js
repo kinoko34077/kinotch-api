@@ -30,14 +30,19 @@ function createSpawnFixture({ exitCode = 0 } = {}) {
 }
 
 test("parseSelfHostEnv accepts only the user-owned Gemini key", () => {
-  const parsed = parseSelfHostEnv(
-    "GEMINI_API_KEY = \"fixture key\"\nUNRELATED_SECRET=must-ignore\n",
-  );
+  const parsed = parseSelfHostEnv("GEMINI_API_KEY = \"fixture key\"\n");
 
   assert.deepEqual(parsed, { GEMINI_API_KEY: "fixture key" });
   assert.deepEqual(SELFHOST_SECRET_KEYS, ["GEMINI_API_KEY"]);
   assert.equal(SELFHOST_ENV_FILENAME, ".env");
   assert.ok(Object.isFrozen(parsed));
+});
+
+test("parseSelfHostEnv rejects unrelated .env keys", () => {
+  assert.throws(
+    () => parseSelfHostEnv("GEMINI_API_KEY=fixture-key\nOTHER_SECRET=do-not-load\n"),
+    /may contain only GEMINI_API_KEY/,
+  );
 });
 
 test("parseSelfHostEnv follows Node dotenv parsing for quoted and whitespace values", () => {
@@ -56,12 +61,16 @@ test("parseSelfHostEnv rejects malformed dotenv without exposing source values",
 });
 
 test("parseSelfHostEnv rejects a missing or empty key safely", () => {
-  for (const source of ["", "OTHER=value", "GEMINI_API_KEY=   "]) {
+  for (const source of ["", "GEMINI_API_KEY=   "]) {
     assert.throws(
       () => parseSelfHostEnv(source),
       /GEMINI_API_KEY is required in the repository-root \.env/,
     );
   }
+  assert.throws(
+    () => parseSelfHostEnv("OTHER=value"),
+    /may contain only GEMINI_API_KEY/,
+  );
 });
 
 test("loadSelfHostSecrets rejects root .dev.vars files before reading .env", async () => {
@@ -86,7 +95,7 @@ test("loadSelfHostSecrets reads only the repository-root .env", async () => {
     readdirImpl: async () => [".env"],
     readFileImpl: async (filePath) => {
       assert.equal(filePath, path.join(projectRoot, ".env"));
-      return "GEMINI_API_KEY=fixture-key\nOTHER=ignored";
+      return "GEMINI_API_KEY=fixture-key";
     },
   });
 
@@ -109,7 +118,7 @@ test("createSelfHostChildEnv is an allowlisted child environment", () => {
   assert.equal(childEnv.PATH, "fixture-path");
   assert.equal(childEnv.USERPROFILE, "fixture-user");
   assert.equal(childEnv.GEMINI_API_KEY, "fixture-key");
-  assert.equal(childEnv.CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV, "false");
+  assert.equal(childEnv.CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV, "true");
   assert.equal(childEnv.CLOUDFLARE_API_TOKEN, undefined);
   assert.equal(childEnv.COMPRESSION_SMOKE_TOKEN, undefined);
   assert.equal(childEnv.UNRELATED_SECRET, undefined);
@@ -124,6 +133,8 @@ test("resolveSelfHostInvocation is fixed to local Wrangler dev", () => {
     "--local",
     "--config",
     "wrangler.semantic-compression.selfhost.jsonc",
+    "--env-file",
+    path.join(projectRoot, ".env"),
   ]);
   assert.equal(invocation.args.includes("--remote"), false);
   assert.equal(invocation.args.includes("deploy"), false);

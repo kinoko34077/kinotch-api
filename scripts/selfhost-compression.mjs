@@ -37,6 +37,15 @@ export function parseSelfHostEnv(sourceText) {
     throw selfHostConfigError("Could not parse self-host .env");
   }
 
+  const unsupportedKeys = Object.keys(parsed).filter(
+    (key) => !SELFHOST_SECRET_KEYS.includes(key),
+  );
+  if (unsupportedKeys.length > 0) {
+    throw selfHostConfigError(
+      "Repository-root .env may contain only GEMINI_API_KEY",
+    );
+  }
+
   const value = parsed?.GEMINI_API_KEY;
   if (typeof value === "string") {
     const first = value.trimStart()[0];
@@ -84,13 +93,20 @@ export function createSelfHostChildEnv({ sourceEnv = process.env, secrets } = {}
   assertSecretValue(secrets?.GEMINI_API_KEY);
   const childEnv = createReleaseChildEnv(sourceEnv);
   childEnv.GEMINI_API_KEY = secrets.GEMINI_API_KEY;
-  childEnv.CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV = "false";
+  childEnv.CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV = "true";
   return childEnv;
 }
 
 export function resolveSelfHostInvocation({ projectRoot = DEFAULT_PROJECT_ROOT } = {}) {
   return createWranglerInvocation(
-    ["dev", "--local", "--config", SELFHOST_CONFIG_FILENAME],
+    [
+      "dev",
+      "--local",
+      "--config",
+      SELFHOST_CONFIG_FILENAME,
+      "--env-file",
+      join(projectRoot, SELFHOST_ENV_FILENAME),
+    ],
     { projectRoot },
   );
 }

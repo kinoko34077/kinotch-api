@@ -7,7 +7,7 @@ This guide runs the existing Semantic Compression Worker locally with a Gemini A
 - The only local secret input is the repository-root `.env` file.
 - `.env` must contain the operator's own `GEMINI_API_KEY` and must not be committed.
 - Root `.dev.vars` and `.dev.vars.*` files are intentionally rejected by the launcher.
-- The launcher passes only an allowlisted process environment to Wrangler and disables Wrangler's automatic `.env` loading.
+- The launcher passes only an allowlisted process environment to Wrangler and explicitly supplies the validated repository-root `.env` through Wrangler's `--env-file` option. The `.env` parser rejects every key other than `GEMINI_API_KEY`.
 - The local Worker listens only on `http://127.0.0.1:8787`.
 - No Cloudflare account, deployment, Service Token, Access policy, Production credential, or public hostname is configured.
 - Local execution does not provide the Production Gateway's caller Bearer authentication or Production rate limit. Keep the endpoint loopback-only.
