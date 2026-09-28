@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-28
-- 作成時点の先頭: 13897b973b80a6ea6af504c2f34dece190ad6d64
-- 収録コミット数: 161
+- 作成時点の先頭: 29cefc95b4f25c5f96d7c8b7fc977e83ab769893
+- 収録コミット数: 162
 
 ## この文書の読み方
 
@@ -28,8 +28,8 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - REST Compression APIは POST https://api.kinotch.workers.dev/v1/compress。
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
-- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260927T083120814Z.json で、source revisionは 5beea99251dec97c1434fc6419be99c4feac5fd3。現行main `13897b9` の後続修正はBYOK local self-hostと文書整合を含み、今回の正式releaseまではProductionへ未反映である。
-- 現行main `13897b9` には、Jev Audit preview KV bindingの修正（PR #50）、Semantic Compression MCP JWKS resolver再利用（PR #51）、BYOK local self-host実装（PR #53）、BYOK dotenv loading documentation修正（PR #54）が含まれる。BYOKは実際のloopback entry pointと実Gemini経路で検証済みだが、これらのmain更新は今回の正式releaseまではCloudflare Productionへ反映していない。
+- 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260928T111550876Z.json で、source revisionは `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`。補助Jev Audit metadataは docs/releases/jev-audit-20260928T111552211Z.json である。
+- 現行main `29cefc9` には、Jev Audit preview KV bindingの修正（PR #50）、Semantic Compression MCP JWKS resolver再利用（PR #51）、BYOK local self-host実装（PR #53）、BYOK dotenv loading documentation修正（PR #54）、文書整合（PR #55）が含まれる。BYOKはlocal E2E、main更新は正式Production releaseまで確認済みである。
 - PR #51のGitHub Actions `CI` と `Verify` は成功した上で`main`へmergeされた。Base-managed Verifyのcheckout SHA pinはBase側の正本で管理し、個別repo側では複製しない。
 - a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
 - c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
@@ -61,7 +61,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - Node 26 runtime固定、Production Secret Mapper、Cloudflare Access Service Tokenによる自動MCP smoke、Jev Audit Remote、Codex Service Auth helper、Jev Audit bootstrap／release recoveryを順に追加し、Production metadataへ実測結果を記録した。
 - Jev AuditのProduction releaseでは、REST E2E、Access Service TokenによるMCP `audit_files`、専用benchmark KV、history／rolling benchmarkの実測を確認した。対応する証跡は`docs/releases/20260925*.json`および`docs/releases/20260927*.json`である。
 - PR #50でJev Audit remote開発用Preview KVをProduction KVと分離し、PR #51でSemantic Compression MCPのJWKS resolverをfactory／issuer単位で再利用するキャッシュへ修正した。PR #51のmerge commitは`fad4bef6e3c67da58171ef5a528fd88c3e60a014`である。
-- この期間の後続maintenanceは本番の既存Versionを変更していない。Productionの最新実反映sourceは引き続き`5beea99251dec97c1434fc6419be99c4feac5fd3`であり、`13897b9`を次回release時に`main == origin/main`および通常のrelease gateを通して反映する。
+- 2026-09-28、accepted `main` `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`を通常の`npm run deploy:production` gateで正式反映した。Text、Compression、MCP、Gateway、Jev Audit private/MCPをdeployし、各smokeとrollback非発生を確認した。core metadataは`docs/releases/20260928T111550876Z.json`、Jev補助metadataは`docs/releases/jev-audit-20260928T111552211Z.json`である。
 
 ### 11. BYOK local self-host（2026-09-28）
 
@@ -178,6 +178,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 | 20260925T170258933Z.json | succeeded | df33747 | 2245a87c | e37ea972 | 07b70ab9 | 7ea7e453 |
 | 20260925T171244986Z.json | succeeded | 3a46902 | ad23559b | 9c9ea729 | 6adf68eb | f0a49714 |
 | 20260927T083120814Z.json | succeeded | 5beea99 | 2f3bebc2 | 8fbbb441 | 83e42b7c | 038beeb1 |
+| 20260928T111550876Z.json | succeeded | 29cefc9 | 67334f84 | 44c558ca | c1d2ae58 | cb3e8d46 |
 
 Jev Audit wrapperが生成した補助metadataも同じ`docs/releases/`で追跡している。これらは上表のcore Worker Version列とは別のJev Audit専用記録である。
 
@@ -195,6 +196,7 @@ Jev Audit wrapperが生成した補助metadataも同じ`docs/releases/`で追跡
 | jev-audit-20260925T170300864Z.json | succeeded |
 | jev-audit-20260925T171248483Z.json | succeeded |
 | jev-audit-20260927T083122160Z.json | succeeded |
+| jev-audit-20260928T111552211Z.json | succeeded |
 
 ## 完全commit inventory
 
@@ -363,6 +365,7 @@ Jev Audit wrapperが生成した補助metadataも同じ`docs/releases/`で追跡
 | 159 | 2026-09-28 | 7ff67a1a0048fad3e090bb4ab8e8e08a7af714db | docs: refresh current history and state |
 | 160 | 2026-09-28 | 7e70f948ce4779e82609a37d2592962fa1230a92 | Merge PR #53: add bounded BYOK local compression self-host |
 | 161 | 2026-09-28 | 13897b973b80a6ea6af504c2f34dece190ad6d64 | Merge PR #54: align BYOK dotenv documentation |
+| 162 | 2026-09-28 | 29cefc95b4f25c5f96d7c8b7fc977e83ab769893 | Merge pull request #55 from kinoko34077/codex/docs-production-reconciliation |
 
 ## 再生成・更新
 
