@@ -38,7 +38,7 @@ test("Current State and development history record the production secret mapper 
 test("Current State records the accepted BYOK main revision and keeps Production provenance separate", async () => {
   const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
 
-  assert.match(currentState, /accepted repository `main`.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
+  assert.match(currentState, /accepted repository `main`.*027448208d95b15e38c236910a2f9750448f5b31.*formal Production source.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
   assert.match(currentState, /BYOK local Semantic Compression surface/);
   assert.match(currentState, /real local.*E2E|local.*E2E.*verified/i);
   assert.match(currentState, /does not add a Production.*Remote MCP.*Access.*Service Token path/i);
@@ -49,9 +49,10 @@ test("development history includes the BYOK implementation and documentation mer
   const history = await readFile(new URL("../docs/DEVELOPMENT_HISTORY.md", import.meta.url), "utf8");
 
   assert.match(history, /origin\/main/);
-  assert.match(history, /29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
+  assert.match(history, /027448208d95b15e38c236910a2f9750448f5b31/);
   assert.match(history, /7e70f948ce4779e82609a37d2592962fa1230a92/);
   assert.match(history, /Merge pull request #55 from kinoko34077\/codex\/docs-production-reconciliation/);
+  assert.match(history, /Merge pull request #56 from kinoko34077\/codex\/record-production-release/);
   assert.match(history, /Merge PR #53: add bounded BYOK local compression self-host/);
   assert.match(history, /Merge PR #54: align BYOK dotenv documentation/);
   assert.match(history, /local.*E2E|E2E.*local/i);

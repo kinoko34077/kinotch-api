@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-28 — accepted repository `main` and the latest formal Production source are `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`; the release succeeded with Text, Compression, Remote MCP, Gateway, Jev Audit REST, and Jev Audit MCP smoke evidence recorded in `docs/releases/20260928T111550876Z.json` and `docs/releases/jev-audit-20260928T111552211Z.json`; the BYOK local self-host path remains separately verified through a real local E2E; Compression MCP automated smoke uses Service Token while the separate Codex Managed OAuth E2E remains distinct; Jev Audit uses Service Token as its accepted normal Production MCP authentication path and does not require Jev-specific Managed OAuth completion
+Last verified: 2026-09-28 — accepted repository `main` is `027448208d95b15e38c236910a2f9750448f5b31`; the latest formal Production source is `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`, and the later main commits only record that release and reconcile documentation; the release succeeded with Text, Compression, Remote MCP, Gateway, Jev Audit REST, and Jev Audit MCP smoke evidence recorded in `docs/releases/20260928T111550876Z.json` and `docs/releases/jev-audit-20260928T111552211Z.json`; the BYOK local self-host path remains separately verified through a real local E2E; Compression MCP automated smoke uses Service Token while the separate Codex Managed OAuth E2E remains distinct; Jev Audit uses Service Token as its accepted normal Production MCP authentication path and does not require Jev-specific Managed OAuth completion
 
 ## Implemented
 

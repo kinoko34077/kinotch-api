@@ -3,8 +3,8 @@
 - 対象: kinoko34077/kinotch-api
 - 履歴基準: origin/main の first-parent 履歴
 - 作成時点: 2026-09-28
-- 作成時点の先頭: 29cefc95b4f25c5f96d7c8b7fc977e83ab769893
-- 収録コミット数: 162
+- 作成時点の先頭: 027448208d95b15e38c236910a2f9750448f5b31
+- 収録コミット数: 163
 
 ## この文書の読み方
 
@@ -29,7 +29,7 @@ Gitはcommitとrefを記録するが、GitHubへいつpushされたかという�
 - Remote MCPはCloudflare Access保護下の /mcp とし、compress_textを提供。
 - Compressionは compact-v1 / semantic-dense-v1、Gemini gemini-3.5-flash-lite、thinking_level=minimal、store:falseを固定。
 - 最新Production metadata（コード履歴上の直近記録）は docs/releases/20260928T111550876Z.json で、source revisionは `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`。補助Jev Audit metadataは docs/releases/jev-audit-20260928T111552211Z.json である。
-- 現行main `29cefc9` には、Jev Audit preview KV bindingの修正（PR #50）、Semantic Compression MCP JWKS resolver再利用（PR #51）、BYOK local self-host実装（PR #53）、BYOK dotenv loading documentation修正（PR #54）、文書整合（PR #55）が含まれる。BYOKはlocal E2E、main更新は正式Production releaseまで確認済みである。
+- 現行main `0274482` には、Jev Audit preview KV bindingの修正（PR #50）、Semantic Compression MCP JWKS resolver再利用（PR #51）、BYOK local self-host実装（PR #53）、BYOK dotenv loading documentation修正（PR #54）、文書整合（PR #55）、Production metadata記録（PR #56）が含まれる。Runtimeの正式Production sourceは`29cefc9`であり、PR #56以降はそのrelease証跡と文書整合のみを追加している。BYOKはlocal E2E、main更新は正式Production releaseまで確認済みである。
 - PR #51のGitHub Actions `CI` と `Verify` は成功した上で`main`へmergeされた。Base-managed Verifyのcheckout SHA pinはBase側の正本で管理し、個別repo側では複製しない。
 - a56cdd3 は本履歴と利用ガイドを公開し、284e27c は文書公開計画を完了した。
 - c15a100 はCompression provenance、release child secret isolation、MCP pre-parse body guardを実装した。
@@ -366,6 +366,7 @@ Jev Audit wrapperが生成した補助metadataも同じ`docs/releases/`で追跡
 | 160 | 2026-09-28 | 7e70f948ce4779e82609a37d2592962fa1230a92 | Merge PR #53: add bounded BYOK local compression self-host |
 | 161 | 2026-09-28 | 13897b973b80a6ea6af504c2f34dece190ad6d64 | Merge PR #54: align BYOK dotenv documentation |
 | 162 | 2026-09-28 | 29cefc95b4f25c5f96d7c8b7fc977e83ab769893 | Merge pull request #55 from kinoko34077/codex/docs-production-reconciliation |
+| 163 | 2026-09-28 | 027448208d95b15e38c236910a2f9750448f5b31 | Merge pull request #56 from kinoko34077/codex/record-production-release |
 
 ## 再生成・更新
 
