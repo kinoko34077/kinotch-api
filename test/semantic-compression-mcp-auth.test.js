@@ -61,6 +61,95 @@ test("JWT verification returns only a non-reversible actor fingerprint", async (
   assert.doesNotMatch(result.actorKey, /operator|example/);
 });
 
+test("Semantic Compression MCP Access JWKS resolver is reused for the same issuer and factory", async () => {
+  let factoryCalls = 0;
+  const seenJwks = [];
+  const createRemoteJWKSetImpl = (url) => {
+    factoryCalls += 1;
+    assert.equal(url.toString(), "https://team.example.com/cdn-cgi/access/certs");
+    return { fixtureJwks: factoryCalls };
+  };
+  const jwtVerifyImpl = async (_token, jwks) => {
+    seenJwks.push(jwks);
+    return { payload: { exp: Math.floor(Date.now() / 1000) + 60 } };
+  };
+  const env = { TEAM_DOMAIN: "team.example.com", POLICY_AUD: "audience-tag" };
+  const options = { createRemoteJWKSetImpl, jwtVerifyImpl };
+
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("one"), env, options), { ok: true });
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("two"), env, options), { ok: true });
+  assert.equal(factoryCalls, 1);
+  assert.equal(seenJwks.length, 2);
+  assert.equal(seenJwks[0], seenJwks[1]);
+});
+
+test("Semantic Compression MCP Access JWKS cache isolates issuers", async () => {
+  const created = [];
+  const createRemoteJWKSetImpl = (url) => {
+    const jwks = { url: url.toString() };
+    created.push(jwks);
+    return jwks;
+  };
+  const seenJwks = [];
+  const jwtVerifyImpl = async (_token, jwks) => {
+    seenJwks.push(jwks);
+    return { payload: { exp: Math.floor(Date.now() / 1000) + 60 } };
+  };
+  const options = { createRemoteJWKSetImpl, jwtVerifyImpl };
+
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("team"), {
+    TEAM_DOMAIN: "team.example.com",
+    POLICY_AUD: "audience-tag",
+  }, options), { ok: true });
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("other"), {
+    TEAM_DOMAIN: "other.example.com",
+    POLICY_AUD: "audience-tag",
+  }, options), { ok: true });
+
+  assert.equal(created.length, 2);
+  assert.notEqual(seenJwks[0], seenJwks[1]);
+  assert.equal(seenJwks[0].url, "https://team.example.com/cdn-cgi/access/certs");
+  assert.equal(seenJwks[1].url, "https://other.example.com/cdn-cgi/access/certs");
+});
+
+test("Semantic Compression MCP Access JWKS cache isolates injected factories", async () => {
+  let firstFactoryCalls = 0;
+  let secondFactoryCalls = 0;
+  const firstJwks = { factory: "first" };
+  const secondJwks = { factory: "second" };
+  const firstFactory = () => {
+    firstFactoryCalls += 1;
+    return firstJwks;
+  };
+  const secondFactory = () => {
+    secondFactoryCalls += 1;
+    return secondJwks;
+  };
+  const seenJwks = [];
+  const jwtVerifyImpl = async (_token, jwks) => {
+    seenJwks.push(jwks);
+    return { payload: { exp: Math.floor(Date.now() / 1000) + 60 } };
+  };
+  const env = { TEAM_DOMAIN: "team.example.com", POLICY_AUD: "audience-tag" };
+
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("first"), env, {
+    createRemoteJWKSetImpl: firstFactory,
+    jwtVerifyImpl,
+  }), { ok: true });
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("second"), env, {
+    createRemoteJWKSetImpl: secondFactory,
+    jwtVerifyImpl,
+  }), { ok: true });
+  assert.deepEqual(await verifyAccessJwt(requestWithToken("first-again"), env, {
+    createRemoteJWKSetImpl: firstFactory,
+    jwtVerifyImpl,
+  }), { ok: true });
+
+  assert.equal(firstFactoryCalls, 1);
+  assert.equal(secondFactoryCalls, 1);
+  assert.deepEqual(seenJwks, [firstJwks, secondJwks, firstJwks]);
+});
+
 test("invalid issuer, audience, signature, or expiry becomes authentication_failed", async (t) => {
   for (const [name, verifier] of [
     ["issuer", async () => { throw new Error("issuer mismatch"); }],
