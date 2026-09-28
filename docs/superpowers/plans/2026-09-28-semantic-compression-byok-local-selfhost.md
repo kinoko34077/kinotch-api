@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node.js `>=26.10.0 <27`, ES modules, Node built-in `parseEnv` and test runner, Wrangler `4.138.0`, existing Hono Semantic Compression Worker/Core.
 
-**Spec:** `docs/superpowers/specs/2026-09-28-semantic-compression-byok-local-selfhost-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-28-semantic-compression-byok-local-selfhost-design.md` (approved 2026-09-28)
 
 ## Global Constraints
 
