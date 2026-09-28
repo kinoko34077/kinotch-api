@@ -7,7 +7,9 @@ const documentPaths = [
   new URL("../docs/OPERATIONS.md", import.meta.url),
   new URL("../docs/API_PLAN.md", import.meta.url),
   new URL("../docs/semantic-compression.md", import.meta.url),
+  new URL("../docs/semantic-compression-selfhost.md", import.meta.url),
   new URL("../docs/specs/semantic-compression-api.md", import.meta.url),
+  new URL("../project/docs/INDEX.md", import.meta.url),
 ];
 const documentText = (await Promise.all(documentPaths.map((url) => readFile(url, "utf8")))).join("\n");
 
@@ -62,6 +64,20 @@ test("semantic compression operations are documented independently", () => {
     "untrusted display data",
     "sanitize",
     "dangerous URL",
+    "selfhost:compression",
+    "wrangler.semantic-compression.selfhost.jsonc",
+    "GEMINI_API_KEY",
+    "repository-root `.env`",
+    ".dev.vars",
+    "127.0.0.1:8787",
+    "GET /health",
+    "POST /v1/compress",
+    "does not use `--remote`",
+    "Production Bearer",
+    "Remote MCP",
+    "ARCH-COMP-SELFHOST-001",
+    "SEC-COMP-SELFHOST-001",
+    "BEH-COMP-SELFHOST-001",
   ]) {
     assert.match(documentText, new RegExp(required.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")), required);
   }

@@ -8,6 +8,7 @@
 - [Semantic Compression Overview and Usage Guide](../../docs/semantic-compression-guide.md)
 - [Semantic Compression API Specification](../../docs/specs/semantic-compression-api.md)
 - [Semantic Compression Operations](../../docs/semantic-compression.md)
+- [Semantic Compression BYOK Local Self-Host](../../docs/semantic-compression-selfhost.md)
 - [Semantic Compression Remote MCP Specification](../../docs/specs/semantic-compression-mcp.md)
 - [Semantic Compression Remote MCP Operations](../../docs/semantic-compression-mcp.md)
 - [Jev Audit Remote Usage Guide](../../docs/jev-audit-guide.md)

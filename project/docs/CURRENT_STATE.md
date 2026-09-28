@@ -12,6 +12,7 @@ Last verified: 2026-09-28 — repository `main` is `fad4bef6e3c67da58171ef5a528f
 - Existing Hono/Worker, generated snapshot, MCP, and deployment boundaries retained
 - Existing Domain files remain at their original paths; no bulk move was performed
 - Detailed usage, operations, and first-parent development history are documented under docs/ and linked from this index
+- Issue #23 adds a bounded BYOK local Semantic Compression surface: repository-root `.env` with only the operator-owned `GEMINI_API_KEY`, a secret-free allowlist launcher, and a loopback-only dedicated Wrangler config; it does not add a Production, public-hosting, Remote MCP, Access, or Service Token path.
 - Production smoke uses fixed Gateway, Text Worker, and Compression Worker targets; standalone diagnostic smoke keeps local endpoint overrides separate.
 - Production release verifies `main == origin/main`, rebuilds dependencies with `npm ci`, and isolates release-only secrets from build/test child processes.
 - Production operator secrets are supplied through the fixed external `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` opaque boundary by `production-secret-mapper.mjs`; the Jev Audit feature extends the Production required-key set to the documented Jev Audit keys while unknown file keys remain ignored and unforwarded, and `smoke:mcp:local` / `release:local` remain launchers rather than alternate production authorities.
