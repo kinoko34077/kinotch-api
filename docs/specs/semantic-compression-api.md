@@ -539,7 +539,7 @@ Gemini Interactions API
 
 The launcher reads only the repository-root `.env` and only the `GEMINI_API_KEY` key. The key is operator-owned, must remain untracked, and is passed to the local Worker through a bounded child environment. Cloudflare API credentials, Service Tokens, `COMPRESSION_API_TOKEN`, unrelated process secrets, and alternate dotenv files are not used.
 
-Wrangler local dotenv loading is disabled by the launcher so that the selected secret source is unambiguous. `.env.example` contains an empty placeholder only.
+The launcher passes the validated repository-root `.env` explicitly through Wrangler's `--env-file` option and enables Wrangler's local dotenv loading so the required `GEMINI_API_KEY` binding is available to the local Worker. The launcher rejects every `.env` key other than `GEMINI_API_KEY`, rejects root `.dev.vars*` files, and uses an allowlisted child environment; `.env.example` contains an empty placeholder only.
 
 ### BEH-COMP-SELFHOST-001: Local usage
 

@@ -21,7 +21,7 @@
 - Do not change Production Wrangler files, Gateway auth/rate limits, Production secret mapping, deploy/release commands, MCP behavior, or Cloudflare resources.
 - `selfhost:compression` must never invoke `deploy`, `--remote`, authentication setup, or resource mutation.
 - The launcher accepts no user arguments and must fail closed instead of forwarding Wrangler flags.
-- The launcher child environment starts from `createReleaseChildEnv(sourceEnv)`, adds only `GEMINI_API_KEY` plus the fixed launcher-control variable `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false`, and does not forward Cloudflare deployment credentials or unrelated source environment variables.
+- The launcher child environment starts from `createReleaseChildEnv(sourceEnv)`, adds only `GEMINI_API_KEY` plus the fixed launcher-control variable `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=true`, and does not forward Cloudflare deployment credentials or unrelated source environment variables. Wrangler receives the validated root `.env` explicitly through `--env-file`.
 - The dedicated Wrangler config declares only `GEMINI_API_KEY` in `secrets.required` and contains no KiNoTch. account/resource IDs or Production hostnames.
 - Ordinary automated tests must not call Gemini.
 - A live Gemini E2E is evidence only when an operator-owned key is locally available; absence of that key keeps Issue #23 open rather than fabricating completion evidence.
@@ -29,7 +29,7 @@
 ## Review Focus
 
 1. `.env` contains unrelated or Cloudflare-looking keys: only `GEMINI_API_KEY` reaches the child Worker environment.
-2. Wrangler cannot bypass the launcher allowlist through either automatic `.env` reloading or an alternate `.dev.vars` / `.dev.vars.*` file: auto `.env` loading is disabled and alternate local-secret files are rejected before spawn.
+2. Wrangler receives only the validated root `.env` through the explicit `--env-file` argument; unrelated `.env` keys are rejected and alternate `.dev.vars` / `.dev.vars.*` files are rejected before spawn.
 3. Missing, malformed, empty, quoted, and whitespace-containing dotenv values follow Node `parseEnv` semantics and fail safely when the required key is unusable.
 4. Any launcher argument such as `--remote`, `deploy`, another config path, or another port is rejected before process spawn.
 5. Spawn failure or non-zero child exit preserves a safe diagnostic/exit result without revealing the Gemini key or widening the environment.
@@ -63,8 +63,8 @@
   - missing `.env`, missing `GEMINI_API_KEY`, and empty `GEMINI_API_KEY` fail before spawn with short setup errors that do not include a secret value.
   - quoted and whitespace-containing legal dotenv values are accepted according to Node `parseEnv` rather than by a custom parser.
   - a synthetic root listing containing `.dev.vars` or `.dev.vars.local` causes `loadSelfHostSecrets` to fail before reading/spawning the local server, even when `.env` itself is valid; the error directs the user to use root `.env` only and contains no secret value.
-  - `createSelfHostChildEnv` preserves ordinary safe variables such as `PATH`, maps the Gemini key, sets `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV` to `false`, and omits `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `WRANGLER_API_TOKEN`, and unrelated source variables.
-  - `resolveSelfHostInvocation` uses the local installed Wrangler through `createWranglerInvocation` and the exact Wrangler argument list `dev --local --config wrangler.semantic-compression.selfhost.jsonc`; it contains neither an effective `deploy` command nor `--remote`.
+  - `createSelfHostChildEnv` preserves ordinary safe variables such as `PATH`, maps the Gemini key, sets `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV` to `true`, and omits `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `WRANGLER_API_TOKEN`, and unrelated source variables.
+  - `resolveSelfHostInvocation` uses the local installed Wrangler through `createWranglerInvocation` and the exact Wrangler argument list `dev --local --config wrangler.semantic-compression.selfhost.jsonc --env-file <projectRoot>/.env`; it contains neither an effective `deploy` command nor `--remote`.
   - `main(["--remote"])` and any other non-empty argument list fail before spawn.
   - a synthetic Gemini key never appears in captured stdout/stderr.
   - child exit code `17` is returned as `17`; synchronous spawn failure returns a safe non-zero result.
@@ -86,7 +86,8 @@
   - allowlist only `GEMINI_API_KEY` from parsed `.env`;
   - reject absent/malformed/empty required key before spawn;
   - `createReleaseChildEnv(sourceEnv)` is the child-environment baseline;
-  - add `GEMINI_API_KEY` and fixed `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV="false"` only;
+  - add `GEMINI_API_KEY` and fixed `CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV="true"` only;
+  - pass the validated repository-root `.env` explicitly with Wrangler's `--env-file` argument;
   - spawn the fixed local Wrangler invocation with `{ cwd: projectRoot, env: childEnv, stdio: "inherit", shell: false }`;
   - never print secret contents.
 
