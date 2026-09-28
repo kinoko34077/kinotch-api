@@ -88,15 +88,15 @@
 - Consumes: clean `main`, `HEAD == origin/main`, passed CI/Verify, operator-managed mapper values, and the existing `npm run deploy:production` gate.
 - Produces: successful release metadata containing the exact source revision, all Worker Version IDs, smoke results, and rollback state.
 
-- [ ] **Step 1: Verify release preconditions**
+- [x] **Step 1: Verify release preconditions**
 
   Confirm `main`, clean worktree, `HEAD == origin/main`, current GitHub `test` and `Verify` success, and required operator values through the existing opaque mapper boundary.
 
-- [ ] **Step 2: Run the formal release**
+- [x] **Step 2: Run the formal release**
 
   Run only `npm run deploy:production`. Do not use individual Worker deploys or a new release command. Do not add Provider retries.
 
-- [ ] **Step 3: Verify release metadata and live smoke evidence**
+- [x] **Step 3: Verify release metadata and live smoke evidence**
 
   Confirm `status = succeeded`, source revision equals the pre-release main SHA, Text/Compression/MCP/Gateway smoke results pass, private Worker direct checks remain blocked, and no rollback is required.
 
@@ -114,7 +114,7 @@
 - Consumes: Task 3 release metadata and post-merge CI/Verify evidence.
 - Produces: current-state and history records that distinguish deployed source SHA from the later metadata-record commit.
 
-- [ ] **Step 1: Update Current State with the successful release evidence**
+- [x] **Step 1: Update Current State with the successful release evidence**
 - [ ] **Step 2: Extend the first-parent history snapshot through the metadata commit**
-- [ ] **Step 3: Run `npm test`, `git diff --check`, and repository verification**
+- [x] **Step 3: Run `npm test`, `git diff --check`, and repository verification**
 - [ ] **Step 4: Commit/push the post-release documentation and comment Issue #23 with the final evidence**
