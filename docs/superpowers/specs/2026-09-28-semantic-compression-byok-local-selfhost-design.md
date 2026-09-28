@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-28
 
-**Status:** Written design awaiting user review. Implementation plan and implementation are intentionally deferred until this document is approved.
+**Status:** Approved 2026-09-28; implementation follows `docs/superpowers/plans/2026-09-28-semantic-compression-byok-local-selfhost.md`.
 
 **Owning Issue:** #23
 
@@ -107,7 +107,8 @@ It must:
 6. ignore unrelated `.env` keys rather than forwarding them;
 7. start Wrangler with a bounded child environment that contains only ordinary safe process variables plus `GEMINI_API_KEY` and launcher-control variables;
 8. exclude Cloudflare credential environment variables from that child environment;
-9. disable Wrangler's independent `.env` re-loading for that child process so the launcher's allowlist remains the effective secret boundary.
+9. disable Wrangler's independent `.env` re-loading for that child process so the launcher's allowlist remains the effective secret boundary;
+10. reject root `.dev.vars` / `.dev.vars.*` so no alternate Wrangler local-secret file can shadow the supported root `.env` source.
 
 The self-host path must not read `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` and must not require `COMPRESSION_API_TOKEN`, Cloudflare Access credentials, Service Tokens, or Cloudflare deployment credentials.
 
@@ -145,11 +146,12 @@ npm run selfhost:compression
 A small `scripts/selfhost-compression.mjs` owns the boundary. Its responsibilities are limited to:
 
 1. `.env` preflight and allowlisted key extraction;
-2. sanitized child-environment construction;
-3. starting a fixed `wrangler dev --local --config wrangler.semantic-compression.selfhost.jsonc` invocation;
-4. preserving Wrangler's exit status and normal local-server output;
-5. rejecting launcher arguments rather than forwarding arbitrary Wrangler flags;
-6. never invoking `wrangler deploy`, Production release scripts, authentication setup, or Cloudflare resource mutation.
+2. rejection of alternate root `.dev.vars*` secret sources;
+3. sanitized child-environment construction;
+4. starting a fixed `wrangler dev --local --config wrangler.semantic-compression.selfhost.jsonc` invocation;
+5. preserving Wrangler's exit status and normal local-server output;
+6. rejecting launcher arguments rather than forwarding arbitrary Wrangler flags;
+7. never invoking `wrangler deploy`, Production release scripts, authentication setup, or Cloudflare resource mutation.
 
 The launcher must not become a general environment mapper, installer, deployment manager, provider router, or configuration framework.
 
@@ -254,6 +256,7 @@ Exact test filenames may be chosen during implementation planning. No new runtim
 - `.env` absent: fail with a short setup message;
 - malformed `.env`: fail rather than guessing;
 - `GEMINI_API_KEY` absent or empty: fail with a short setup message;
+- root `.dev.vars` / `.dev.vars.*` present: fail and direct the user to the supported root `.env` path;
 - secret values never appear in output;
 - unsupported launcher arguments fail rather than being forwarded.
 
@@ -269,6 +272,7 @@ Issue #23 can be closed for the lightweight self-host scope when all of the foll
 
 - [ ] `.env.example` contains no credential value and documents only the supported local key.
 - [ ] `.env` remains ignored by Git.
+- [ ] root `.dev.vars` / `.dev.vars.*` cannot silently become an alternate self-host secret source.
 - [ ] self-host config contains no KiNoTch. account/resource IDs or Production hostname.
 - [ ] self-host config declares only `GEMINI_API_KEY` as required secret.
 - [ ] launcher command is fixed to local mode/config and accepts no arbitrary passthrough arguments.
@@ -279,6 +283,7 @@ Issue #23 can be closed for the lightweight self-host scope when all of the foll
 
 - [ ] absent/malformed `.env` fails safely;
 - [ ] missing/empty `GEMINI_API_KEY` fails safely;
+- [ ] root `.dev.vars` / `.dev.vars.*` fails safely before spawn;
 - [ ] failure output never contains the key;
 - [ ] unrelated `.env` keys are not forwarded to the Worker;
 - [ ] the launcher/config starts the existing `semantic-compression-worker.js`, not a fork;
