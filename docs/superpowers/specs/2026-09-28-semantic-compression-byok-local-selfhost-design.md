@@ -104,10 +104,10 @@ It must:
 3. extract only `GEMINI_API_KEY`;
 4. fail before server startup when the file is absent, malformed, or the key is absent/empty;
 5. never print the key;
-6. ignore unrelated `.env` keys rather than forwarding them;
+6. reject unrelated `.env` keys rather than forwarding them;
 7. start Wrangler with a bounded child environment that contains only ordinary safe process variables plus `GEMINI_API_KEY` and launcher-control variables;
 8. exclude Cloudflare credential environment variables from that child environment;
-9. disable Wrangler's independent `.env` re-loading for that child process so the launcher's allowlist remains the effective secret boundary;
+9. enable Wrangler's local dotenv loading together with an explicit `--env-file` path to the validated root `.env`; the launcher's parser, key allowlist, and child-environment allowlist remain the effective secret boundary;
 10. reject root `.dev.vars` / `.dev.vars.*` so no alternate Wrangler local-secret file can shadow the supported root `.env` source.
 
 The self-host path must not read `%USERPROFILE%\.kinotch-secrets\kinotch-api.production.env` and must not require `COMPRESSION_API_TOKEN`, Cloudflare Access credentials, Service Tokens, or Cloudflare deployment credentials.
