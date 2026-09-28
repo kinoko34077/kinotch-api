@@ -70,7 +70,7 @@ Jev Audit Remoteの利用・secret・公開境界・現行verification stateは[
 - source/diff本文、Authorization、Access credential、TypeSafe key、raw provider responseを通常ログへ記録しない。
 - **Production verified**: 2026-09-25、source revision `84e8109ef43064efd72fd1012054dc7787de6a8e` の正式releaseでlive TypeSafe REST E2EがHTTP 200、authenticated Jev MCP Service Token E2EがHTTP 200となり、実`audit_files` tool callまで成功した。private/MCPとも`needsRollback: false`で、rollback不要。証跡は`docs/releases/20260925T144351192Z.json`と`docs/releases/jev-audit-20260925T144353075Z.json`。
 - Service TokenをJev Audit MCPの通常Production認証として採用する。Jev固有のManaged OAuthは完了条件ではなく、将来interactive利用が必要になった場合の任意経路である。
-- post-release hardeningではMCP/RESTのUnicode path上限統一、固定model driftのfail-closed、full Service Token smokeで`list_profiles`→`audit_files`を実callする回帰検証を追加した。これらは次回の通常formal releaseまでは「repositoryで検証済み・Production未反映」と区別する。
+- post-release hardeningではMCP/RESTのUnicode path上限統一、固定model driftのfail-closed、full Service Token smokeで`list_profiles`→`audit_files`を実callする回帰検証を追加した。これらは2026-09-27の正式release source `5beea99251dec97c1434fc6419be99c4feac5fd3`へ含まれ、tracked release metadataとlive verificationでProduction反映済みである。
 
 ## 遅延の見方
 

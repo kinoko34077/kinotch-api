@@ -207,6 +207,7 @@ npm run release:local
 | Compressionの運用・secret・live test | docs/semantic-compression.md |
 | Compression Remote MCP契約 | docs/specs/semantic-compression-mcp.md |
 | Compression Remote MCP Access・Codex・smoke | docs/semantic-compression-mcp.md |
+| Compression BYOK local self-host | docs/semantic-compression-selfhost.md |
 | Jev Audit Remote API / MCP・secret・verification state | docs/jev-audit.md |
 | Gateway/Text API運用 | docs/OPERATIONS.md |
 | 共通Text API計画 | docs/API_PLAN.md |
