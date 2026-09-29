@@ -1,4 +1,4 @@
-name: Issue 60 Generate Text Rules
+name: Issue 60 Finalize Text Rules
 
 on:
   push:
@@ -6,20 +6,29 @@ on:
       - fix/issue-60-canonical-fixed-rules
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '26'
+      - name: Integrate current main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
       - run: npm ci
       - run: npm run build:text-rules
-      - uses: actions/upload-artifact@v4
-        with:
-          name: issue-60-rules-generated
-          path: src/text-core/rules.generated.mjs
-          retention-days: 1
+      - name: Commit generated snapshot and retire temporary workflow
+        run: |
+          rm .github/workflows/issue-60-generate-text-rules.yml
+          git add -A
+          git commit -m "build: materialize canonical fixed rules on current main"
+          git push origin HEAD:${GITHUB_REF_NAME}
