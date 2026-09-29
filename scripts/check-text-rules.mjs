@@ -2,9 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateTextRulesSource } from "./generate-text-rules.mjs";
+import { verifyKinotchFixedRules } from "./verify-kinotch-fixed-rules.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = path.join(projectRoot, "src", "text-core", "rules.generated.mjs");
+
+await verifyKinotchFixedRules(projectRoot);
+
 const [actual, expected] = await Promise.all([
   readFile(outputPath, "utf8"),
   generateTextRulesSource(projectRoot),
