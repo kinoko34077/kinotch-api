@@ -35,10 +35,11 @@ test("Current State and development history record the production secret mapper 
   assert.doesNotMatch(history, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });
 
-test("Current State records the accepted BYOK main revision and keeps Production provenance separate", async () => {
+test("Current State records the accepted implementation baseline and keeps Production provenance separate", async () => {
   const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
 
-  assert.match(currentState, /accepted repository `main`.*027448208d95b15e38c236910a2f9750448f5b31.*formal Production source.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
+  assert.match(currentState, /accepted repository implementation baseline.*bb830a4dc3ae0902c86ac9cbb9804ed4fa223f7b.*formal Production source.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
+  assert.doesNotMatch(currentState, /accepted repository `main` is/);
   assert.match(currentState, /BYOK local Semantic Compression surface/);
   assert.match(currentState, /real local.*E2E|local.*E2E.*verified/i);
   assert.match(currentState, /does not add a Production.*Remote MCP.*Access.*Service Token path/i);
