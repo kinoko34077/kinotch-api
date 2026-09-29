@@ -40,10 +40,11 @@
     "check:text-client": "node scripts/check-text-client.mjs",
     "check:kanji-fallback": "node scripts/check-kanji-fallback.mjs",
     "check:browser-client": "node scripts/check-browser-client.mjs",
-    "check:text-snapshot": "npm run check:text-rules && npm run check:text-metadata && npm run check:text-client && npm run check:kanji-fallback && npm run check:browser-client",
+    "check:text-snapshot": "npm run check:text-rules && npm run check:text-metadata && npm run check:text-client && npm run check:kanji-fallback && npm run check:browser-client && npm run check:shared-runtime",
     "pretest": "npm run check:text-snapshot",
     "test": "node --test test/*.test.js",
-    "deploy": "npm run deploy:production"
+    "deploy": "npm run deploy:production",
+    "check:shared-runtime": "node scripts/verify-shared-runtime.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
