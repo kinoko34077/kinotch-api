@@ -18,6 +18,8 @@ verified offline by `scripts/verify-kinotch-fixed-rules.mjs` through the
 existing `check:text-rules` / `check:text-snapshot` path.
 
 The remaining rule files stay repository-local unless separately migrated.
-`src/text-core/rules.generated.mjs` is still derived deterministically by the
-existing text-rule generator, so runtime loading and Text Transform API
-behavior do not depend on network access to the canonical repository.
+Generated text artifacts are refreshed in dependency order with
+`npm run build:text-snapshot`; `src/text-core/rules.generated.mjs` remains
+derived deterministically by the existing text-rule generator. Runtime loading
+and Text Transform API behavior therefore do not depend on network access to
+the canonical repository.
