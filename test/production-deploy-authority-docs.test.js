@@ -38,7 +38,7 @@ test("Current State and development history record the production secret mapper 
 test("Current State records the accepted implementation baseline and keeps Production provenance separate", async () => {
   const currentState = await readFile(new URL("../project/docs/CURRENT_STATE.md", import.meta.url), "utf8");
 
-  assert.match(currentState, /accepted repository implementation baseline.*bb830a4dc3ae0902c86ac9cbb9804ed4fa223f7b.*formal Production source.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
+  assert.match(currentState, /accepted repository implementation baseline.*f1d6a376aa71c0cf1b2db54ec942e71f320745e5.*formal Production source.*29cefc95b4f25c5f96d7c8b7fc977e83ab769893/);
   assert.doesNotMatch(currentState, /accepted repository `main` is/);
   assert.match(currentState, /BYOK local Semantic Compression surface/);
   assert.match(currentState, /real local.*E2E|local.*E2E.*verified/i);
