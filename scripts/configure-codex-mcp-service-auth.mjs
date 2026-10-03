@@ -30,43 +30,70 @@ export function buildSemanticCompressorSection({ helperPath = defaultHelperPath 
 export function updateCodexConfigText(sourceText, { helperPath = defaultHelperPath } = {}) {
   const normalizedSource = sourceText.replaceAll("\r\n", "\n");
   const sourceLines = normalizedSource.split("\n");
-  const matchingIndexes = sourceLines
-    .map((line, index) => (line.trim() === SEMANTIC_COMPRESSOR_SECTION ? index : -1))
-    .filter((index) => index >= 0);
+  const targetTable = "mcp_servers.semantic_compressor";
 
-  if (matchingIndexes.length > 1) {
+  const tableHeaders = sourceLines
+    .map((line, index) => {
+      const match = /^\[([^\[\]]+)\]$/u.exec(line.trim());
+      return match ? { index, name: match[1].trim() } : null;
+    })
+    .filter(Boolean);
+
+  const targetHeaders = tableHeaders.filter(
+    ({ name }) => name === targetTable || name.startsWith(`${targetTable}.`),
+  );
+  const parentHeaders = targetHeaders.filter(({ name }) => name === targetTable);
+
+  if (parentHeaders.length > 1) {
     throw new Error("Codex config contains multiple semantic_compressor sections");
+  }
+
+  const seenTargetHeaders = new Set();
+  for (const { name } of targetHeaders) {
+    if (seenTargetHeaders.has(name)) {
+      throw new Error("Codex config contains duplicate semantic_compressor target table");
+    }
+    seenTargetHeaders.add(name);
   }
 
   const replacementLines = buildSemanticCompressorSection({ helperPath }).split("\n");
 
-  if (matchingIndexes.length === 0) {
+  if (targetHeaders.length === 0) {
     const trimmed = normalizedSource.replace(/\s+$/u, "");
     return `${trimmed}${trimmed.length > 0 ? "\n\n" : ""}${replacementLines.join("\n")}\n`;
   }
 
-  const start = matchingIndexes[0];
-  let end = sourceLines.length;
-  for (let index = start + 1; index < sourceLines.length; index += 1) {
-    const trimmed = sourceLines[index].trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      end = index;
-      break;
+  const ranges = targetHeaders.map(({ index: start }) => {
+    const nextHeader = tableHeaders.find(({ index }) => index > start);
+    return { start, end: nextHeader?.index ?? sourceLines.length };
+  });
+  const firstTargetStart = ranges[0].start;
+  const combined = [];
+  let index = 0;
+  let insertedReplacement = false;
+
+  while (index < sourceLines.length) {
+    const range = ranges.find(({ start }) => start === index);
+    if (range) {
+      if (!insertedReplacement) {
+        while (combined.length > 0 && combined.at(-1) === "") combined.pop();
+        if (combined.length > 0) combined.push("");
+        combined.push(...replacementLines);
+        insertedReplacement = true;
+      }
+      index = range.end;
+      while (index < sourceLines.length && sourceLines[index] === "") index += 1;
+      continue;
     }
+
+    combined.push(sourceLines[index]);
+    index += 1;
   }
 
-  const before = sourceLines.slice(0, start);
-  const after = sourceLines.slice(end);
-  while (before.length > 0 && before.at(-1) === "") before.pop();
-  while (after.length > 0 && after[0] === "") after.shift();
+  if (!insertedReplacement) {
+    throw new Error(`Codex config subtree replacement failed at line ${firstTargetStart + 1}`);
+  }
 
-  const combined = [
-    ...before,
-    ...(before.length > 0 ? [""] : []),
-    ...replacementLines,
-    ...(after.length > 0 ? [""] : []),
-    ...after,
-  ];
   return `${combined.join("\n").replace(/\s+$/u, "")}\n`;
 }
 
