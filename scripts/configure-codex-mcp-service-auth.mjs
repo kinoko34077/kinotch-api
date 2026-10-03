@@ -30,43 +30,90 @@ export function buildSemanticCompressorSection({ helperPath = defaultHelperPath 
 export function updateCodexConfigText(sourceText, { helperPath = defaultHelperPath } = {}) {
   const normalizedSource = sourceText.replaceAll("\r\n", "\n");
   const sourceLines = normalizedSource.split("\n");
-  const matchingIndexes = sourceLines
-    .map((line, index) => (line.trim() === SEMANTIC_COMPRESSOR_SECTION ? index : -1))
-    .filter((index) => index >= 0);
+  const targetName = "mcp_servers.semantic_compressor";
+  const descendantPrefix = `${targetName}.`;
 
-  if (matchingIndexes.length > 1) {
+  function tableHeader(line) {
+    const trimmed = line.trim();
+    const table = /^\[([^\[\]]+)\]$/u.exec(trimmed);
+    if (table) return { name: table[1].trim(), array: false, raw: trimmed };
+    const arrayTable = /^\[\[([^\[\]]+)\]\]$/u.exec(trimmed);
+    if (arrayTable) return { name: arrayTable[1].trim(), array: true, raw: trimmed };
+    return null;
+  }
+
+  const headers = sourceLines
+    .map((line, index) => ({ index, header: tableHeader(line) }))
+    .filter(({ header }) => header !== null);
+  const targetHeaders = headers.filter(
+    ({ header }) => header.name === targetName || header.name.startsWith(descendantPrefix),
+  );
+  const parentHeaders = targetHeaders.filter(({ header }) => header.name === targetName);
+
+  if (parentHeaders.length > 1) {
     throw new Error("Codex config contains multiple semantic_compressor sections");
+  }
+
+  const descendantHeaders = targetHeaders.filter(({ header }) => header.name !== targetName);
+  if (parentHeaders.length === 0 && descendantHeaders.length > 0) {
+    throw new Error("Codex config contains an ambiguous semantic_compressor subtree");
+  }
+
+  if (parentHeaders.length === 1 && parentHeaders[0].header.raw !== SEMANTIC_COMPRESSOR_SECTION) {
+    throw new Error("Codex config contains an ambiguous semantic_compressor subtree");
+  }
+
+  const targetHeaderCounts = new Map();
+  for (const { header } of descendantHeaders) {
+    const key = header.name;
+    const count = (targetHeaderCounts.get(key) ?? 0) + 1;
+    targetHeaderCounts.set(key, count);
+    if (count > 1) {
+      throw new Error("Codex config contains an ambiguous semantic_compressor subtree");
+    }
   }
 
   const replacementLines = buildSemanticCompressorSection({ helperPath }).split("\n");
 
-  if (matchingIndexes.length === 0) {
+  if (parentHeaders.length === 0) {
     const trimmed = normalizedSource.replace(/\s+$/u, "");
     return `${trimmed}${trimmed.length > 0 ? "\n\n" : ""}${replacementLines.join("\n")}\n`;
   }
 
-  const start = matchingIndexes[0];
-  let end = sourceLines.length;
-  for (let index = start + 1; index < sourceLines.length; index += 1) {
-    const trimmed = sourceLines[index].trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      end = index;
-      break;
-    }
+  const parentIndex = parentHeaders[0].index;
+  if (descendantHeaders.some(({ index }) => index < parentIndex)) {
+    throw new Error("Codex config contains an ambiguous semantic_compressor subtree");
   }
 
-  const before = sourceLines.slice(0, start);
-  const after = sourceLines.slice(end);
-  while (before.length > 0 && before.at(-1) === "") before.pop();
-  while (after.length > 0 && after[0] === "") after.shift();
+  const nextHeaderByIndex = new Map();
+  for (let position = 0; position < headers.length; position += 1) {
+    nextHeaderByIndex.set(
+      headers[position].index,
+      position + 1 < headers.length ? headers[position + 1].index : sourceLines.length,
+    );
+  }
 
-  const combined = [
-    ...before,
-    ...(before.length > 0 ? [""] : []),
-    ...replacementLines,
-    ...(after.length > 0 ? [""] : []),
-    ...after,
-  ];
+  const targetRanges = new Map(
+    targetHeaders.map(({ index }) => [index, nextHeaderByIndex.get(index)]),
+  );
+
+  const combined = [];
+  for (let index = 0; index < sourceLines.length; ) {
+    const targetEnd = targetRanges.get(index);
+    if (targetEnd !== undefined) {
+      if (index === parentIndex) {
+        while (combined.length > 0 && combined.at(-1) === "") combined.pop();
+        if (combined.length > 0) combined.push("");
+        combined.push(...replacementLines);
+        if (targetEnd < sourceLines.length) combined.push("");
+      }
+      index = targetEnd;
+      continue;
+    }
+    combined.push(sourceLines[index]);
+    index += 1;
+  }
+
   return `${combined.join("\n").replace(/\s+$/u, "")}\n`;
 }
 
