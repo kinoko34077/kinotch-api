@@ -27,36 +27,78 @@ export function buildSemanticCompressorSection({ helperPath = defaultHelperPath 
   ].join("\n");
 }
 
+function parseTableHeader(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return null;
+
+  const array = trimmed.startsWith("[[") && trimmed.endsWith("]]");
+  const name = array
+    ? trimmed.slice(2, -2).trim()
+    : trimmed.slice(1, -1).trim();
+  return { array, name };
+}
+
+function isSemanticCompressorTable(name) {
+  return (
+    name === "mcp_servers.semantic_compressor"
+    || name.startsWith("mcp_servers.semantic_compressor.")
+  );
+}
+
 export function updateCodexConfigText(sourceText, { helperPath = defaultHelperPath } = {}) {
   const normalizedSource = sourceText.replaceAll("\r\n", "\n");
   const sourceLines = normalizedSource.split("\n");
-  const matchingIndexes = sourceLines
-    .map((line, index) => (line.trim() === SEMANTIC_COMPRESSOR_SECTION ? index : -1))
-    .filter((index) => index >= 0);
+  const headers = sourceLines
+    .map((line, index) => ({ index, header: parseTableHeader(line) }))
+    .filter(({ header }) => header !== null);
+  const targetHeaders = headers.filter(({ header }) => isSemanticCompressorTable(header.name));
+  const parentHeaders = targetHeaders.filter(
+    ({ header }) => !header.array && header.name === "mcp_servers.semantic_compressor",
+  );
 
-  if (matchingIndexes.length > 1) {
+  if (parentHeaders.length > 1) {
     throw new Error("Codex config contains multiple semantic_compressor sections");
+  }
+
+  const seenTargetNames = new Set();
+  for (const { header } of targetHeaders) {
+    if (header.array) {
+      throw new Error("Codex config contains ambiguous semantic_compressor target table");
+    }
+    if (seenTargetNames.has(header.name)) {
+      throw new Error("Codex config contains duplicate semantic_compressor target table");
+    }
+    seenTargetNames.add(header.name);
   }
 
   const replacementLines = buildSemanticCompressorSection({ helperPath }).split("\n");
 
-  if (matchingIndexes.length === 0) {
+  if (targetHeaders.length === 0) {
     const trimmed = normalizedSource.replace(/\s+$/u, "");
     return `${trimmed}${trimmed.length > 0 ? "\n\n" : ""}${replacementLines.join("\n")}\n`;
   }
 
-  const start = matchingIndexes[0];
-  let end = sourceLines.length;
-  for (let index = start + 1; index < sourceLines.length; index += 1) {
-    const trimmed = sourceLines[index].trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      end = index;
-      break;
+  const remove = new Set();
+  const targetStarts = new Set(targetHeaders.map(({ index }) => index));
+  for (let headerIndex = 0; headerIndex < headers.length; headerIndex += 1) {
+    const start = headers[headerIndex].index;
+    if (!targetStarts.has(start)) continue;
+    const end = headerIndex + 1 < headers.length
+      ? headers[headerIndex + 1].index
+      : sourceLines.length;
+    for (let index = start; index < end; index += 1) {
+      remove.add(index);
     }
   }
 
-  const before = sourceLines.slice(0, start);
-  const after = sourceLines.slice(end);
+  const insertionIndex = Math.min(...targetStarts);
+  const before = sourceLines
+    .slice(0, insertionIndex)
+    .filter((_, index) => !remove.has(index));
+  const after = sourceLines
+    .slice(insertionIndex)
+    .filter((_, relativeIndex) => !remove.has(insertionIndex + relativeIndex));
+
   while (before.length > 0 && before.at(-1) === "") before.pop();
   while (after.length > 0 && after[0] === "") after.shift();
 
