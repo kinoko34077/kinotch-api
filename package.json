@@ -47,7 +47,7 @@
     "check:shared-runtime": "node scripts/verify-shared-runtime.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.2.0",
     "agents": "^0.24.0",
     "hono": "^4.13.9",
     "jose": "^6.2.12",
