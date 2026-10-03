@@ -65,7 +65,7 @@ export function updateCodexConfigText(sourceText, { helperPath = defaultHelperPa
 
   const targetHeaderCounts = new Map();
   for (const { header } of descendantHeaders) {
-    const key = `${header.array ? "[[" : "["}${header.name}${header.array ? "]]" : "]"}`;
+    const key = header.name;
     const count = (targetHeaderCounts.get(key) ?? 0) + 1;
     targetHeaderCounts.set(key, count);
     if (count > 1) {
