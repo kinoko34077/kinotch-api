@@ -129,6 +129,22 @@ test("Codex setup fails closed on orphan or duplicate semantic_compressor descen
     () => updateCodexConfigText(duplicateChild, { helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs" }),
     /ambiguous semantic_compressor subtree/,
   );
+
+  const mixedDuplicateChild = [
+    "[mcp_servers.semantic_compressor]",
+    "url = \"https://old.invalid/mcp\"",
+    "",
+    "[mcp_servers.semantic_compressor.headers]",
+    "A = \"1\"",
+    "",
+    "[[mcp_servers.semantic_compressor.headers]]",
+    "B = \"2\"",
+    "",
+  ].join("\n");
+  assert.throws(
+    () => updateCodexConfigText(mixedDuplicateChild, { helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs" }),
+    /ambiguous semantic_compressor subtree/,
+  );
 });
 
 test("Codex setup fails closed on duplicate semantic_compressor sections", async () => {
