@@ -44,6 +44,101 @@ test("Codex setup replaces only the existing semantic_compressor scalar section"
   assert.match(result, /\[mcp_servers\.other\][\s\S]*https:\/\/example\.test\/mcp/);
 });
 
+test("Codex setup replaces the semantic_compressor parent and descendant subtree", async () => {
+  const { updateCodexConfigText } = await loadSetupModule();
+  const source = [
+    "model = \"gpt-5.6\"",
+    "",
+    "[mcp_servers.semantic_compressor]",
+    "url = \"https://old.invalid/mcp\"",
+    "",
+    "[mcp_servers.semantic_compressor.headers]",
+    "Authorization = \"stale\"",
+    "",
+    "[mcp_servers.semantic_compressor.extra]",
+    "legacy = true",
+    "",
+    "[mcp_servers.other]",
+    "url = \"https://example.test/mcp\"",
+    "",
+  ].join("\n");
+
+  const result = updateCodexConfigText(source, {
+    helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs",
+  });
+
+  assert.equal((result.match(/\[mcp_servers\.semantic_compressor\]/g) ?? []).length, 1);
+  assert.doesNotMatch(result, /\[mcp_servers\.semantic_compressor\.(?:headers|extra)\]/);
+  assert.doesNotMatch(result, /Authorization = \"stale\"|legacy = true|https:\/\/old\.invalid\/mcp/);
+  assert.match(result, /\[mcp_servers\.other\][\s\S]*https:\/\/example\.test\/mcp/);
+});
+
+test("Codex setup removes descendant target sections even when siblings are interleaved", async () => {
+  const { updateCodexConfigText } = await loadSetupModule();
+  const source = [
+    "[mcp_servers.semantic_compressor]",
+    "url = \"https://old.invalid/mcp\"",
+    "",
+    "[mcp_servers.semantic_compressor.headers]",
+    "Authorization = \"stale-one\"",
+    "",
+    "[mcp_servers.other]",
+    "url = \"https://example.test/mcp\"",
+    "",
+    "[mcp_servers.semantic_compressor.retry]",
+    "count = 9",
+    "",
+    "[other]",
+    "value = 1",
+    "",
+  ].join("\n");
+
+  const result = updateCodexConfigText(source, {
+    helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs",
+  });
+
+  assert.doesNotMatch(result, /stale-one|\[mcp_servers\.semantic_compressor\.retry\]|count = 9/);
+  assert.match(result, /\[mcp_servers\.other\][\s\S]*https:\/\/example\.test\/mcp/);
+  assert.match(result, /\[other\][\s\S]*value = 1/);
+});
+
+test("Codex setup fails closed on duplicate descendant target tables", async () => {
+  const { updateCodexConfigText } = await loadSetupModule();
+  const source = [
+    "[mcp_servers.semantic_compressor]",
+    "url = \"https://old.invalid/mcp\"",
+    "",
+    "[mcp_servers.semantic_compressor.headers]",
+    "one = \"x\"",
+    "",
+    "[mcp_servers.semantic_compressor.headers]",
+    "two = \"y\"",
+    "",
+  ].join("\n");
+
+  assert.throws(
+    () => updateCodexConfigText(source, { helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs" }),
+    /duplicate semantic_compressor target table/,
+  );
+});
+
+test("Codex setup fails closed on semantic_compressor array target tables", async () => {
+  const { updateCodexConfigText } = await loadSetupModule();
+  const source = [
+    "[mcp_servers.semantic_compressor]",
+    "url = \"https://old.invalid/mcp\"",
+    "",
+    "[[mcp_servers.semantic_compressor.headers]]",
+    "name = \"ambiguous\"",
+    "",
+  ].join("\n");
+
+  assert.throws(
+    () => updateCodexConfigText(source, { helperPath: "C:\\repo\\scripts\\codex-mcp-access-headers.mjs" }),
+    /ambiguous semantic_compressor target table/,
+  );
+});
+
 test("Codex setup fails closed on duplicate semantic_compressor sections", async () => {
   const { updateCodexConfigText } = await loadSetupModule();
   const source = [
