@@ -38,6 +38,11 @@ if (-not (Test-Path -LiteralPath $BaseIndexScriptPath -PathType Leaf)) {
     throw "Base index script not found: $BaseIndexScriptPath"
 }
 . $BaseIndexScriptPath
+$MaintenancePatchPath = Join-Path $BaseDir "scripts/maintenance-patches.ps1"
+if (-not (Test-Path -LiteralPath $MaintenancePatchPath -PathType Leaf)) {
+    throw "Maintenance patch helper not found: $MaintenancePatchPath"
+}
+. $MaintenancePatchPath
 
 function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
@@ -785,6 +790,7 @@ function Test-BaseFiles {
         Write-Host "[base-check] VERSION  index=$($index.base_version) current=$currentVersion" -ForegroundColor Yellow
         $ok = $false
     }
+    if (-not (Test-KntMaintenancePatchProvenance -Index $index)) { $ok = $false }
     $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
     foreach ($expectedPath in @(Get-BaseProtectedPaths -Root $Root)) {
         if ($expectedPath -notin $indexedPaths) {

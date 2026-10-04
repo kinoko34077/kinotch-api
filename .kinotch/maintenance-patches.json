@@ -1,0 +1,25 @@
+{
+    "schema_version":  1,
+    "authority_base_version":  "0.5.22",
+    "patches":  [
+                    {
+                        "id":  "verify-checkout-v4-immutable-from-0.3.8",
+                        "description":  "Pin actions/checkout v4 to the accepted immutable revision and install the minimum provenance-aware Base validator needed for the legacy consumer to verify the bounded patch locally.",
+                        "source_base_version":  "0.3.8",
+                        "files":  [
+                                      {
+                                          "path":  ".github/workflows/verify.yml",
+                                          "source_sha256":  "ae4ac2882296e238f141db1d46247dd77027411d7ac954622e96ddf85de27f3a",
+                                          "target_sha256":  "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059",
+                                          "content_path":  "maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml"
+                                      },
+                                      {
+                                          "path":  ".kinotch/scripts/knt.ps1",
+                                          "source_sha256":  "84bea22c610fb7d48d9291945c96fe191e1fed73d9b3c389025f0b4ea59d9b8b",
+                                          "target_sha256":  "0cc7e22aa1001d4dd7555275908c0b085373241388b07501ee1ccf28b66766b9",
+                                          "content_path":  "maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1"
+                                      }
+                                  ]
+                    }
+                ]
+}
