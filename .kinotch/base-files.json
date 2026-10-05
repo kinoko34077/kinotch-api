@@ -392,28 +392,28 @@
                   },
                   {
                       "path":  ".kinotch/maintenance-patches.json",
-                      "sha256":  "eeae7f609a57913544765687d94f453866908ccfd505c8e190d6fe937b705bef"
+                      "sha256":  "a4f4cf88780ee2e76955195a0579215d6a712dcaeda16c17ca9062eee60d50fc"
                   },
                   {
                       "path":  ".kinotch/scripts/maintenance-patches.ps1",
-                      "sha256":  "7fc67f814f018323489a40cc3b489531de9a21466f5c8540e00c5c7e0ff43624"
+                      "sha256":  "50b212839f3177feaa4c747cc0a23cc8f41bf9b276eafba38a6cf3e2d2b4aa42"
                   }
               ],
     "maintenance_patches":  {
                                 "schema_version":  1,
                                 "source_base_version":  "0.3.8",
-                                "source_snapshot_sha256":  "dcb237991e8953bc6f8f01552f12b6dff74305e5a31375f8b9bceddf12ecabc9",
-                                "catalog_sha256":  "eeae7f609a57913544765687d94f453866908ccfd505c8e190d6fe937b705bef",
+                                "source_snapshot_sha256":  "dd367006083b3a044e5c25ffda2d05bcf36abaff4a7595564e8a0543a766001f",
+                                "catalog_sha256":  "a4f4cf88780ee2e76955195a0579215d6a712dcaeda16c17ca9062eee60d50fc",
                                 "support_files":  [
                                                       {
                                                           "path":  ".kinotch/maintenance-patches.json",
-                                                          "sha256":  "eeae7f609a57913544765687d94f453866908ccfd505c8e190d6fe937b705bef",
+                                                          "sha256":  "a4f4cf88780ee2e76955195a0579215d6a712dcaeda16c17ca9062eee60d50fc",
                                                           "added":  true,
                                                           "source_sha256":  null
                                                       },
                                                       {
                                                           "path":  ".kinotch/scripts/maintenance-patches.ps1",
-                                                          "sha256":  "7fc67f814f018323489a40cc3b489531de9a21466f5c8540e00c5c7e0ff43624",
+                                                          "sha256":  "50b212839f3177feaa4c747cc0a23cc8f41bf9b276eafba38a6cf3e2d2b4aa42",
                                                           "added":  true,
                                                           "source_sha256":  null
                                                       },
@@ -427,7 +427,7 @@
                                 "patches":  [
                                                 {
                                                     "id":  "verify-checkout-v4-immutable-from-0.3.8",
-                                                    "authority_base_version":  "0.5.22",
+                                                    "authority_base_version":  "0.5.23",
                                                     "files":  [
                                                                   {
                                                                       "path":  ".github/workflows/verify.yml",

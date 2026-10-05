@@ -1,10 +1,15 @@
 function Get-KntBaseSnapshotHash {
     param([Parameter(Mandatory=$true)]$Entries)
 
-    $lines = @($Entries | Sort-Object { [string]$_.path } | ForEach-Object {
-        ([string]$_.path) + "=" + ([string]$_.sha256)
-    })
-    $canonical = (($lines -join [Environment]::NewLine) + [Environment]::NewLine).Replace("`r`n", "`n").Replace("`r", "`n")
+    # Snapshot provenance must be identical across hosts/cultures. PowerShell's
+    # Sort-Object uses the current culture, so sort canonical path=hash lines
+    # explicitly with ordinal semantics instead.
+    $lines = New-Object System.Collections.Generic.List[string]
+    foreach ($entry in @($Entries)) {
+        [void]$lines.Add(([string]$entry.path) + "=" + ([string]$entry.sha256))
+    }
+    $lines.Sort([System.StringComparer]::Ordinal)
+    $canonical = (($lines.ToArray() -join [Environment]::NewLine) + [Environment]::NewLine).Replace("`r`n", "`n").Replace("`r", "`n")
     $encoding = New-Object System.Text.UTF8Encoding($false)
     $bytes = $encoding.GetBytes($canonical)
     $sha256 = [Security.Cryptography.SHA256]::Create()
