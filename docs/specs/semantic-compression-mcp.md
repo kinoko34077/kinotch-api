@@ -10,10 +10,10 @@ This Worker exposes the existing semantic-compression service to MCP clients. It
 
 - Transport: stateless MCP Streamable HTTP.
 - Endpoint: `https://<semantic-compression-mcp-worker-host>/mcp`.
-- External protection: Cloudflare Access Managed OAuth.
+- External protection: Cloudflare Access. Interactive clients may use Managed OAuth; automated release smoke uses an Access Service Token assertion.
 - Worker-side assertion: `Cf-Access-Jwt-Assertion` is verified with Cloudflare Access JWKS, issuer, audience, signature, and expiration.
 - Required non-secret Worker vars: `TEAM_DOMAIN`, `POLICY_AUD`.
-- The repository smoke endpoint must use `https`, have no explicit port, the exact `/mcp` path, and contain no URL credentials, query, or fragment before its Access cookie is sent.
+- The repository smoke endpoint must use `https`, have no explicit port, the exact `/mcp` path, and contain no URL credentials, query, or fragment before any Access Service Token headers are sent.
 - Production deploy passes these vars explicitly with Wrangler `--var`; missing values fail before Worker deployment.
 - Missing or invalid configuration fails closed.
 
@@ -41,7 +41,7 @@ After Access JWT verification, the adapter applies a 2.5 MiB HTTP body-byte guar
 
 ```text
 MCP client
-  -> Cloudflare Access / Managed OAuth
+  -> Cloudflare Access / Managed OAuth or Service Auth
   -> semantic-compression-mcp /mcp
   -> Service Binding COMPRESSION
   -> private semantic-compression /v1/compress
@@ -64,11 +64,11 @@ Input text, compressed text outside the intended tool result, Access JWTs, Autho
 
 ## Deployment and change control
 
-`npm run deploy:production` remains the sole normal production release authority. The one-time `npm run bootstrap:mcp` path exists only to deploy a never-before-deployed MCP Worker before its Cloudflare Access application and Audience Tag can exist. Bootstrap requires explicit operator confirmation, clean `origin/main` source, tests, and MCP dry-run; it does not require or invent `MCP_ENDPOINT`/`MCP_SMOKE_ACCESS_COOKIE`, does not perform authenticated smoke, and does not mark production availability complete. It refuses to run when an active MCP deployment already exists.
+`npm run deploy:production` remains the sole normal production release authority. The one-time `npm run bootstrap:mcp` path exists only to deploy a never-before-deployed MCP Worker before its Cloudflare Access application and Audience Tag can exist. Bootstrap requires explicit operator confirmation, clean `origin/main` source, tests, and MCP dry-run; it does not require or invent `MCP_ENDPOINT`, `CF_ACCESS_CLIENT_ID`, or `CF_ACCESS_CLIENT_SECRET`, does not perform authenticated smoke, and does not mark production availability complete. It refuses to run when an active MCP deployment already exists.
 
-After bootstrap, the operator creates the Access application, enables Managed OAuth, obtains `TEAM_DOMAIN` and `POLICY_AUD`, and completes authenticated smoke. The normal release gate then requires those Access vars plus the endpoint and session cookie, passes the Worker vars explicitly, and includes MCP deploy, smoke, metadata, and rollback. Access application creation, Managed OAuth policy, and authenticated Codex/Inspector smoke are operator-controlled gates and cannot be inferred from repository code.
+After bootstrap, the operator creates the Access application, enables Managed OAuth for the interactive path, creates/authorizes the dedicated release-smoke Service Token, obtains `TEAM_DOMAIN` and `POLICY_AUD`, and completes authenticated smoke. The normal release gate requires those Access vars plus `MCP_ENDPOINT`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET`, passes the Worker vars explicitly, and includes MCP deploy, Service Token smoke, metadata, and rollback. Access application/policy creation and interactive Codex/Inspector OAuth smoke are operator-controlled gates and cannot be inferred from repository code.
 
-The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `notifications/initialized` notification, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access session cookie and validates that the endpoint uses HTTPS, has no explicit port, the exact `/mcp` path, and no URL credentials, query, or fragment. It never retries an MCP call and is not part of the ordinary `npm test` suite. Its result is `authMode: access_session_cookie`; this evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the cookie test.
+The opt-in `npm run smoke:mcp` helper performs one `initialize`, one `notifications/initialized` notification, one `tools/list`, and one `tools/call` for `compress_text`. It requires an operator-supplied Access Service Token pair (`CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`) and validates that the endpoint uses HTTPS, has no explicit port, the exact `/mcp` path, and no URL credentials, query, or fragment before sending those headers. It never retries an MCP call and is not part of the ordinary `npm test` suite. Its result is `authMode: access_service_token`; the legacy session-cookie input is rejected. This release-smoke evidence is separate from a Codex Managed OAuth client-flow smoke, which is recorded as `mcpOAuthSmoke` and cannot be inferred from the Service Token test.
 
 Prompt/model/profile changes belong to the REST/compression service change process. This adapter must not copy or mutate those definitions.
 
