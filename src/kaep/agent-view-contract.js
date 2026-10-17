@@ -125,7 +125,7 @@ export function fakeKaepGatewayResponse({
   let raw;
   try {
     raw = JSON.stringify(projected);
-    if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 262_144) {
+    if (typeof raw !== "string" || new TextEncoder().encode(raw).length > 262_144) {
       return failure(503, "invalid_source");
     }
   } catch {
