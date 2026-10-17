@@ -28,8 +28,22 @@ export function azureProvider({ key, region, fetchImpl = fetch }) {
     const result = await jsonPost(url, headers, [{ Text: text }], fetchImpl);
     const output = result?.[0]?.translations?.[0]?.text;
     if (typeof output !== "string") throw new ProviderError("invalid_response");
-    return output;
+    return decodeEntities(output);
   } };
+}
+
+function decodeEntities(value) {
+  return value.replace(/&(#x[0-9a-f]+|#[0-9]+|amp|lt|gt|quot|apos|#39);/gi, (match, entity) => {
+    const lower = entity.toLowerCase();
+    const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" };
+    if (Object.hasOwn(named, lower)) return named[lower];
+    if (lower.startsWith("#")) {
+      const hex = lower.startsWith("#x");
+      const code = Number.parseInt(lower.slice(hex ? 2 : 1), hex ? 16 : 10);
+      if (Number.isInteger(code) && code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)) return String.fromCodePoint(code);
+    }
+    return match;
+  });
 }
 
 export function googleProvider({ key, fetchImpl = fetch }) {
