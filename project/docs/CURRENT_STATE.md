@@ -118,3 +118,5 @@ Last verified: 2026-09-30 — accepted repository implementation baseline before
 - Node 26.10.0 Worker dry-runs are included in the project CI/release verification boundaries.
 - Service Token contract tests cover header injection, missing credential failure, legacy cookie rejection, mapper allowlist/mode boundaries, and secret non-disclosure.
 - Jev Audit Remote automated coverage includes contract, evaluator, private Worker, REST, MCP, release, smoke, Gateway rollback recovery, failure-stage provenance, bootstrap boundaries, documentation contracts, and post-release hardening checks.
+
+- KAEP P3-B H1-B（test-only）：既存Honoの `registerRoute`／`policyMiddleware`／3段階 `enforceRateLimit` を公開ルート登録なしのテスト専用Hono Routerに組み、fake principal・fake Producerで401/403/429/503・宛先分離・未登録404を検証。`src/routes/api.js`／`src/policies/routes.js`／Cloudflare Binding/Secret/Productionは未変更。これは認証済み実通信やHTTP公開を証明しない。
