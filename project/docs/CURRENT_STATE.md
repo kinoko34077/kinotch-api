@@ -1,3 +1,11 @@
+
+## KAEP P3-B H2 offline Producer feasibility (2026-10-17; no deployment)
+
+- H1 fake-only API contract accepted on main via kinotch-api #85 / PR #86, but no Hono production route or real caller identity is registered. H2 adds a bounded **offline-only** source GET budget/admission estimator and its negative tests plus `KAEP_AGENT_VIEW_H2.md`, without altering Gateway routes/policies/Worker bindings/credentials/release.
+- On accepted 40-public-repository historical baseline (129 GitHub REST GET), direct unauthenticated Cloudflare Worker every 60 seconds has a theoretical lower bound 2,460 GET/h vs GitHub no-auth general 60/h, and one historical scan exceeds Free external subrequest 50 per invocation. These are reference limits, not measured account usage or a verified free runtime. This option is not admitted.
+- Existing authenticated owner-PC `gh` one-shot source calls are bounded read evidence, **not** a resident source Producer. The central `kinotch-identity` broker and GitHub App authorization are not deployed/accepted; #9 dedicated Codex Service Auth Policy B remains untouched. No autonomous GPT wake or authenticated externally callable dynamic HTTP API is proven.
+- H3 first unfinished: select and prove a real bounded producer identity/trigger/recipient scope, verified source freshness and rate/CPU quota, then gated Cloudflare ingress/deploy and real authenticated E2E. Any token, permission, paid Provider, schedule or Production publish remains Human-gated.
+
 # Current State
 
 ## KAEP Agent API P3-B H1 — offline fake-only candidate (2026-10-17)
