@@ -30,3 +30,7 @@
 `test/kaep-agent-view-contract.test.js` にfake positive PARTIAL、未認証/別宛先/Rate/ソース故障/期限切れ、偽URL・悪性extra field・誤scope・二重root・未取得仕事ゼロ偽断定・ルート未登録の負例を追加する。
 
 H1コードのCI・formal review・main統合が完了したあとだけ、H2で「既存Cloudflare WorkerはGateway consumer、原典取得Producerは別」としたホスト設計の採用判定へ進む。本工程だけで本番リリース・動的HTTP API・GPT自動起動を受入にしない。
+
+## H1-B：隔離Honoルートのポリシー結合検証
+
+`test/kaep-agent-hono-policy-integration.test.js` は本番Gatewayに登録せず、テスト内の Hono と既存 `registerRoute`／`policyMiddleware`／`enforceRateLimit` を再利用。FAKE-only bearer／principal、preauth/main/actor rate limiting、fake Producerを注入し、401/403/429/503、期限切れ・不正レスポンス、ETagなし、Hono 405、実Gatewayの未登録404を確認する。テストに登場するBearer文字列や `verifiedPrincipal` は**実際の認証方式でも秘密鍵でもない**。この結果で将来の公開ルートやCloudflare権限が自動許可されることはない。
