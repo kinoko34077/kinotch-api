@@ -14,3 +14,5 @@
 - [Semantic Compression Remote MCP Operations](../../docs/semantic-compression-mcp.md)
 - [Jev Audit Remote Usage Guide](../../docs/jev-audit-guide.md)
 - [Jev Audit Remote API / MCP Operations](../../docs/jev-audit.md)
+
+- [KAEP P3-B H2 Producer／認証・無料枠の採用判定](KAEP_AGENT_VIEW_H2.md) — offline下限・ホスト未受入・H3安全ゲート。
