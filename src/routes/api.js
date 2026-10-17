@@ -91,6 +91,6 @@ registerRoute(apiRoutes, "POST", "/v1/audit", routePolicies.jevAudit, (c) =>
 // Independent opt-in translation endpoint; authenticated in handler before parsing body.
 apiRoutes.post("/v1/translate", async (c) => {
   const contentLength = Number(c.req.header("content-length") || 0);
-  if (contentLength > 40000) return c.json({ error: "payload_too_large" }, 413);
+  if (!Number.isFinite(contentLength) || contentLength > 40000) return c.json({ error: "payload_too_large" }, 413);
   return handleTranslation(c);
 });
