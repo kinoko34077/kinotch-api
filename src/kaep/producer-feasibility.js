@@ -64,17 +64,11 @@ export function assessKaepPollingFeasibility({
     minimumGetPerHour > githubUnauthenticatedRestRequestsPerHour;
   const targetFreshnessUnachievableFromThisCadence =
     refreshSeconds > maxObservationAgeSeconds;
-  const insufficientTriggerOrTrust = [
-    "public_worker_unauthenticated",
-    "owner_pc_one_shot",
-    "github_actions_event",
-    "github_app_broker",
-  ].includes(host);
   const reasons = [
     ...(firstFullSweepNeedsMultipleWorkerInvocations ?
       ["BASELINE_EXCEEDS_SINGLE_FREE_WORKER_SUBREQUEST_BOUND"] : []),
     ...(unauthenticatedGitHubBudgetExceeded ?
-      ["UNAUNTENTICATED_GITHUB_REST_LOWER_BOUND_EXCEEDS_REFERENCE_LIMIT"] : []),
+      ["UNAUTHENTICATED_GITHUB_REST_LOWER_BOUND_EXCEEDS_REFERENCE_LIMIT"] : []),
     ...(targetFreshnessUnachievableFromThisCadence ?
       ["CADENCE_EXCEEDS_FRESHNESS_TARGET"] : []),
     ...(host === "owner_pc_one_shot" ?
