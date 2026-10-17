@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { handleTranslation } from "../translation/handler.js";
+import { enforceBodyLimit } from "../middleware/body-limit.js";
+import { enforceRateLimit } from "../middleware/rate-limit.js";
 import { registerRoute } from "../middleware/guard.js";
 import { routePolicies } from "../policies/routes.js";
 import { proxyToWorker } from "../services/proxy.js";
@@ -90,7 +92,9 @@ registerRoute(apiRoutes, "POST", "/v1/audit", routePolicies.jevAudit, (c) =>
 
 // Independent opt-in translation endpoint; authenticated in handler before parsing body.
 apiRoutes.post("/v1/translate", async (c) => {
-  const contentLength = Number(c.req.header("content-length") || 0);
-  if (!Number.isFinite(contentLength) || contentLength > 40000) return c.json({ error: "payload_too_large" }, 413);
+  const limited = await enforceRateLimit(c, { id: "translation" }, { binding: "TEXT_RATE_LIMITER", limit: 30, period: 60 });
+  if (limited) return limited;
+  const bodyError = await enforceBodyLimit(c, { bodyLimitBytes: 40000 });
+  if (bodyError) return bodyError;
   return handleTranslation(c);
 });
