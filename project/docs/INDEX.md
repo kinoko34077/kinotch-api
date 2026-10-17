@@ -1,6 +1,7 @@
 # Documentation Index
 
 - [Current State](CURRENT_STATE.md)
+- [KAEP Agent API Gateway H1 — offline / fake-only](KAEP_AGENT_VIEW_H1.md)
 - [Current Specification](SPEC.md)
 - [Usage and Operations Guide](../../docs/USAGE.md)
 - [Development and Release History](../../docs/DEVELOPMENT_HISTORY.md)

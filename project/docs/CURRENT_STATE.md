@@ -1,5 +1,12 @@
 # Current State
 
+## KAEP Agent API P3-B H1 — offline fake-only candidate (2026-10-17)
+
+- Owner: [kinotch-api #85](https://github.com/kinoko34077/kinotch-api/issues/85); parent [devflow #680](https://github.com/kinoko34077/devflow/issues/680), source view accepted PR #710.
+- This change adds only an unregistered `src/kaep/agent-view-contract.js` pure test adapter using the existing Zod dependency, and `test/kaep-agent-view-contract.test.js`. It does not register Hono route/policy, configure Cloudflare Access/GitHub App/Worker binding, deploy production, initiate recurring activity, or add paid provider calls. Current accepted Production behavior remains unchanged.
+- This local code *cannot authenticate* real callers; its `verifiedPrincipal` is fake-only test injection. Real identity policy, API Source producer, rate quotas, cache freshness, CORS and dynamic HTTP security are **unaccepted** and must be independently authorized at #85 H2/H3. The contract is documented in [KAEP Agent Gateway H1](KAEP_AGENT_VIEW_H1.md).
+
+
 Base version: `0.3.8`
 
 Last verified: 2026-09-30 — accepted repository implementation baseline before this documentation-only reconciliation is `f1d6a376aa71c0cf1b2db54ec942e71f320745e5`; this baseline is not asserted to be the repository current Git HEAD; the latest formal Production source remains `29cefc95b4f25c5f96d7c8b7fc977e83ab769893`; later accepted repository commits include the fixed-rule and shared-runtime source-lock migrations described below and do not by themselves constitute a later Production deployment; the latest formal release succeeded with Text, Compression, Remote MCP, Gateway, Jev Audit REST, and Jev Audit MCP smoke evidence recorded in `docs/releases/20260928T111550876Z.json` and `docs/releases/jev-audit-20260928T111552211Z.json`; the BYOK local self-host path remains separately verified through a real local E2E; Compression MCP automated smoke uses Service Token while the separate Codex Managed OAuth E2E remains distinct; Jev Audit uses Service Token as its accepted normal Production MCP authentication path and does not require Jev-specific Managed OAuth completion
