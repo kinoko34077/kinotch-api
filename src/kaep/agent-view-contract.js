@@ -140,12 +140,24 @@ export function fakeKaepGatewayResponse({
       !Number.isFinite(nowMs)) {
     return failure(503, "invalid_source");
   }
-  const observedMs = Date.parse(data.observed_at);
-  if (!Number.isFinite(observedMs) || observedMs > nowMs + 300_000) {
+  // Require an offset-bearing ISO timestamp. Date.parse otherwise accepts
+  // timezone-less/local strings and may silently reinterpret their age.
+  const offsetIsoTime =
+    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/;
+  if (!offsetIsoTime.test(data.observed_at)) {
     return failure(503, "invalid_source_time");
   }
-  const age = Math.max(0, Math.floor((nowMs - observedMs) / 1000));
-  if (age > 60 || !data.observation_within_target_age ||
+  const observedMs = Date.parse(data.observed_at);
+  // Even small future-dated source observations are not proof of freshness.
+  // Reject them instead of clamping their age to zero.
+  if (!Number.isFinite(observedMs) || observedMs > nowMs) {
+    return failure(503, "invalid_source_time");
+  }
+  const age = Math.floor((nowMs - observedMs) / 1000);
+  // Both the service's outer 60s requirement and the producer-declared
+  // *smaller* freshness target must hold. Neither can weaken the other.
+  if (age > Math.min(60, data.freshness_limit_seconds) ||
+      !data.observation_within_target_age ||
       Math.abs(data.observation_age_seconds - age) > 10) {
     return failure(503, "source_stale");
   }
