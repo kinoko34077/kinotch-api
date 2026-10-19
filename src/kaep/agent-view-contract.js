@@ -143,7 +143,7 @@ export function fakeKaepGatewayResponse({
   // Require an offset-bearing ISO timestamp. Date.parse otherwise accepts
   // timezone-less/local strings and may silently reinterpret their age.
   const offsetIsoTime =
-    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/;
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
   if (!offsetIsoTime.test(data.observed_at)) {
     return failure(503, "invalid_source_time");
   }
