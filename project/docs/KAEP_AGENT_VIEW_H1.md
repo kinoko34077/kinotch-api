@@ -34,3 +34,10 @@ H1コードのCI・formal review・main統合が完了したあとだけ、H2で
 ## H1-B：隔離Honoルートのポリシー結合検証
 
 `test/kaep-agent-hono-policy-integration.test.js` は本番Gatewayに登録せず、テスト内の Hono と既存 `registerRoute`／`policyMiddleware`／`enforceRateLimit` を再利用。FAKE-only bearer／principal、preauth/main/actor rate limiting、fake Producerを注入し、401/403/429/503、期限切れ・不正レスポンス、ETagなし、Hono 405、実Gatewayの未登録404を確認する。テストに登場するBearer文字列や `verifiedPrincipal` は**実際の認証方式でも秘密鍵でもない**。この結果で将来の公開ルートやCloudflare権限が自動許可されることはない。
+
+
+## H3負例補強：原典鮮度の受信時再計算（2026-10-19、Cloudflare未接続）
+
+D1認証エラーへの対応をユーザーが後回しとしたため、本番ホストや資格情報へ触れない独立したH3受信安全条件を修正した。既存の `fakeKaepGatewayResponse` はプロデューサーの鮮度宣言を鵜呑みにせず、**Gatewayが受信した時点の時刻**から実際の経過秒を計算する。従来の60秒上限と、元のJSONが指定した `freshness_limit_seconds` の小さい方を適用する。現在時刻より未来の `observed_at` は、以前の5分許容によってゼロ秒として扱わず、失敗させる。タイムゾーン付きのISO 8601日時のみ受理し、曖昧なローカル時刻を採用しない。
+
+短い鮮度上限、未来への1秒ずれ、タイムゾーン省略、不正な時間書式の否定テストと、UTC／+09:00の正常な等価時刻、PARTIAL_UNKNOWN保持の回帰テストを追加する。**これはfake-only受信契約の安全性補強であり、実Producerのclock同期、持続的Source取得、GitHub原典真正性、Cloudflare実D1、外部HTTPデプロイ／Caller認証の証拠ではない。** H3の実接続は引き続きkinotch-api #85の安全ゲートで保留する。
