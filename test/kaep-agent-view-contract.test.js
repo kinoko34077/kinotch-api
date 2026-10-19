@@ -125,6 +125,53 @@ test("stale and future projected results fail closed", async () => {
   assert.equal((await invalid.json()).error, "invalid_source_time");
 });
 
+test("producer-declared shorter freshness target is enforced, even below the gateway 60s limit", async () => {
+  const source = fixture(); // observation is 20 seconds old
+  source.freshness_limit_seconds = 10;
+  source.observation_within_target_age = false;
+  const r = call({ projected: source });
+  assert.equal(r.status, 503);
+  assert.equal((await r.json()).error, "source_stale");
+
+  // Even a maliciously or incorrectly marked "fresh" report cannot bypass
+  // the age measurement made at the receiving gateway.
+  source.observation_within_target_age = true;
+  const forged = call({ projected: source });
+  assert.equal(forged.status, 503);
+  assert.equal((await forged.json()).error, "source_stale");
+
+  source.freshness_limit_seconds = 20;
+  const exactly = call({ projected: source });
+  assert.equal(exactly.status, 200);
+  assert.equal((await exactly.json()).status, "PARTIAL_UNKNOWN");
+});
+
+test("slightly future-dated or timezone-ambiguous timestamps never count as fresh", async () => {
+  const badTimes = [
+    "2026-10-17T12:00:21Z", // 1 sec into future (old code tolerated 5 minutes)
+    "2026-10-17T12:00:30+00:00",
+    "2026-10-17T12:00:00", // lacks a timezone offset
+    "2026-10-17 12:00:00Z", // non-canonical separator
+    "2026-10-17T12:00:00+0000", // timezone offset not ISO canonical
+  ];
+  for (const observed_at of badTimes) {
+    const source = fixture();
+    source.observed_at = observed_at;
+    source.observation_age_seconds = 0;
+    const r = call({ projected: source });
+    assert.equal(r.status, 503, observed_at);
+    assert.equal((await r.json()).error, "invalid_source_time", observed_at);
+  }
+});
+
+test("UTC Z and explicit +09:00 timestamps are accepted when observation is actually fresh", async () => {
+  for (const observed_at of ["2026-10-17T12:00:00Z", "2026-10-17T21:00:00+09:00"]) {
+    const source = fixture();
+    source.observed_at = observed_at;
+    assert.equal(call({ projected: source }).status, 200, observed_at);
+  }
+});
+
 test("untrusted extra payload, bogus authority and forged URL are never served", async () => {
   const cases = [
     (x) => { x.rows[0].secret = "sk-sensitive-example"; },
