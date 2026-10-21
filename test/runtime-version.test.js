@@ -8,9 +8,9 @@ const nodeVersion = (await readFile(new URL("../.node-version", import.meta.url)
 const ci = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 
 test("repository declares one supported Node 26 runtime", () => {
-  const expectedEngines = { node: ">=26.10.0 <27" };
+  const expectedEngines = { node: ">=26.12.1 <27" };
   assert.deepEqual(packageJson.engines, expectedEngines);
   assert.deepEqual(packageLock.packages?.[""]?.engines, expectedEngines);
-  assert.equal(nodeVersion, "26.10.0");
-  assert.match(ci, /node-version:\s*26\.10\.0/);
+  assert.equal(nodeVersion, "26.12.1");
+  assert.match(ci, /node-version:\s*26\.12\.1/);
 });
