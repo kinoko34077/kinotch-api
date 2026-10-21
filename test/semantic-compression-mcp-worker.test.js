@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCompressionMcpWorker } from "../src/semantic-compression-mcp-worker.js";
 import { COMPRESSION_BODY_LIMIT_BYTES } from "../src/semantic-compression/contract.js";
+import { createCompressionMcpHandler, COMPRESSION_MCP_MAX_TOOL_INPUT_ELEMENTS } from "../src/semantic-compression-mcp/server.js";
 
 function accessApproved() {
   return { ok: true };
@@ -332,4 +333,15 @@ test("unknown MCP paths are not exposed", async () => {
 
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "not_found" });
+});
+
+
+test("MCP SDK sets explicit tool-element and request-body limits", () => {
+  let options;
+  createCompressionMcpHandler({}, { createMcpHandlerImpl: (_factory, config) => {
+    options = config;
+    return async () => new Response("ok");
+  } });
+  assert.equal(options.maxRequestBodySize, COMPRESSION_BODY_LIMIT_BYTES);
+  assert.equal(COMPRESSION_MCP_MAX_TOOL_INPUT_ELEMENTS, 16);
 });

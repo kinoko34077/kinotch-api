@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { REMOTE_AUDIT_LIMITS } from "../src/jev-audit/contract.js";
 import { createJevAuditMcpWorker } from "../src/jev-audit-mcp-worker.js";
+import { createJevAuditMcpHandler, JEV_AUDIT_MCP_MAX_TOOL_INPUT_ELEMENTS } from "../src/jev-audit-mcp/server.js";
 
 function accessApproved() {
   return { ok: true, actorKey: "a".repeat(64) };
@@ -240,4 +241,15 @@ test("jev-audit MCP rate limit falls back to Cloudflare client IP without actor 
 
   assert.equal(payload.result.isError, undefined);
   assert.equal(rateKey, "jev-audit-mcp:198.51.100.7");
+});
+
+
+test("jev-audit MCP SDK sets explicit structural and transport limits", () => {
+  let options;
+  createJevAuditMcpHandler({}, { createMcpHandlerImpl: (_factory, config) => {
+    options = config;
+    return async () => new Response("ok");
+  } });
+  assert.equal(options.maxRequestBodySize, REMOTE_AUDIT_LIMITS.maxRequestBytes);
+  assert.equal(JEV_AUDIT_MCP_MAX_TOOL_INPUT_ELEMENTS, 512);
 });

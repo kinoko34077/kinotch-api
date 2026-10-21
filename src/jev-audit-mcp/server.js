@@ -10,6 +10,10 @@ import {
 } from "../jev-audit/contract.js";
 import { enforceJevAuditMcpRateLimit } from "./rate-limit.js";
 import { callJevAuditService, JevAuditMcpError } from "./upstream.js";
+import { JEV_AUDIT_MCP_BODY_LIMIT_BYTES } from "./body-limit.js";
+
+// 100 strict file objects (up to 3 fields each) plus wrapper fields.
+export const JEV_AUDIT_MCP_MAX_TOOL_INPUT_ELEMENTS = 512;
 
 const PROFILE_NAMES = Object.freeze(["development", "generic"]);
 
@@ -33,7 +37,9 @@ export function createJevAuditMcpServer(env, {
   callJevAuditServiceImpl = callJevAuditService,
   requestInfo,
 } = {}) {
-  const server = new McpServer({ name: "jev-audit", version: "1.0.0" });
+  const server = new McpServer({ name: "jev-audit", version: "1.0.0" }, {
+    maxToolInputElements: JEV_AUDIT_MCP_MAX_TOOL_INPUT_ELEMENTS,
+  });
 
   server.registerTool(
     "audit_files",
@@ -89,6 +95,6 @@ export function createJevAuditMcpServer(env, {
 export function createJevAuditMcpHandler(env, { createMcpHandlerImpl = createMcpHandler } = {}) {
   return createMcpHandlerImpl(
     ({ requestInfo } = {}) => createJevAuditMcpServer(env, { requestInfo }),
-    { route: "/mcp", legacy: "stateless" },
+    { route: "/mcp", legacy: "stateless", maxRequestBodySize: JEV_AUDIT_MCP_BODY_LIMIT_BYTES },
   );
 }
