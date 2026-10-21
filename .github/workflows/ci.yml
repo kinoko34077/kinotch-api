@@ -18,6 +18,8 @@ jobs:
           node-version: 26.12.1
           cache: npm
       - run: npm ci
+      - name: Audit production npm dependencies
+        run: npm audit --omit=dev --audit-level=high
       - run: npm test
       - name: Base compatibility check
         shell: pwsh
