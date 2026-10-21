@@ -8,6 +8,14 @@
 
 # Current State
 
+## 2026-10-22 security baseline — SOURCE ONLY, no Cloudflare publication
+
+- Owning remediation: [#97](https://github.com/kinoko34077/kinotch-api/issues/97); [PR #98](https://github.com/kinoko34077/kinotch-api/pull/98) merged as `8f253275...` and [PR #99](https://github.com/kinoko34077/kinotch-api/pull/99) as `797a5d5...`, with post-main CI and Verify passing.
+- Compatible resolved MCP dependency set: `agents@0.28.1`, `@modelcontextprotocol/server@2.3.1`, transitive `@modelcontextprotocol/sdk@1.32.1`. Both MCP server instances now specify `maxToolInputElements` (Compression 16 / Jev 512) and MCP HTTP handler `maxRequestBodySize` (2.5MiB / 1MiB) in addition to the existing pre-parser Access JWT/body guards.
+- Node `>=26.12.1 <27` and `.node-version=26.12.1` now align with dedicated `CI`. `Verify` is Base-managed and must not be modified solely to pin a Node runtime; its invariants remain enforced separately. Dedicated CI now runs `npm audit --omit=dev --audit-level=high` after pinned `npm ci`.
+- **Deployment status: UNVERIFIED/UNCHANGED by these code-only security PRs.** Current source main is not evidence that Cloudflare Gateway or MCP Worker active versions have been updated. Provider/Access credentials, Cloudflare publish, production smoke and cost-bound ingress remain independently gated; #9 dedicated Codex token E2E still pending.
+
+
 ## KAEP Agent API P3-B H1 — offline fake-only candidate (2026-10-17)
 
 - Owner: [kinotch-api #85](https://github.com/kinoko34077/kinotch-api/issues/85); parent [devflow #680](https://github.com/kinoko34077/devflow/issues/680), source view accepted PR #710.
@@ -46,7 +54,7 @@ Last verified: 2026-09-30 — accepted repository implementation baseline before
 - Remote MCP rate limiting prefers a non-reversible fingerprint of the verified Access subject/email claim and falls back to `CF-Connecting-IP` only when no stable claim exists. Jev MCP Access verification reuses the remote JWKS resolver per normalized issuer instead of rebuilding it for every request; Service Token assertions without a stable `sub`/`email` continue to use the existing `CF-Connecting-IP` fallback.
 - PR #50 separates the Jev Audit remote-development Preview KV binding from Production, PR #51 makes the Semantic Compression MCP JWKS resolver cache reuse safe across normalized issuers and injected resolver factories, PR #53/#54 add and document the bounded BYOK local Semantic Compression path, and PR #55 reconciles the current-state/history/operations documentation. These changes are included in the formal Production source recorded below.
 - Issue #23's BYOK local path was verified through its real entry point in a local E2E: local `/health` returned HTTP 200 and loopback `POST /v1/compress` returned HTTP 200 with `semantic-dense-v1`, `semantic-dense-v1.1`, `gemini-3.5-flash-lite`, usage metadata, and no warnings. The temporary local `.env` was removed after the check; no Production or Cloudflare resource was changed by this evidence.
-- Repository runtime is pinned to Node 26.10.0 through `package.json`, `package-lock.json`, `.node-version`, and the project-owned CI workflow.
+- Repository runtime is now pinned to Node 26.12.1 through `package.json`, `package-lock.json`, `.node-version`, and the project-owned CI workflow.
 - Root npm dependency maintenance uses Dependabot weekly version updates for `/`, with an open version-update PR limit of `3`; compatible minor/patch updates are grouped while major updates remain separate. The peer-coupled `agents` and `@modelcontextprotocol/server` pair is isolated in its own group and excluded from the blanket minor/patch group so MCP peer incompatibility cannot block unrelated routine updates.
 - Pull requests that change the root `package.json` or `package-lock.json` trigger the repository-local `Dependency Review` workflow with `contents: read`, vulnerability checking at `low` severity or above, license checking disabled, and immutable Action commit pins. Live Dependabot PR #37 proved the trigger path executes. After the repository's Dependency graph was enabled, rerun `36258844290` / job `108455134514` completed successfully for the #37 merge commit, and the log reported no vulnerable packages at `low` severity or higher and no denied packages. It is not a protected required check, and CodeQL remains deferred.
 - This dependency hardening changes GitHub maintenance/review behavior only; it is not Production release or Cloudflare deployment evidence.
@@ -78,7 +86,7 @@ Last verified: 2026-09-30 — accepted repository implementation baseline before
 - Cloudflare bindings, provider retry, deploy, and rollback policy remain Project-owned.
 - Runtime Action contracts are not required by this adoption.
 - GitHub main protection currently requires `test` and `verify`; force push and branch deletion are disabled. PR review, administrator enforcement, strict status, Cloudflare Workers Builds state, and Cloudflare Access state remain external/operator-managed choices.
-- Node 26 is the repository-selected runtime. `@rolldown/plugin-babel@0.2.4`, pulled transitively through the current Agents dependency set, still declares an upstream Node engine range that does not explicitly list Node 26; repository installation, tests, and all Worker dry-runs nevertheless pass on Node 26.10.0. Treat an upstream engine-range change as dependency metadata to re-check rather than as production proof by itself.
+- Node 26 is the repository-selected runtime. `@rolldown/plugin-babel@0.2.4`, pulled transitively through the current Agents dependency set, still declares an upstream Node engine range that does not explicitly list Node 26; historical repository installation, tests, and all Worker dry-runs passed on Node 26.10.0; the current source baseline is Node 26.12.1. Treat an upstream engine-range change as dependency metadata to re-check rather than as production proof by itself.
 - Cloudflare Access Service Token creation and its `Service Auth` policies are external operator-managed state; repository tests verify request/header contracts, not dashboard configuration itself. Jev Audit Production evidence proves the configured Service Token path worked at release time, but repository tests do not independently query the dashboard policy state.
 - The generated Compression release metadata intentionally keeps `mcpOAuthSmoke.status = operator_required`; it is immutable evidence of what that release process itself verified. The later Compression Codex Managed OAuth E2E PASS is recorded separately in this Current State rather than rewriting the release record. This does not impose a Managed OAuth requirement on Jev Audit.
 - Current implementation still contains a compatibility fallback to the release-smoke Service Token when no dedicated Codex pair is present, but Policy B no longer treats that behavior as the intended default. Dedicated Codex credentials are the accepted steady-state so release-smoke and Codex revocation/rotation can remain independent.
@@ -123,7 +131,7 @@ Last verified: 2026-09-30 — accepted repository implementation baseline before
 - `knt setup`
 - `knt verify`
 - `npm test`
-- Node 26.10.0 Worker dry-runs are included in the project CI/release verification boundaries.
+- Current Node 26.12.1 Worker dry-runs are included in the project CI verification boundary; the earlier Node 26.10.0 smoke is historical and does not certify Cloudflare production.
 - Service Token contract tests cover header injection, missing credential failure, legacy cookie rejection, mapper allowlist/mode boundaries, and secret non-disclosure.
 - Jev Audit Remote automated coverage includes contract, evaluator, private Worker, REST, MCP, release, smoke, Gateway rollback recovery, failure-stage provenance, bootstrap boundaries, documentation contracts, and post-release hardening checks.
 
