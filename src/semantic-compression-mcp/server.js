@@ -8,6 +8,10 @@ import {
 } from "./contract.js";
 import { enforceMcpCompressionRateLimit } from "./rate-limit.js";
 import { callCompressionService, CompressionMcpError } from "./upstream.js";
+import { MCP_TRANSPORT_BODY_LIMIT_BYTES } from "./body-limit.js";
+
+// Small, fixed tool shape. The SDK validates input elements before invocation.
+export const COMPRESSION_MCP_MAX_TOOL_INPUT_ELEMENTS = 16;
 
 export const COMPRESS_TEXT_DESCRIPTION = "Meaning-preserving dense compression for long text. Preserves conditions, exceptions, uncertainty, numeric values, proper nouns and logical relationships where possible. Use when reducing long intermediate text before handoff or context reuse. It does not summarize according to caller-supplied instructions.";
 
@@ -26,7 +30,7 @@ export function createCompressionMcpServer(env, {
   const server = new McpServer({
     name: "semantic-compression",
     version: "1.0.0",
-  });
+  }, { maxToolInputElements: COMPRESSION_MCP_MAX_TOOL_INPUT_ELEMENTS });
 
   server.registerTool(
     MCP_TOOL_NAME,
@@ -62,6 +66,7 @@ export function createCompressionMcpHandler(env, {
     {
       route: "/mcp",
       legacy: "stateless",
+      maxRequestBodySize: MCP_TRANSPORT_BODY_LIMIT_BYTES,
     },
   );
 }
