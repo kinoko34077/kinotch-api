@@ -127,3 +127,17 @@ test("unauthenticated public MCP preflight failure never deploys",async()=>{
   await assert.rejects(executeFeeFreeMcpRelease(s.opts),/anonymous access unexpectedly possible/);
   assert.deepEqual(s.actions.filter(x=>x.startsWith("deploy:")),[]);
 });
+
+test("unavailable deployment metadata after write still attempts exact old-version rollback",async()=>{
+  const s=scenario();
+  const baselineGet=s.opts.activeVersion;
+  s.opts.activeVersion=async worker=>{
+    if(s.versions[worker.name]!==initial[SECURITY_MCP_WORKERS.indexOf(worker)]){
+      throw Error("deployment status unavailable");
+    }
+    return baselineGet(worker);
+  };
+  await assert.rejects(executeFeeFreeMcpRelease(s.opts),/deployment status unavailable/);
+  assert.deepEqual(s.actions.filter(x=>x.startsWith("rollback:")),["rollback:semantic-compression-mcp"]);
+  assert.deepEqual(SECURITY_MCP_WORKERS.map(w=>s.versions[w.name]),initial);
+});
