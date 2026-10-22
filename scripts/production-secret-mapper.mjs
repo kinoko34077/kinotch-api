@@ -35,6 +35,7 @@ export const MAPPER_MODES = Object.freeze({
   MCP_SMOKE: "mcp-smoke",
   JEV_AUDIT_BOOTSTRAP: "jev-audit-bootstrap",
   PRODUCTION_RELEASE: "production-release",
+  SECURITY_MCP_RELEASE: "security-mcp-release",
 });
 
 const MODE_KEYS = Object.freeze({
@@ -47,6 +48,15 @@ const MODE_KEYS = Object.freeze({
     "CLOUDFLARE_API_TOKEN",
   ]),
   [MAPPER_MODES.PRODUCTION_RELEASE]: ALLOWED_PRODUCTION_SECRET_KEYS,
+  [MAPPER_MODES.SECURITY_MCP_RELEASE]: Object.freeze([
+    "TEAM_DOMAIN",
+    "POLICY_AUD",
+    "JEV_AUDIT_MCP_POLICY_AUD",
+    "MCP_ENDPOINT",
+    "CF_ACCESS_CLIENT_ID",
+    "CF_ACCESS_CLIENT_SECRET",
+    "CLOUDFLARE_API_TOKEN",
+  ]),
 });
 
 const JEV_AUDIT_BOOTSTRAP_CONFIRMATION = "JEV_AUDIT_BOOTSTRAP_CONFIRM";
@@ -123,6 +133,7 @@ function childArgsForMode(mode) {
   if (mode === MAPPER_MODES.MCP_SMOKE) return ["run", "smoke:mcp"];
   if (mode === MAPPER_MODES.JEV_AUDIT_BOOTSTRAP) return ["run", "bootstrap:jev-audit"];
   if (mode === MAPPER_MODES.PRODUCTION_RELEASE) return ["run", "deploy:production"];
+  if (mode === MAPPER_MODES.SECURITY_MCP_RELEASE) return ["run", "deploy:production", "--", "--security-mcp-only"];
   throw new Error(`Unknown production secret mapper mode: ${mode}`);
 }
 

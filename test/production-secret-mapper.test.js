@@ -255,3 +255,30 @@ test("operator documentation preserves the mapper workflow and service-token aut
   assert.doesNotMatch(documentation, /(^|[^A-Z0-9_])JEV_AUDIT_MCP_SMOKE_ACCESS_COOKIE([^A-Z0-9_]|$)/m);
   assert.doesNotMatch(documentation, /CF_Authorization=[A-Za-z0-9_-]{8,}/);
 });
+
+test("security MCP release maps only no-provider credentials and retains canonical deploy authority", async () => {
+  const calls = [];
+  const status = await runMappedCommand(MAPPER_MODES.SECURITY_MCP_RELEASE, {
+    secrets: secretValues,
+    sourceEnv: {
+      PATH: "synthetic-path",
+      COMPRESSION_SMOKE_TOKEN: "must-not-forward",
+      JEV_AUDIT_SMOKE_TOKEN: "must-not-forward",
+      TYPESAFE_API_KEY: "must-not-forward",
+      KINOTCH_COMPRESSION_GEMINI_API_KEY: "must-not-forward",
+    },
+    spawnImpl: fakeSpawn(0, calls),
+  });
+  assert.equal(status, 0);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].args.join(" "), /deploy:production.*--security-mcp-only/);
+  assert.equal(calls[0].options.env.CLOUDFLARE_API_TOKEN, secretValues.CLOUDFLARE_API_TOKEN);
+  assert.equal(calls[0].options.env.CF_ACCESS_CLIENT_ID, secretValues.CF_ACCESS_CLIENT_ID);
+  assert.equal(calls[0].options.env.CF_ACCESS_CLIENT_SECRET, secretValues.CF_ACCESS_CLIENT_SECRET);
+  for (const disallowed of ["COMPRESSION_SMOKE_TOKEN", "JEV_AUDIT_SMOKE_TOKEN", "TYPESAFE_API_KEY",
+    "KINOTCH_COMPRESSION_GEMINI_API_KEY", "CODEX_CF_ACCESS_CLIENT_SECRET", "UNRELATED_SECRET"]) {
+    assert.equal(calls[0].options.env[disallowed], undefined);
+  }
+  assert.equal(packageJson.scripts["release:security-mcp:local"],
+    "node scripts/production-secret-mapper.mjs security-mcp-release");
+});

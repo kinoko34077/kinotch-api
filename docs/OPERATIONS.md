@@ -2,6 +2,37 @@
 
 ## Production deploy authority
 
+### 2026-10-22: authorised fee-free security patch, limited to two MCP Workers
+The operator-approved non-billable mode is `npm run release:security-mcp:local`.
+It uses the **same** `deploy:production` entrypoint with `--security-mcp-only`, retaining
+the canonical source/clean-tree gate and exact production secret mapper. The
+mapper forwards only Cloudflare deployment, existing Cloudflare Access Service
+Auth credentials, and existing nonsecret issuer/audience information. It never
+forwards Gemini, TypeSafe, REST smoke tokens, Codex identity secrets or other
+provider keys. No fee-bearing `compress_text` or `audit_files` tool calls,
+and no Gateway, private Jev/Compression, or Text Worker update occurs.
+
+Only the existing `semantic-compression-mcp` and `jev-audit-mcp` Workers
+are in scope, with their existing names/configurations, unchanged bindings,
+Access issuer/audiences and fixed hostnames. The release validates clean
+`main == origin/main`, Node 26.12.1+, full npm tests and two Worker dry runs;
+it snapshots both old **100%-active** Worker versions and performs one
+**authenticated initialize/notifications/tools-list-only** preflight per
+endpoint before deploying anything. It confirms each active version did not
+drift, deploys only these two Workers, validates their active versions and
+repeats free authenticated discovery. If any check/deploy/verification fails,
+the existing rollback helper restores the exact old versions of all possibly
+touched Workers and verifies free discovery again. Writes a metadata-only
+`docs/releases/security-mcp-*.json` record, and never silently falls back to
+the fee-bearing normal release. The **normal `release:local` is unchanged**
+and prohibited while the user's fee-bearing Provider freeze remains in force.
+
+Security patch success requires post-deploy active version readback, the
+retained Cloudflare Access authentication boundary, verified rollback support,
+and unchanged private/Gateway Worker deployments. No direct `wrangler deploy`
+outside the formal release runner is authorized by this mode.
+
+
 Production deploy authority is only `npm run deploy:production`。このscriptが、generated checks、tests、各Workerのdry-run、直前Versionの取得、Jev Audit release phaseと既存Text Worker → Compression Worker → MCP Worker → Gatewayのdeploy、反映待ちを含むsmoke、release metadata、失敗時rollbackを一つのrelease gateとして管理する。
 
 - `main`へのpushはGitHub Actionsの`test`と`Verify`を起動し、Production deployを直接起動しない。

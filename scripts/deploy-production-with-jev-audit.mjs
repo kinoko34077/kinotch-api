@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { createJevAuditProductionPhase } from "./jev-audit-production-phase.mjs";
+import { runFeeFreeMcpSecurityRelease } from "./release-security-mcp.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import {
   createWorkerRollbackArgs,
@@ -264,6 +265,12 @@ const phase = createJevAuditProductionPhase({
   },
 });
 
+if (process.argv.length > 2 && (process.argv.length !== 3 || process.argv[2] !== "--security-mcp-only")) {
+  throw new Error("Unknown production release mode; refusing to run");
+}
+if (process.argv[2] === "--security-mcp-only") {
+  await runFeeFreeMcpSecurityRelease();
+} else {
 try {
   state.stage = "Jev Audit clean worktree assertion";
   await assertCleanWorktree();
@@ -350,4 +357,6 @@ try {
     console.error(`Could not record failed Jev Audit release metadata: ${recordError.message}`);
   }
   throw error;
+}
+
 }
