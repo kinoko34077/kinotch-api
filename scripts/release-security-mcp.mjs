@@ -5,8 +5,8 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { createJevAuditMcpDeployArgs, JEV_AUDIT_MCP_CONFIG, JEV_AUDIT_MCP_WORKER_NAME } from "./jev-audit-release.mjs";
-import { createMcpDeployArgs, MCP_RELEASE_CONFIG, MCP_RELEASE_WORKER_NAME, resolveMcpSmokeInputs } from "./mcp-release.mjs";
+import { createJevAuditMcpDeployArgs, JEV_AUDIT_MCP_CONFIG, JEV_AUDIT_MCP_ENDPOINT, JEV_AUDIT_MCP_WORKER_NAME } from "./jev-audit-release.mjs";
+import { createMcpDeployArgs, MCP_RELEASE_CONFIG, MCP_RELEASE_ENDPOINT, MCP_RELEASE_WORKER_NAME, resolveMcpSmokeInputs } from "./mcp-release.mjs";
 import { runJevAuditMcpSmoke } from "./smoke-jev-audit.mjs";
 import { runMcpSmoke } from "./smoke-mcp.mjs";
 import { assertProductionSourceRevision } from "./production-source-gate.mjs";
@@ -25,9 +25,9 @@ function safeFailure(error) {
 }
 
 export async function executeFeeFreeMcpRelease({
-  prepare, dryRun, activeVersion, deploy, discoverySmoke, rollback, writeRecord,
+  prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord,
 } = {}) {
-  for (const [name, fn] of Object.entries({prepare, dryRun, activeVersion, deploy, discoverySmoke, rollback, writeRecord})) {
+  for (const [name, fn] of Object.entries({prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord})) {
     if (typeof fn !== "function") throw new TypeError("Security release requires " + name);
   }
   const previous = {};
@@ -50,6 +50,7 @@ export async function executeFeeFreeMcpRelease({
     for (const worker of SECURITY_MCP_WORKERS) {
       stage = "preflight_auth_" + worker.name;
       await discoverySmoke(worker);
+      await unauthenticatedSmoke(worker);
     }
     for (const worker of SECURITY_MCP_WORKERS) {
       stage = "pre_deploy_compare_" + worker.name;
@@ -70,6 +71,7 @@ export async function executeFeeFreeMcpRelease({
     for (const worker of SECURITY_MCP_WORKERS) {
       stage = "post_deploy_auth_" + worker.name;
       await discoverySmoke(worker);
+      await unauthenticatedSmoke(worker);
       if (await activeVersion(worker) !== updated[worker.name]) {
         throw new Error("Active " + worker.name + " drifted after nonbillable validation");
       }
@@ -77,7 +79,7 @@ export async function executeFeeFreeMcpRelease({
     const record = {
       status: "succeeded", mode: "fee_free_mcp_security_only", sourceRevision: revision,
       previousVersions: previous, activeVersions: updated,
-      validation: "authenticated_mcp_initialize_and_tools_list_only",
+      validation: "authenticated_tool_discovery_and_unauthenticated_handshake_denial",
       providerToolCalls: 0,
     };
     stage = "record_success";
@@ -190,12 +192,35 @@ export async function runFeeFreeMcpSecurityRelease() {
       const source = await assertProductionSourceRevision({ runGit: async (args, opts) => git(args,opts) });
       await npm(["ci"]);
       await npm(["test"]);
+      const after = await git(["status","--porcelain"], {capture:true});
+      if (after.trim()) throw new Error("Security MCP tests changed source worktree");
+      const reread = await assertProductionSourceRevision({runGit:async(args,opts)=>git(args,opts)});
+      if (reread.head !== source.head) throw new Error("Security MCP source changed during tests");
       return source.head;
     },
     async dryRun(worker) { await wrangler(deployArgs(worker,true)); },
     activeVersion,
     async deploy(worker) { await wrangler(deployArgs(worker,false)); },
     discoverySmoke,
+    async unauthenticatedSmoke(worker) {
+      const endpoint = worker.name === MCP_RELEASE_WORKER_NAME
+        ? MCP_RELEASE_ENDPOINT : JEV_AUDIT_MCP_ENDPOINT;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2025-06-18",
+        },
+        body: JSON.stringify({jsonrpc:"2.0",id:1,method:"initialize",
+          params:{protocolVersion:"2025-06-18",capabilities:{},clientInfo:{name:"security-audit",version:"1"}}}),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (![301,302,303,307,308,401,403].includes(response.status)) {
+        throw new Error("Unauthenticated public MCP initialization did not fail closed");
+      }
+    },
     async rollback(worker, previousVersionId) {
       return rollbackAfterSmokeFailure({
         previousVersionId,
