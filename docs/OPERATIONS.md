@@ -7,9 +7,10 @@
 **Production-wide exclusive lease (both release modes):** before reading any
 previous active Worker version, the canonical release entrypoint acquires an
 atomic, expected-empty Git ref `refs/heads/ops/production-release-lock`
-on the repository origin. The lock marker is a unique synthetic child commit,
-not a change to main, the release checkout, the actual Worker source, or
-private credentials. The same remote ref is required by normal/full and
+on the repository origin. The lock marker is a unique synthetic child commit with GitHub-native
+`[skip ci]` to avoid starting Verify/Actions on its transient branch push;
+it is not a change to main, the release checkout, the actual Worker source,
+or private credentials. The same remote ref is required by normal/full and
 fee-free/MCP-only release modes; an overlapping release must fail closed
 before any Cloudflare mutation. On verified success or an all-verified
 MCP-only rollback, the owner deletes exactly its own marker by compare-and-delete.

@@ -26,7 +26,7 @@ export async function acquireProductionReleaseLock({runGit} = {}) {
     "-c", "user.name=Production Release Gate",
     "-c", "user.email=production-release@users.noreply.github.com",
     "commit-tree", tree, "-p", head,
-    "-m", "exclusive production release " + randomUUID(),
+    "-m", "exclusive production release [skip ci] " + randomUUID(),
   ], {capture:true})).trim();
   if (!isSha(marker)) throw new Error("Cannot construct unique release lease");
   const ref = PRODUCTION_RELEASE_LOCK_REF;
