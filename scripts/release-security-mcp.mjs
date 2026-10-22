@@ -192,6 +192,10 @@ export async function runFeeFreeMcpSecurityRelease() {
       const source = await assertProductionSourceRevision({ runGit: async (args, opts) => git(args,opts) });
       await npm(["ci"]);
       await npm(["test"]);
+      // Live source publication must independently recheck the current locked
+      // production advisory set. A 503/timeout is DENIED, never "no findings".
+      await npm(["audit", "--omit=dev", "--audit-level=high",
+        "--fetch-timeout=30000", "--fetch-retries=1"]);
       const after = await git(["status","--porcelain"], {capture:true});
       if (after.trim()) throw new Error("Security MCP tests changed source worktree");
       const reread = await assertProductionSourceRevision({runGit:async(args,opts)=>git(args,opts)});
