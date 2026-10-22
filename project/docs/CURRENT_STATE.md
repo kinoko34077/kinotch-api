@@ -8,6 +8,15 @@
 
 # Current State
 
+## Fee-free public MCP-only security release admission (2026-10-22)
+
+- User expressly authorised the **no-paid-Provider route only**, retaining the global Gemini/TypeSafe suspension.
+- Issue [#97](https://github.com/kinoko34077/kinotch-api/issues/97) owns the production SDK vulnerability closure. The only in-scope live publication is the two existing public Workers `semantic-compression-mcp` and `jev-audit-mcp`; the ordinary fee-bearing full release and all other Worker updates remain excluded.
+- Both normal and MCP-only formal release paths now share a single atomic repository-remote production lease on `refs/heads/ops/production-release-lock`. Two operators cannot both acquire; a crashed or unverified release holds the lease until a human verifies the live recovery state. This closes Codex P1 review finding on overlapping release rollback; real lease acquisition and release must still be accepted before live use.
+- Formal `npm run release:security-mcp:local` runs the reviewed `--security-mcp-only` mode inside the **existing** `deploy:production` release wrapper. It performs source/head/clean-tree checks, patched Node and npm tests, both dry runs, two old active-version captures, Access Service Auth discovery preflight, bounded deploy/verify/post-discovery and automatic exact-ID rollback on failure. Provider tools are never invoked; the secret mapper excludes their inputs.
+- This entry describes **admitted implementation**, not automatic proof of production rollout; record version readback and release evidence in [#97](https://github.com/kinoko34077/kinotch-api/issues/97) before marking live patched.
+
+
 ## 2026-10-22 security baseline — SOURCE ONLY, no Cloudflare publication
 
 - Owning remediation: [#97](https://github.com/kinoko34077/kinotch-api/issues/97); [PR #98](https://github.com/kinoko34077/kinotch-api/pull/98) merged as `8f253275...` and [PR #99](https://github.com/kinoko34077/kinotch-api/pull/99) as `797a5d5...`, with post-main CI and Verify passing.

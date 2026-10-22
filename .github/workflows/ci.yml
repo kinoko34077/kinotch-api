@@ -18,9 +18,32 @@ jobs:
           node-version: 26.12.1
           cache: npm
       - run: npm ci
-      - name: Audit production npm dependencies
-        run: npm audit --omit=dev --audit-level=high
       - run: npm test
+      # Run the fail-closed registry advisory check after local tests so
+      # temporary npm audit outages do not hide independent code regressions.
+      # Registry failure is never accepted as security-audit success.
+      - name: Audit production npm dependencies
+        shell: bash
+        run: |
+          for attempt in 1 2; do
+            log="$(mktemp)"
+            if npm audit --omit=dev --audit-level=high --fetch-timeout=30000 --fetch-retries=1 > "$log" 2>&1; then
+              cat "$log"
+              rm -f "$log"
+              exit 0
+            fi
+            cat "$log"
+            if ! grep -Eiq 'Service Unavailable|audit endpoint returned an error|ECONNRESET|ETIMEDOUT|E50[234]' "$log"; then
+              rm -f "$log"
+              exit 1
+            fi
+            rm -f "$log"
+            if [ "$attempt" -eq 2 ]; then
+              echo "Security advisory endpoint unavailable after bounded retries; CI DENIED."
+              exit 1
+            fi
+            sleep 5
+          done
       - name: Base compatibility check
         shell: pwsh
         run: ./.kinotch/scripts/knt.ps1 base-check
