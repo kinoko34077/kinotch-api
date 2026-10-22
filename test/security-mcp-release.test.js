@@ -117,6 +117,8 @@ test("canonical wrapper has exactly the explicit fee-free mode and default full 
   assert.match(m,/checkToolCall: false/g);
   assert.doesNotMatch(m,/checkToolCall: true/);
   assert.doesNotMatch(m,/runJevAuditRestSmoke|runCompressionSmoke\(/);
+  assert.match(m,/await npm\(\["audit", "--omit=dev", "--audit-level=high"/);
+  assert.match(m,/A 503\/timeout is DENIED/);
 });
 
 test("unauthenticated public MCP preflight failure never deploys",async()=>{
