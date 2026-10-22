@@ -90,7 +90,15 @@ export async function executeFeeFreeMcpRelease({
     const recoveries = {};
     for (const worker of potentiallyTouched.reverse()) {
       try {
-        const actual = await activeVersion(worker);
+        // When status GET itself fails after an ambiguous write, do not
+        // silently skip restoring the captured old version. Attempt the
+        // existing rollback helper and require subsequent exact-ID proof.
+        let actual = null;
+        try {
+          actual = await activeVersion(worker);
+        } catch {
+          actual = null;
+        }
         if (actual === previous[worker.name]) {
           recoveries[worker.name] = { status: "unchanged_or_already_recovered" };
         } else {
