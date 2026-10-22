@@ -13,6 +13,7 @@ import { assertProductionSourceRevision } from "./production-source-gate.mjs";
 import { parseActiveVersionId, createWorkerRollbackArgs, rollbackAfterSmokeFailure } from "./release-recovery.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import { createWranglerInvocation, createNpmInvocation } from "./wrangler-runner.mjs";
+import { acquireProductionReleaseLock, releaseProductionReleaseLock } from "./production-release-lock.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const SECURITY_MCP_WORKERS = Object.freeze([
@@ -25,7 +26,7 @@ function safeFailure(error) {
 }
 
 export async function executeFeeFreeMcpRelease({
-  prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord,
+  prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord, acquireLock, releaseLock,
 } = {}) {
   for (const [name, fn] of Object.entries({prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord})) {
     if (typeof fn !== "function") throw new TypeError("Security release requires " + name);
@@ -34,6 +35,8 @@ export async function executeFeeFreeMcpRelease({
   const updated = {};
   const potentiallyTouched = [];
   let revision;
+  let lease = null;
+  let safeToUnlock = true;
   let stage = "prepare";
   try {
     revision = await prepare();
@@ -41,6 +44,10 @@ export async function executeFeeFreeMcpRelease({
       stage = "dry_run_" + worker.name;
       await dryRun(worker);
     }
+    // Hold the same GitHub-backed exclusive lease as the normal release.
+    // Acquire before snapshot, and hold through publication, rollback and record.
+    stage = "acquire_exclusive_production_lease";
+    lease = await acquireLock();
     // Capture both rollback targets and verify both existing, authenticated
     // non-billable tool-discovery routes BEFORE performing any mutation.
     for (const worker of SECURITY_MCP_WORKERS) {
@@ -118,9 +125,13 @@ export async function executeFeeFreeMcpRelease({
       // Preserve the original error; never disguise an unknown Cloudflare state.
     }
     if (Object.values(recoveries).some(v => v.status === "rollback_failed")) {
+      safeToUnlock = false; // Leave the shared remote lease held for manual recovery.
       throw new Error("Security MCP release failed and one or more Worker rollbacks are UNVERIFIED");
     }
     throw error;
+  } finally {
+    if (lease && safeToUnlock) await releaseLock(lease);
+    if (lease && !safeToUnlock) console.error("Production release lock retained until human rollback verification");
   }
 }
 
@@ -211,6 +222,8 @@ export async function runFeeFreeMcpSecurityRelease() {
       return source.head;
     },
     async dryRun(worker) { await wrangler(deployArgs(worker,true)); },
+    acquireLock: () => acquireProductionReleaseLock({runGit:git}),
+    releaseLock: lease => releaseProductionReleaseLock({runGit:git,lease}),
     activeVersion,
     async deploy(worker) { await wrangler(deployArgs(worker,false)); },
     discoverySmoke,

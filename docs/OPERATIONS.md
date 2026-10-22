@@ -3,6 +3,25 @@
 ## Production deploy authority
 
 ### 2026-10-22: authorised fee-free security patch, limited to two MCP Workers
+
+**Production-wide exclusive lease (both release modes):** before reading any
+previous active Worker version, the canonical release entrypoint acquires an
+atomic, expected-empty Git ref `refs/heads/ops/production-release-lock`
+on the repository origin. The lock marker is a unique synthetic child commit,
+not a change to main, the release checkout, the actual Worker source, or
+private credentials. The same remote ref is required by normal/full and
+fee-free/MCP-only release modes; an overlapping release must fail closed
+before any Cloudflare mutation. On verified success or an all-verified
+MCP-only rollback, the owner deletes exactly its own marker by compare-and-delete.
+After ambiguous/failed full-release recovery, or unverified MCP rollback,
+the lease remains held. It must be reconciled by a human against exact live
+Cloudflare deployment IDs and release records before a carefully reviewed
+manual lock removal. Never use unconditional force-push to overwrite or
+remove a foreign marker or start another release while the lock exists.
+If GitHub write permission/remote lease verification is unavailable,
+**do not publish** to Cloudflare. This mechanism requires no new secrets
+or billed cloud state.
+
 The operator-approved non-billable mode is `npm run release:security-mcp:local`.
 It uses the **same** `deploy:production` entrypoint with `--security-mcp-only`, retaining
 the canonical source/clean-tree gate and exact production secret mapper. The

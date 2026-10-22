@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { createJevAuditProductionPhase } from "./jev-audit-production-phase.mjs";
 import { runFeeFreeMcpSecurityRelease } from "./release-security-mcp.mjs";
+import { acquireProductionReleaseLock, releaseProductionReleaseLock } from "./production-release-lock.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import {
   createWorkerRollbackArgs,
@@ -271,13 +272,20 @@ if (process.argv.length > 2 && (process.argv.length !== 3 || process.argv[2] !==
 if (process.argv[2] === "--security-mcp-only") {
   await runFeeFreeMcpSecurityRelease();
 } else {
+let normalLease = null;
+let normalLiveMutationStarted = false;
+let normalReleaseSucceeded = false;
 try {
   state.stage = "Jev Audit clean worktree assertion";
   await assertCleanWorktree();
   state.stage = "Jev Audit production source revision assertion";
   await assertProductionSourceRevision({ runGit });
 
+  // Remote production-wide Git lease shared with the no-fee security mode.
+  // Capture no previous version before the exclusive lease is acquired.
+  normalLease = await acquireProductionReleaseLock({runGit});
   await phase.prepare();
+  normalLiveMutationStarted = true;
   await phase.deploy();
 
   state.stage = "capture previous Text Worker version";
@@ -307,6 +315,7 @@ try {
     ...phase.metadata(),
   });
   console.log(`Jev Audit release metadata recorded at ${path.relative(projectRoot, releasePath)}`);
+  normalReleaseSucceeded = true;
 } catch (error) {
   const failureStage = state.stage;
   if (state.coreReleaseCompleted && state.previousGatewayVersionId && !state.gatewayRecovery) {
@@ -357,6 +366,12 @@ try {
     console.error(`Could not record failed Jev Audit release metadata: ${recordError.message}`);
   }
   throw error;
+} finally {
+  if (normalLease && (!normalLiveMutationStarted || normalReleaseSucceeded)) {
+    await releaseProductionReleaseLock({runGit,lease:normalLease});
+  } else if (normalLease) {
+    console.error("Production release lock retained pending verified manual recovery");
+  }
 }
 
 }

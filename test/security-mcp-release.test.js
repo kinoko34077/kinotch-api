@@ -13,6 +13,8 @@ function scenario({failAt, failRollback=false, driftAt} = {}) {
   const actions=[], versions={}, records=[];
   SECURITY_MCP_WORKERS.forEach((worker,i) => { versions[worker.name]=initial[i]; });
   const opts={
+    async acquireLock(){ actions.push("lock:acquire"); return {ref:"test-ref",sha:"fixture"}; },
+    async releaseLock(){ actions.push("lock:release"); },
     async prepare(){actions.push("prepare");return "f".repeat(40);},
     async dryRun(w){actions.push("dry:"+w.name);if(failAt==="dry")throw Error("dry failed");},
     async activeVersion(w){actions.push("read:"+w.name);return versions[w.name];},
@@ -64,6 +66,8 @@ test("success performs two dry runs and authenticated discovery but no provider 
   assert.equal(s.actions.filter(x=>x.startsWith("denied:")).length,4);
   assert.deepEqual(s.actions.filter(x=>x.startsWith("rollback:")),[]);
   assert.deepEqual(s.records.map(x=>x.status),["succeeded"]);
+  assert.ok(s.actions.indexOf("lock:acquire") < s.actions.indexOf("read:semantic-compression-mcp"));
+  assert.ok(s.actions.indexOf("lock:release") > s.actions.indexOf("record:succeeded"));
 });
 
 test("missing original Cloudflare Access authorization blocks before any deployment",async()=>{
@@ -72,6 +76,7 @@ test("missing original Cloudflare Access authorization blocks before any deploym
   assert.deepEqual(s.actions.filter(x=>x.startsWith("deploy:")),[]);
   assert.deepEqual(s.actions.filter(x=>x.startsWith("rollback:")),[]);
   assert.deepEqual(s.records.map(x=>x.status),["failed"]);
+  assert.ok(s.actions.indexOf("lock:release") > s.actions.indexOf("record:failed"));
 });
 
 test("dry-run failure prevents any public Worker mutation",async()=>{
@@ -105,6 +110,7 @@ test("unverified rollback is fatal even if the original deploy error was non-bil
   await assert.rejects(executeFeeFreeMcpRelease(s.opts),/rollbacks are UNVERIFIED/);
   assert.equal(s.records[0].recoveries["jev-audit-mcp"].status,"rollback_failed");
   assert.equal(s.records[0].recoveries["semantic-compression-mcp"].status,"rollback_failed");
+  assert.ok(!s.actions.includes("lock:release"),"ambiguous active state must retain remote lease");
 });
 
 test("canonical wrapper has exactly the explicit fee-free mode and default full release retained",async()=>{
