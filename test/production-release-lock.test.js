@@ -43,6 +43,8 @@ test("production lease is a single atomically-created remote ref for both modes"
     assert.equal(successes.length, 1, "concurrent releases must never both acquire");
     const lease=successes[0].value;
     assert.equal(lease.ref, PRODUCTION_RELEASE_LOCK_REF);
+    const markerMessage=(await runGit(["show","-s","--format=%B",lease.sha])).trim();
+    assert.match(markerMessage,/\[skip ci\]/,"lease-only commit must not spend GitHub Actions minutes");
     assert.match(lease.sha, /^[a-f0-9]{40}$/);
     const blocked=[first,second].filter(x=>x.status==="rejected");
     assert.equal(blocked.length,1);
