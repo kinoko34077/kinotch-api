@@ -21,6 +21,7 @@ function scenario({failAt, failRollback=false, driftAt} = {}) {
       if(failAt==="preflight" && !actions.some(x=>x.startsWith("deploy:")))throw Error("Access denied");
       if(failAt==="post" && actions.some(x=>x.startsWith("deploy:")))throw Error("discovery failed");
     },
+    async unauthenticatedSmoke(w){ actions.push("denied:"+w.name); },
     async deploy(w){
       actions.push("deploy:"+w.name);
       const i=SECURITY_MCP_WORKERS.indexOf(w);
@@ -60,6 +61,7 @@ test("success performs two dry runs and authenticated discovery but no provider 
     "smoke:semantic-compression-mcp","smoke:jev-audit-mcp",
     "smoke:semantic-compression-mcp","smoke:jev-audit-mcp",
   ]);
+  assert.equal(s.actions.filter(x=>x.startsWith("denied:")).length,4);
   assert.deepEqual(s.actions.filter(x=>x.startsWith("rollback:")),[]);
   assert.deepEqual(s.records.map(x=>x.status),["succeeded"]);
 });
@@ -115,4 +117,11 @@ test("canonical wrapper has exactly the explicit fee-free mode and default full 
   assert.match(m,/checkToolCall: false/g);
   assert.doesNotMatch(m,/checkToolCall: true/);
   assert.doesNotMatch(m,/runJevAuditRestSmoke|runCompressionSmoke\(/);
+});
+
+test("unauthenticated public MCP preflight failure never deploys",async()=>{
+  const s=scenario();
+  s.opts.unauthenticatedSmoke=async()=>{throw Error("anonymous access unexpectedly possible");};
+  await assert.rejects(executeFeeFreeMcpRelease(s.opts),/anonymous access unexpectedly possible/);
+  assert.deepEqual(s.actions.filter(x=>x.startsWith("deploy:")),[]);
 });
