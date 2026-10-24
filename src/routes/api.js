@@ -86,3 +86,28 @@ registerRoute(apiRoutes, "POST", "/v1/audit", routePolicies.jevAudit, (c) =>
     timeoutMs: routePolicies.jevAudit.upstreamTimeoutMs,
   }),
 );
+
+/**
+ * SHA/repository/workflow claims and GitHub RS256/JWKS are verified ONLY by the
+ * private Identity Worker. The Gateway is a bounded transport, not a verifier.
+ * No session exchange, raw data proxy, URL injection, or credential exposure.
+ */
+registerRoute(apiRoutes, "POST", "/v1/identity/catalog/read", routePolicies.identityCatalogRead, (c) => {
+  if (new URL(c.req.url).search !== "") {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+  const authorization = c.req.header("authorization");
+  if (typeof authorization !== "string" || authorization.length > 8200 ||
+      !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(authorization)) {
+    return c.json({ error: "unauthenticated" }, 401);
+  }
+  // Empty request payload enforced by the existing shared policy body limiter.
+  // Only the explicitly configured private Worker may receive the bearer JWT.
+  return proxyToWorker(c, c.env.IDENTITY_PILOT,
+    "/internal/v1/identity/catalog/read", {
+      method: "POST",
+      body: null,
+      headers: { Authorization: authorization, Accept: "application/json" },
+      timeoutMs: routePolicies.identityCatalogRead.upstreamTimeoutMs,
+    });
+});
