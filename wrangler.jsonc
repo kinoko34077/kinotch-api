@@ -11,7 +11,8 @@
     { "binding": "ROKUYO_PROXY", "service": "rokuyo-proxy" },
     { "binding": "TEXT_TRANSFORM", "service": "text-transform" },
     { "binding": "COMPRESSION", "service": "semantic-compression" },
-    { "binding": "JEV_AUDIT", "service": "jev-audit" }
+    { "binding": "JEV_AUDIT", "service": "jev-audit" },
+    { "binding": "IDENTITY_PILOT", "service": "kinotch-identity-pilot" }
   ],
   "ratelimits": [
     {
