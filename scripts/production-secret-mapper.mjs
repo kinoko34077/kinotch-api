@@ -36,6 +36,7 @@ export const MAPPER_MODES = Object.freeze({
   JEV_AUDIT_BOOTSTRAP: "jev-audit-bootstrap",
   PRODUCTION_RELEASE: "production-release",
   SECURITY_MCP_RELEASE: "security-mcp-release",
+  IDENTITY_GATEWAY_RELEASE: "identity-gateway-release",
 });
 
 const MODE_KEYS = Object.freeze({
@@ -55,6 +56,9 @@ const MODE_KEYS = Object.freeze({
     "MCP_ENDPOINT",
     "CF_ACCESS_CLIENT_ID",
     "CF_ACCESS_CLIENT_SECRET",
+    "CLOUDFLARE_API_TOKEN",
+  ]),
+  [MAPPER_MODES.IDENTITY_GATEWAY_RELEASE]: Object.freeze([
     "CLOUDFLARE_API_TOKEN",
   ]),
 });
@@ -134,6 +138,7 @@ function childArgsForMode(mode) {
   if (mode === MAPPER_MODES.JEV_AUDIT_BOOTSTRAP) return ["run", "bootstrap:jev-audit"];
   if (mode === MAPPER_MODES.PRODUCTION_RELEASE) return ["run", "deploy:production"];
   if (mode === MAPPER_MODES.SECURITY_MCP_RELEASE) return ["run", "deploy:production", "--", "--security-mcp-only"];
+  if (mode === MAPPER_MODES.IDENTITY_GATEWAY_RELEASE) return ["run", "deploy:production", "--", "--identity-gateway-only"];
   throw new Error(`Unknown production secret mapper mode: ${mode}`);
 }
 

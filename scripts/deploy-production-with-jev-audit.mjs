@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { createJevAuditProductionPhase } from "./jev-audit-production-phase.mjs";
 import { runFeeFreeMcpSecurityRelease } from "./release-security-mcp.mjs";
+import { runFeeFreeIdentityGatewayRelease } from "./release-identity-gateway.mjs";
 import { acquireProductionReleaseLock, releaseProductionReleaseLock } from "./production-release-lock.mjs";
 import { createReleaseChildEnv } from "./release-child-env.mjs";
 import {
@@ -266,11 +267,14 @@ const phase = createJevAuditProductionPhase({
   },
 });
 
-if (process.argv.length > 2 && (process.argv.length !== 3 || process.argv[2] !== "--security-mcp-only")) {
+if (process.argv.length > 2 && (process.argv.length !== 3 ||
+    !["--security-mcp-only","--identity-gateway-only"].includes(process.argv[2]))) {
   throw new Error("Unknown production release mode; refusing to run");
 }
 if (process.argv[2] === "--security-mcp-only") {
   await runFeeFreeMcpSecurityRelease();
+} else if (process.argv[2] === "--identity-gateway-only") {
+  await runFeeFreeIdentityGatewayRelease();
 } else {
 let normalLease = null;
 let normalLiveMutationStarted = false;

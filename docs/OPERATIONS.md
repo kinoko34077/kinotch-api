@@ -2,6 +2,36 @@
 
 ## Production deploy authority
 
+## Private Identity pilot — fee-free Gateway-only release mode (pending formal acceptance)
+
+This mode is implemented on the dedicated release PR and does not imply that the
+current hosted Gateway has been updated. Do not use the normal fee-bearing
+`release:local` for this pilot. When approved, use **only**:
+
+```sh
+npm run release:identity-gateway:local
+```
+
+The central secret mapper forwards only the existing CLOUDFLARE_API_TOKEN.
+No paid Provider token, Gemini, TypeSafe, compression or audit Tool Call is
+mapped. This new canonical `deploy:production -- --identity-gateway-only`
+mode must verify exact clean origin/main, patched Node 26.12.1, npm ci,
+full tests, production npm audit, and a dry-run of existing Gateway only.
+It requires a live private kinotch-identity-pilot 100%-active version,
+correct isolated D1 UUID, and disabled public and preview subdomains.
+It acquires the SAME atomic remote production release lease as all other modes,
+snapshots the existing Gateway active version, checks free /health, deploys
+ONLY Worker `api`, and verifies an exact new 100% Gateway version, free
+health and no-authorization 401 denials. Unknown or failed validation requires
+rollback to the exact prior API version with active readback and recovery
+health; an unverified rollback leaves the remote release lease held.
+No other Workers or service credentials may be modified by this mode.
+
+The first actual GitHub-issued OIDC assertion from testapp must be a
+**separately admitted manual** issuer-to-recipient test, with no JWT logging,
+200 fixed read and 403 duplicate denial. Passing the release negative-only
+checks does **not** prove that real E2E flow or human/passkey enrollment.
+
 ### 2026-10-22: authorised fee-free security patch, limited to two MCP Workers
 
 **Production-wide exclusive lease (both release modes):** before reading any
