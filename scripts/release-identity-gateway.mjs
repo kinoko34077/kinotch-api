@@ -26,8 +26,12 @@ const TARGET = Object.freeze({
 });
 const GATEWAY_HOST = "https://api.kinotch.workers.dev";
 const REQUIRED_EXISTING = Object.freeze([
-  "CLOCK_SERVER", "WEATHER_PROXY", "ROKUYO_PROXY",
-  "TEXT_TRANSFORM", "COMPRESSION", "JEV_AUDIT",
+  {binding:"CLOCK_SERVER",service:"clock-server"},
+  {binding:"WEATHER_PROXY",service:"weather-proxy"},
+  {binding:"ROKUYO_PROXY",service:"rokuyo-proxy"},
+  {binding:"TEXT_TRANSFORM",service:"text-transform"},
+  {binding:"COMPRESSION",service:"semantic-compression"},
+  {binding:"JEV_AUDIT",service:"jev-audit"},
 ]);
 
 export function assertFeeFreeIdentityGatewayConfig(config) {
@@ -38,7 +42,8 @@ export function assertFeeFreeIdentityGatewayConfig(config) {
       config.services.some(item => !item || typeof item.binding !== "string" ||
         typeof item.service !== "string") ||
       config.services.some((item, index) => index < REQUIRED_EXISTING.length &&
-        item.binding !== REQUIRED_EXISTING[index]) ||
+        (item.binding !== REQUIRED_EXISTING[index].binding ||
+         item.service !== REQUIRED_EXISTING[index].service)) ||
       config.services.at(-1).binding !== TARGET.binding ||
       config.services.at(-1).service !== TARGET.name ||
       Object.hasOwn(config, "d1_databases")) {
@@ -85,6 +90,30 @@ async function getPrivatePilotSettings(fetchImpl, token) {
     throw new Error("Private Identity target is not exactly admitted");
   }
   return versions[0].version_id;
+}
+
+export async function verifyLiveGatewayPrivateBinding(fetchImpl, token) {
+  if (typeof token !== "string" || token.length < 10) {
+    throw new Error("Cloudflare Gateway deployment token unavailable");
+  }
+  const response = await fetchImpl(
+    "https://api.cloudflare.com/client/v4/accounts/" + TARGET.account +
+      "/workers/scripts/api/settings",
+    {method:"GET",headers:{Authorization:"Bearer " + token},
+     redirect:"error",signal:AbortSignal.timeout(15000)},
+  );
+  if (response.status !== 200) {
+    throw new Error("Gateway service binding readback unavailable");
+  }
+  const data = await response.json();
+  const bindings = data?.result?.bindings;
+  if (data?.success !== true || !Array.isArray(bindings) ||
+      bindings.filter(item => item?.name === TARGET.binding).length !== 1 ||
+      !bindings.some(item => item.name === TARGET.binding &&
+        item.type === "service" && item.service === TARGET.name)) {
+    throw new Error("Gateway live Identity Service Binding differs from expected");
+  }
+  return true;
 }
 
 async function run(command, args, env, capture = false) {
@@ -197,7 +226,10 @@ export async function runFeeFreeIdentityGatewayRelease() {
     discoverySmoke: healthOnly,
     async unauthenticatedSmoke() {
       // Before publishing, old Gateway may correctly have no such route.
-      if (wasDeployed) await noAuthIdentityDeny();
+      if (wasDeployed) {
+        await verifyLiveGatewayPrivateBinding(fetch, process.env.CLOUDFLARE_API_TOKEN);
+        await noAuthIdentityDeny();
+      }
     },
     async rollback(_, previousVersionId) {
       return rollbackAfterSmokeFailure({
