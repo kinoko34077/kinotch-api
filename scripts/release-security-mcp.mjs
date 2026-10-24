@@ -27,9 +27,25 @@ function safeFailure(error) {
 
 export async function executeFeeFreeMcpRelease({
   prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord, acquireLock, releaseLock,
+  workers = SECURITY_MCP_WORKERS, mode = "fee_free_mcp_security_only", validation = "authenticated_tool_discovery_and_unauthenticated_handshake_denial",
 } = {}) {
   for (const [name, fn] of Object.entries({prepare, dryRun, activeVersion, deploy, discoverySmoke, unauthenticatedSmoke, rollback, writeRecord})) {
     if (typeof fn !== "function") throw new TypeError("Security release requires " + name);
+  }
+  if (!Array.isArray(workers) || (workers.length !== 1 && workers.length !== 2) ||
+      workers.some(worker => typeof worker?.name !== "string" || typeof worker?.config !== "string") ||
+      new Set(workers.map(worker => worker.name)).size !== workers.length ||
+      !["fee_free_mcp_security_only", "fee_free_identity_gateway_only"].includes(mode)) {
+    throw new TypeError("Unapproved scoped release worker or mode");
+  }
+  if (mode === "fee_free_identity_gateway_only" &&
+      (workers.length !== 1 || workers[0].name !== "api" || workers[0].config !== "wrangler.jsonc")) {
+    throw new TypeError("Identity Gateway release must target only api");
+  }
+  if (mode === "fee_free_mcp_security_only" &&
+      (workers.length !== SECURITY_MCP_WORKERS.length ||
+       workers.some((worker, i) => worker.name !== SECURITY_MCP_WORKERS[i].name || worker.config !== SECURITY_MCP_WORKERS[i].config))) {
+    throw new TypeError("MCP release target drift");
   }
   const previous = {};
   const updated = {};
@@ -40,7 +56,7 @@ export async function executeFeeFreeMcpRelease({
   let stage = "prepare";
   try {
     revision = await prepare();
-    for (const worker of SECURITY_MCP_WORKERS) {
+    for (const worker of workers) {
       stage = "dry_run_" + worker.name;
       await dryRun(worker);
     }
@@ -50,16 +66,16 @@ export async function executeFeeFreeMcpRelease({
     lease = await acquireLock();
     // Capture both rollback targets and verify both existing, authenticated
     // non-billable tool-discovery routes BEFORE performing any mutation.
-    for (const worker of SECURITY_MCP_WORKERS) {
+    for (const worker of workers) {
       stage = "snapshot_" + worker.name;
       previous[worker.name] = await activeVersion(worker);
     }
-    for (const worker of SECURITY_MCP_WORKERS) {
+    for (const worker of workers) {
       stage = "preflight_auth_" + worker.name;
       await discoverySmoke(worker);
       await unauthenticatedSmoke(worker);
     }
-    for (const worker of SECURITY_MCP_WORKERS) {
+    for (const worker of workers) {
       stage = "pre_deploy_compare_" + worker.name;
       if (await activeVersion(worker) !== previous[worker.name]) {
         throw new Error("Active " + worker.name + " changed during security release preflight");
@@ -75,7 +91,7 @@ export async function executeFeeFreeMcpRelease({
         throw new Error("Security release did not activate a new " + worker.name + " version");
       }
     }
-    for (const worker of SECURITY_MCP_WORKERS) {
+    for (const worker of workers) {
       stage = "post_deploy_auth_" + worker.name;
       await discoverySmoke(worker);
       await unauthenticatedSmoke(worker);
@@ -84,9 +100,9 @@ export async function executeFeeFreeMcpRelease({
       }
     }
     const record = {
-      status: "succeeded", mode: "fee_free_mcp_security_only", sourceRevision: revision,
+      status: "succeeded", mode, sourceRevision: revision,
       previousVersions: previous, activeVersions: updated,
-      validation: "authenticated_tool_discovery_and_unauthenticated_handshake_denial",
+      validation,
       providerToolCalls: 0,
     };
     stage = "record_success";
@@ -117,7 +133,7 @@ export async function executeFeeFreeMcpRelease({
     }
     try {
       await writeRecord({
-        status: "failed", mode: "fee_free_mcp_security_only", sourceRevision: revision ?? null,
+        status: "failed", mode, sourceRevision: revision ?? null,
         failure: { stage: failureStage, ...safeFailure(error) },
         previousVersions: previous, recoveries, providerToolCalls: 0,
       });
