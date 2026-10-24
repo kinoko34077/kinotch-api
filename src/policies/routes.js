@@ -59,7 +59,24 @@ const JEV_AUDIT_TOKEN_RATE_LIMIT = Object.freeze({
   period: 60,
 });
 
+// Reuse the existing pre-auth limiter namespace with an isolated key prefix.
+// The pilot is inert without a separate approved private Service Binding.
+const IDENTITY_PILOT_PREAUTH_RATE_LIMIT = Object.freeze({
+  binding: "JEV_AUDIT_PREAUTH_RATE_LIMITER",
+  keyPrefix: "identity-read-pilot-preauth",
+  limit: 5,
+  period: 60,
+});
+
 export const routePolicies = Object.freeze({
+  identityCatalogRead: Object.freeze({
+    id: "identity-catalog-read",
+    path: "/v1/identity/catalog/read",
+    method: "POST",
+    bodyLimitBytes: 0,
+    preAuthRateLimit: IDENTITY_PILOT_PREAUTH_RATE_LIMIT,
+    upstreamTimeoutMs: 5000,
+  }),
   health: Object.freeze({
     id: "health",
     path: "/health",
