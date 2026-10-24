@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { executeFeeFreeMcpRelease } from "../scripts/release-security-mcp.mjs";
-import { assertFeeFreeIdentityGatewayConfig } from "../scripts/release-identity-gateway.mjs";
+import { assertFeeFreeIdentityGatewayConfig, verifyLiveGatewayPrivateBinding } from "../scripts/release-identity-gateway.mjs";
 import {
   MAPPER_MODES, requiredKeysForMode, createMappedChildEnv,
   runMappedCommand,
@@ -21,6 +21,8 @@ test("fee-free Gateway release requires exact existing Gateway and private calle
   reject({...config,account_id:"not-the-original-account"});
   reject({...config,d1_databases:[]});
   reject({...config,services:config.services.slice(0,-1)});
+  reject({...config,services:config.services.map(x => x.binding === "CLOCK_SERVER" ?
+    {...x,service:"wrong-clock"}:x)});
   reject({...config,services:[...config.services,{binding:"EXTRA",service:"untrusted"}]});
   reject({...config,services:config.services.map(x=>x.binding==="IDENTITY_PILOT"?
     {binding:"IDENTITY_PILOT",service:"untrusted"}:x)});
@@ -116,4 +118,27 @@ test("scoped Gateway release preserves rollback and lock release after postfligh
   assert.equal(records[0].status,"failed");
   assert.equal(records[0].recoveries.api.status,"verified_rolled_back");
   assert.equal(attempts,2);
+});
+
+test("postrelease Cloudflare readback requires exact private service, never a forged/missing binding",async()=>{
+  const fixture={success:true,result:{bindings:[
+    {name:"CLOCK_SERVER",type:"service",service:"clock-server"},
+    {name:"IDENTITY_PILOT",type:"service",service:"kinotch-identity-pilot"},
+  ]}};
+  const requests=[];
+  const fake=async(url,init)=>{requests.push({url,method:init.method});
+    return {status:200,json:async()=>fixture};
+  };
+  assert.equal(await verifyLiveGatewayPrivateBinding(fake,"FAKE_CLOUDFLARE_TOKEN"),true);
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].method,"GET");
+  assert.ok(requests[0].url.endsWith("/workers/scripts/api/settings"));
+  await assert.rejects(verifyLiveGatewayPrivateBinding(fake,"short"),/token unavailable/);
+  await assert.rejects(verifyLiveGatewayPrivateBinding(async()=>({status:403}),
+    "FAKE_CLOUDFLARE_TOKEN"),/readback unavailable/);
+  await assert.rejects(verifyLiveGatewayPrivateBinding(async()=>({
+    status:200,json:async()=>({success:true,result:{bindings:[
+      {name:"IDENTITY_PILOT",type:"service",service:"wrong-target"},
+    ]}}),
+  }),"FAKE_CLOUDFLARE_TOKEN"),/differs from expected/);
 });
