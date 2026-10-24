@@ -98,7 +98,7 @@ registerRoute(apiRoutes, "POST", "/v1/identity/catalog/read", routePolicies.iden
   }
   const authorization = c.req.header("authorization");
   if (typeof authorization !== "string" || authorization.length > 8200 ||
-      !/^Bearer [A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$/.test(authorization)) {
+      !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(authorization)) {
     return c.json({ error: "unauthenticated" }, 401);
   }
   // Empty request payload enforced by the existing shared policy body limiter.
