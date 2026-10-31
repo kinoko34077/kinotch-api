@@ -51,12 +51,12 @@
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.1",
     "agents": "^0.28.1",
-    "hono": "^4.13.13",
-    "jose": "^6.2.12",
+    "hono": "^4.13.14",
+    "jose": "^6.2.13",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "json5": "^2.2.3",
-    "wrangler": "4.151.1"
+    "wrangler": "4.154.0"
   }
 }
