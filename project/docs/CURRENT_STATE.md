@@ -15,7 +15,7 @@
 - **変更なし。** 公開Gateway apiは `d9a6995c-932a-4729-9fa4-f898ae94d8de`（2026-10-24）、非公開 semantic-compressionは `67334f84-270f-4dd9-8e9f-5c71624b55cd`、非公開 jev-auditは `f250a44e-f4ee-4b79-b60c-e0d8f37fcbf1`（いずれも2026-09-28）を100%維持。Access、Secret、権限、Service Binding、DNS、課金Providerの変更なし。
 - **検証結果。** cleanなorigin/main、プロセス限定Node 26.12.1、npm ci、全456テスト（455成功・失敗0・任意テスト1スキップ）、本番依存監査はHigh以上0件（HonoのModerate 1件は未解消）、対象2 WorkerのWrangler dry-run、認証付きMCP initialize/tools-list・未認証拒否の更新前後検証が成功。Gatewayの /health はHTTP 200、未認証Identity POSTはHTTP 401。リリース記録の providerToolCalls=0。
 - **旧ロックの整理と正常な排他制御。** 2026-10-24のロックSHA `4ed42c4d7deddc33e3b37171a2868011e7ae7ea2` は、当時の別Gatewayデプロイ後も残存していた。ユーザーの今回の条件付き指示を受け、関連Issue・PR・ワークスペース・実行プロセス・Cloudflareの5 Workerを照合して、旧SHAに一致するときだけ削除するGit `--force-with-lease` を使用。今回の正式リリースでは新しい専有ロックを取得・正常解除し、最後にremoteのロック不在を確認。当時の2回目のGatewayリリースの最終記録は見つかっていないため、過去の正常終了そのものは断定しない。
-- **別件として維持。** Dependabot PR #121（Hono/Jose/Wrangler）はCI失敗で未統合。Honoの中程度の脆弱性対処と、#9 Codex専用Token、#85 KAEP H3の未受入範囲は本リリースと区別する。
+- **ソースmainへ統合済み（本番Workerへは未反映）。** Dependabot PR #121（Hono ^4.13.19／Jose ^6.2.18／Wrangler 4.165.0）は、CI失敗の原因（Wranglerが`dotenv@16.3.1`をdev限定の間接依存としてlockへ追加し、旧テストがlock上のdotenvを一切許さなかったこと）を[PR #130](https://github.com/kinoko34077/kinotch-api/pull/130)でテストの趣旨（runtime依存を増やさない）に合わせて修正後、ソースmain `19a70863`へ統合済み（`verify`／`test`／`dependency-review`成功）。Cloudflare本番Workerへの反映は別の手動releaseが必要で、本統合では行っていない。このため上記本番のHono Moderate 1件の解消は、次回releaseと公開MCPの独立確認までは未達として扱う。#9 Codex専用Token、#85 KAEP H3の未受入範囲は本件と区別する。
 
 ## 2026-10-22 LIVE — no-fee MCP security patch deployed and independently verified
 
