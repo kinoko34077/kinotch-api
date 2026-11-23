@@ -8,6 +8,15 @@
 
 # Current State
 
+## 2026-11-23 LIVE — agents 0.34.0 / MCP 2.4.0 の公開MCP更新を実稼働確認
+
+- **本番反映完了（既存の公開MCP Worker 2件のみ）。** [Issue #124](https://github.com/kinoko34077/kinotch-api/issues/124) / PR #125で、ソースmain `054adc35df36e761d62d2857041182c977547a05` に agents 0.34.0、MCP server/client/core 2.4.0を統合。その後、公式無課金リリース `npm run release:security-mcp:local` は終了コード0。正式記録は [security-mcp-20261123T011521614Z.json](../../docs/releases/security-mcp-20261123T011521614Z.json)、実稼働確認とロック復旧のOwnerは [#126](https://github.com/kinoko34077/kinotch-api/issues/126)。GitHub上の統合とCloudflareへの反映は別々に検証した。
+- **Cloudflare公式Deployments GETによる独立確認。** semantic-compression-mcp：旧 `f8d80340-239b-4d76-99d8-910550909400` → 新 `22462fc8-7be9-43de-bbc7-85c91b8282a7`（2026-11-23T01:14:52Z、100%稼働）。jev-audit-mcp：旧 `79f2f8c7-8877-438d-9ec1-a9690242f310` → 新 `c8ff1fc1-c742-463a-8762-de38d9ab1ddd`（2026-11-23T01:15:08Z、100%稼働）。
+- **変更なし。** 公開Gateway apiは `d9a6995c-932a-4729-9fa4-f898ae94d8de`（2026-10-24）、非公開 semantic-compressionは `67334f84-270f-4dd9-8e9f-5c71624b55cd`、非公開 jev-auditは `f250a44e-f4ee-4b79-b60c-e0d8f37fcbf1`（いずれも2026-09-28）を100%維持。Access、Secret、権限、Service Binding、DNS、課金Providerの変更なし。
+- **検証結果。** cleanなorigin/main、プロセス限定Node 26.12.1、npm ci、全456テスト（455成功・失敗0・任意テスト1スキップ）、本番依存監査はHigh以上0件（HonoのModerate 1件は未解消）、対象2 WorkerのWrangler dry-run、認証付きMCP initialize/tools-list・未認証拒否の更新前後検証が成功。Gatewayの /health はHTTP 200、未認証Identity POSTはHTTP 401。リリース記録の providerToolCalls=0。
+- **旧ロックの整理と正常な排他制御。** 2026-10-24のロックSHA `4ed42c4d7deddc33e3b37171a2868011e7ae7ea2` は、当時の別Gatewayデプロイ後も残存していた。ユーザーの今回の条件付き指示を受け、関連Issue・PR・ワークスペース・実行プロセス・Cloudflareの5 Workerを照合して、旧SHAに一致するときだけ削除するGit `--force-with-lease` を使用。今回の正式リリースでは新しい専有ロックを取得・正常解除し、最後にremoteのロック不在を確認。当時の2回目のGatewayリリースの最終記録は見つかっていないため、過去の正常終了そのものは断定しない。
+- **別件として維持。** Dependabot PR #121（Hono/Jose/Wrangler）はCI失敗で未統合。Honoの中程度の脆弱性対処と、#9 Codex専用Token、#85 KAEP H3の未受入範囲は本リリースと区別する。
+
 ## 2026-10-22 LIVE — no-fee MCP security patch deployed and independently verified
 
 - **PRODUCTION PATCH COMPLETE (scope: two public MCP Workers only).** Explicit user free-only approval; official `npm run release:security-mcp:local` completed with exit code 0 at GitHub source main `04c6c0cd253f7cf7246f765cc03fa503832a4c02`, using operator-selected Node v26.12.1. Release metadata: [security-mcp-20261022T033720928Z.json](../../docs/releases/security-mcp-20261022T033720928Z.json). Detailed independent deployment evidence: [#97](https://github.com/kinoko34077/kinotch-api/issues/97#issuecomment-6334319975).
