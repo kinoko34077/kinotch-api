@@ -1,0 +1,16 @@
+{
+  "recordedAtUtc": "2026-11-23T01:15:21.614Z",
+  "status": "succeeded",
+  "mode": "fee_free_mcp_security_only",
+  "sourceRevision": "054adc35df36e761d62d2857041182c977547a05",
+  "previousVersions": {
+    "semantic-compression-mcp": "f8d80340-239b-4d76-99d8-910550909400",
+    "jev-audit-mcp": "79f2f8c7-8877-438d-9ec1-a9690242f310"
+  },
+  "activeVersions": {
+    "semantic-compression-mcp": "22462fc8-7be9-43de-bbc7-85c91b8282a7",
+    "jev-audit-mcp": "c8ff1fc1-c742-463a-8762-de38d9ab1ddd"
+  },
+  "validation": "authenticated_tool_discovery_and_unauthenticated_handshake_denial",
+  "providerToolCalls": 0
+}
