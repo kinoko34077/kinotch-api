@@ -56,5 +56,16 @@ test("package exposes only the bounded self-host launcher command", async () => 
 
 test("self-host additions do not introduce a second lockfile dependency tree", async () => {
   const packageLock = JSON.parse(await readFile(path.join(projectRoot, "package-lock.json"), "utf8"));
-  assert.equal(packageLock.packages?.["node_modules/dotenv"], undefined);
+  const rootPackage = packageLock.packages?.[""] ?? {};
+  // The launcher parses `.env` itself: dotenv must not be a declared dependency of this package.
+  assert.equal(rootPackage.dependencies?.dotenv, undefined);
+  assert.equal(rootPackage.devDependencies?.dotenv, undefined);
+  assert.equal(rootPackage.optionalDependencies?.dotenv, undefined);
+  // Wrangler's development tooling may pull dotenv in transitively. That is acceptable only as a
+  // dev-only entry; a runtime (non-dev) dotenv in the lockfile would be a new runtime dependency.
+  const lockedDotenv = packageLock.packages?.["node_modules/dotenv"];
+  assert.ok(
+    lockedDotenv === undefined || lockedDotenv.dev === true,
+    "dotenv may appear in package-lock.json only as a dev-only transitive dependency"
+  );
 });
